@@ -25,10 +25,12 @@ import {
   Square,
   SkipBack,
   Pause,
-  SkipForward
+  SkipForward,
+  Send,
+  MessageSquare
 } from 'lucide-react';
 
-import { SearchOverlay } from '../components/SearchOverlay';
+import { FindReplacePopup } from '../components/FindReplacePopup';
 
 const MOCK_CHAPTERS = [
   { 
@@ -107,7 +109,25 @@ export default function Editor() {
   const [isCoauthoring, setIsCoauthoring] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [paragraphs, setParagraphs] = useState(INITIAL_PARAGRAPHS);
+  const [chatMessages, setChatMessages] = useState<{role: 'user' | 'ai', text: string}[]>([
+    { role: 'ai', text: 'Привет! Я твой ИИ-соавтор. Чем могу помочь с этой главой?' }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const chatEndRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const parentChapter = MOCK_CHAPTERS.find(c => c.scenes.some(s => s.id === activeSceneId));
+    if (parentChapter) {
+      setExpandedChapterId(parentChapter.id);
+    }
+  }, [activeSceneId]);
+
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages, isCoauthoring]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -131,6 +151,7 @@ export default function Editor() {
     setActiveBibleTab(tabId);
     setIsBibleOpen(true);
     setIsBibleDropdownOpen(false);
+    setIsCoauthoring(false);
   };
 
   const handleExtract = () => {
@@ -168,15 +189,22 @@ export default function Editor() {
         </div>
 
         <div className="p-3 space-y-1 border-b border-white/10">
-          <button 
-            onClick={() => setIsBibleOpen(!isBibleOpen)}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${isBibleOpen ? 'bg-white/15 text-white' : 'hover:bg-white/10'}`}
+          <Link 
+            to={`/bible/${id}`}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-white/10`}
           >
-            <BookOpen size={16} className={isBibleOpen ? 'text-amber-200' : 'text-white/50'} />
+            <BookOpen size={16} className="text-white/50" />
             Библия истории
-          </button>
-          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-white/10">
-            <Sparkles size={16} className="text-purple-300" />
+          </Link>
+          <button 
+            onClick={() => {
+              const nextState = !isCoauthoring;
+              setIsCoauthoring(nextState);
+              if (nextState) setIsBibleOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${isCoauthoring ? 'bg-white/15 text-white' : 'hover:bg-white/10'}`}
+          >
+            <Sparkles size={16} className={isCoauthoring ? 'text-purple-300' : 'text-white/50'} />
             ИИ-Соавтор
           </button>
         </div>
@@ -191,26 +219,42 @@ export default function Editor() {
             return (
             <div key={chapter.id} className="mb-0.5">
               <div
-                onClick={() => toggleChapter(chapter.id)}
-                className={`w-full flex items-start gap-2 px-2 py-2 rounded-lg text-sm transition-colors text-left cursor-pointer ${
+                className={`w-full flex items-start gap-2 px-2 py-2 rounded-lg text-sm transition-colors text-left ${
                   isChapterActive 
                     ? 'bg-[rgba(255,255,255,0.08)]' 
                     : 'bg-transparent hover:bg-white/5'
                 }`}
               >
-                <div className="mt-1 text-[#f5f0e8]/40 transition-colors">
+                <div 
+                  className="mt-1 text-[#f5f0e8]/40 transition-colors cursor-pointer hover:text-white p-0.5 -m-0.5"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Prevent collapsing the active chapter if that's what "remain expanded" implies,
+                    // but allow accordion behavior to collapse it if another chapter is expanded.
+                    if (isChapterActive && expandedChapterId === chapter.id) return;
+                    toggleChapter(chapter.id);
+                  }}
+                >
                   {expandedChapterId === chapter.id ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 </div>
-                <div className="mt-1 flex-shrink-0 relative">
-                  <FileText size={14} className="text-[#f5f0e8]/50" />
-                </div>
-                <div className="flex flex-col overflow-hidden">
-                  <span className={`truncate ${isChapterActive ? 'text-white font-medium' : 'text-[#f5f0e8]/60'}`}>
-                    {chapter.title}
-                  </span>
-                  <span className={`text-[11px] truncate mt-0.5 ${isChapterActive ? 'text-white font-medium' : 'text-[#f5f0e8]/40'}`}>
-                    {chapter.subtitle}
-                  </span>
+                <div 
+                  className="flex flex-1 gap-2 cursor-pointer overflow-hidden"
+                  onClick={() => {
+                    setActiveSceneId(chapter.scenes.length > 0 ? chapter.scenes[0].id : chapter.id);
+                    setExpandedChapterId(chapter.id);
+                  }}
+                >
+                  <div className="mt-1 flex-shrink-0 relative">
+                    <FileText size={14} className="text-[#f5f0e8]/50" />
+                  </div>
+                  <div className="flex flex-col overflow-hidden">
+                    <span className={`truncate ${isChapterActive ? 'text-white font-medium' : 'text-[#f5f0e8]/60'}`}>
+                      {chapter.title}
+                    </span>
+                    <span className={`text-[11px] truncate mt-0.5 ${isChapterActive ? 'text-white font-medium' : 'text-[#f5f0e8]/40'}`}>
+                      {chapter.subtitle}
+                    </span>
+                  </div>
                 </div>
               </div>
               
@@ -339,6 +383,7 @@ export default function Editor() {
                 if (nextState) {
                   setIsDictating(false);
                   setIsReading(false);
+                  setIsBibleOpen(false);
                 }
               }}
               className={`flex items-center justify-center w-auto sm:w-[130px] h-[36px] whitespace-nowrap gap-2 px-3 sm:px-4 py-2 transition-colors text-sm font-medium rounded-lg outline-none focus:outline-none focus:ring-0 shrink-0 ${
@@ -404,114 +449,182 @@ export default function Editor() {
         </div>
       </main>
 
-      {/* Right Panel: Story Bible (320px) */}
+      {/* Right Panel: Story Bible or AI Co-author (320px) */}
       <aside 
         className={`bg-[#f5f0e8] border-l border-[#1e2d1f]/10 flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out z-20 ${
-          isBibleOpen ? 'w-[320px] translate-x-0' : 'w-0 translate-x-full border-none'
+          (isBibleOpen || isCoauthoring) ? 'w-[320px] translate-x-0' : 'w-0 translate-x-full border-none'
         }`}
       >
-        <div className="p-5 border-b border-[#1e2d1f]/5 flex justify-between items-center bg-white/40">
-          <h2 className="font-serif font-bold text-lg text-[#1e2d1f]">Библия истории</h2>
-          <button onClick={() => setIsBibleOpen(false)} className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/50 transition-colors">
-            <X size={18} />
-          </button>
-        </div>
+        {isBibleOpen && (
+          <div className="flex flex-col h-full w-[320px]">
+            <div className="p-5 border-b border-[#1e2d1f]/5 flex justify-between items-center bg-white/40">
+              <h2 className="font-serif font-bold text-lg text-[#1e2d1f]">Библия истории</h2>
+              <button onClick={() => setIsBibleOpen(false)} className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/50 transition-colors">
+                <X size={18} />
+              </button>
+            </div>
 
-        {/* Tabs */}
-        <div className="flex px-2 pt-2 border-b border-[#1e2d1f]/5 bg-white/40 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-          {BIBLE_MENU_ITEMS.map(item => (
-            <button 
-              key={item.id}
-              onClick={() => setActiveBibleTab(item.id)}
-              className={`flex-shrink-0 px-3 pb-2.5 pt-1.5 text-xs font-medium flex items-center justify-center gap-1.5 border-b-2 transition-colors ${activeBibleTab === item.id ? 'border-[#1e2d1f] text-[#1e2d1f]' : 'border-transparent text-[#1e2d1f]/50 hover:text-[#1e2d1f]/80'}`}
-            >
-              <item.icon size={14} />
-              {item.label}
-              {item.id === 'inbox' && suggestions.length > 0 && (
-                <span className="bg-rose-500 text-white text-[9px] px-1.5 py-0.5 rounded-full ml-0.5 leading-none">{suggestions.length}</span>
-              )}
-            </button>
-          ))}
-        </div>
+            {/* Tabs */}
+            <div className="flex px-2 pt-2 border-b border-[#1e2d1f]/5 bg-white/40 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {BIBLE_MENU_ITEMS.map(item => (
+                <button 
+                  key={item.id}
+                  onClick={() => setActiveBibleTab(item.id)}
+                  className={`flex-shrink-0 px-3 pb-2.5 pt-1.5 text-xs font-medium flex items-center justify-center gap-1.5 border-b-2 transition-colors ${activeBibleTab === item.id ? 'border-[#1e2d1f] text-[#1e2d1f]' : 'border-transparent text-[#1e2d1f]/50 hover:text-[#1e2d1f]/80'}`}
+                >
+                  <item.icon size={14} />
+                  {item.label}
+                  {item.id === 'inbox' && suggestions.length > 0 && (
+                    <span className="bg-rose-500 text-white text-[9px] px-1.5 py-0.5 rounded-full ml-0.5 leading-none">{suggestions.length}</span>
+                  )}
+                </button>
+              ))}
+            </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
-          {activeBibleTab === 'inbox' && (
-            <div className="flex flex-col h-full">
-              {suggestions.length === 0 && !isExtracting ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
-                  <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center mb-4 text-[#1e2d1f]/20">
-                    <Sparkles size={24} />
-                  </div>
-                  <h3 className="font-medium text-[#1e2d1f]/80 mb-2">Нет новых фактов</h3>
-                  <p className="text-xs text-[#1e2d1f]/50 mb-6 leading-relaxed">
-                    Нажмите кнопку ниже, чтобы ИИ проанализировал текущую главу и нашел новые детали для Библии.
-                  </p>
-                  <button 
-                    onClick={handleExtract}
-                    className="bg-[#1e2d1f] text-[#f5f0e8] px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-[#2a3f2b] transition-colors shadow-sm flex items-center gap-2"
-                  >
-                    <Sparkles size={16} />
-                    Извлечь факты
-                  </button>
-                </div>
-              ) : isExtracting ? (
-                <div className="flex-1 flex flex-col items-center justify-center">
-                  <div className="w-8 h-8 border-2 border-[#1e2d1f]/20 border-t-[#1e2d1f] rounded-full animate-spin mb-4"></div>
-                  <span className="text-sm font-medium text-[#1e2d1f]/70">Анализ текста...</span>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs font-bold uppercase tracking-widest text-[#1e2d1f]/40">Найдено в тексте</span>
-                    <button className="text-xs font-medium text-[#1e2d1f]/60 hover:text-[#1e2d1f]">Одобрить все</button>
-                  </div>
-                  
-                  {suggestions.map(suggestion => (
-                    <div key={suggestion.id} className="bg-white rounded-2xl p-4 shadow-sm border border-[#1e2d1f]/5 relative group">
-                      <button 
-                        onClick={() => dismissSuggestion(suggestion.id)}
-                        className="absolute top-3 right-3 p-1 rounded-md text-[#1e2d1f]/30 hover:bg-[#f5f0e8] hover:text-[#1e2d1f] transition-colors opacity-0 group-hover:opacity-100"
-                      >
-                        <X size={14} />
-                      </button>
-                      
-                      <div className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold tracking-widest mb-2 ${suggestion.colorClass}`}>
-                        {suggestion.type}
+            <div className="flex-1 overflow-y-auto p-4">
+              {activeBibleTab === 'inbox' && (
+                <div className="flex flex-col h-full">
+                  {suggestions.length === 0 && !isExtracting ? (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
+                      <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center mb-4 text-[#1e2d1f]/20">
+                        <Sparkles size={24} />
                       </div>
-                      
-                      <h4 className="font-serif font-bold text-[#1e2d1f] mb-1">{suggestion.title}</h4>
-                      <p className="text-xs text-[#1e2d1f]/70 mb-3">{suggestion.description}</p>
-                      
-                      <div className="bg-[#f5f0e8] rounded-lg p-3 mb-4">
-                        <p className="text-xs font-serif italic text-[#1e2d1f]/80 leading-relaxed">
-                          {suggestion.quote}
-                        </p>
-                      </div>
-                      
+                      <h3 className="font-medium text-[#1e2d1f]/80 mb-2">Нет новых фактов</h3>
+                      <p className="text-xs text-[#1e2d1f]/50 mb-6 leading-relaxed">
+                        Нажмите кнопку ниже, чтобы ИИ проанализировал текущую главу и нашел новые детали для Библии.
+                      </p>
                       <button 
-                        onClick={() => dismissSuggestion(suggestion.id)}
-                        className="w-full py-2 rounded-xl bg-[#f5f0e8] hover:bg-[#e8e2d5] text-[#1e2d1f] text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
+                        onClick={handleExtract}
+                        className="bg-[#1e2d1f] text-[#f5f0e8] px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-[#2a3f2b] transition-colors shadow-sm flex items-center gap-2"
                       >
-                        <Check size={14} />
-                        Одобрить
+                        <Sparkles size={16} />
+                        Извлечь факты
                       </button>
                     </div>
-                  ))}
+                  ) : isExtracting ? (
+                    <div className="flex-1 flex flex-col items-center justify-center">
+                      <div className="w-8 h-8 border-2 border-[#1e2d1f]/20 border-t-[#1e2d1f] rounded-full animate-spin mb-4"></div>
+                      <span className="text-sm font-medium text-[#1e2d1f]/70">Анализ текста...</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-bold uppercase tracking-widest text-[#1e2d1f]/40">Найдено в тексте</span>
+                        <button className="text-xs font-medium text-[#1e2d1f]/60 hover:text-[#1e2d1f]">Одобрить все</button>
+                      </div>
+                      
+                      {suggestions.map(suggestion => (
+                        <div key={suggestion.id} className="bg-white rounded-2xl p-4 shadow-sm border border-[#1e2d1f]/5 relative group">
+                          <button 
+                            onClick={() => dismissSuggestion(suggestion.id)}
+                            className="absolute top-3 right-3 p-1 rounded-md text-[#1e2d1f]/30 hover:bg-[#f5f0e8] hover:text-[#1e2d1f] transition-colors opacity-0 group-hover:opacity-100"
+                          >
+                            <X size={14} />
+                          </button>
+                          
+                          <div className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold tracking-widest mb-2 ${suggestion.colorClass}`}>
+                            {suggestion.type}
+                          </div>
+                          
+                          <h4 className="font-serif font-bold text-[#1e2d1f] mb-1">{suggestion.title}</h4>
+                          <p className="text-xs text-[#1e2d1f]/70 mb-3">{suggestion.description}</p>
+                          
+                          <div className="bg-[#f5f0e8] rounded-lg p-3 mb-4">
+                            <p className="text-xs font-serif italic text-[#1e2d1f]/80 leading-relaxed">
+                              {suggestion.quote}
+                            </p>
+                          </div>
+                          
+                          <button 
+                            onClick={() => dismissSuggestion(suggestion.id)}
+                            className="w-full py-2 rounded-xl bg-[#f5f0e8] hover:bg-[#e8e2d5] text-[#1e2d1f] text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
+                          >
+                            <Check size={14} />
+                            Одобрить
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {activeBibleTab !== 'inbox' && (
+                <div className="flex-1 flex items-center justify-center text-sm text-[#1e2d1f]/40">
+                  Раздел в разработке
                 </div>
               )}
             </div>
-          )}
-          
-          {activeBibleTab !== 'inbox' && (
-            <div className="flex-1 flex items-center justify-center text-sm text-[#1e2d1f]/40">
-              Раздел в разработке
+          </div>
+        )}
+
+        {isCoauthoring && (
+          <div className="flex flex-col h-full w-[320px]">
+            <div className="p-5 border-b border-[#1e2d1f]/5 flex justify-between items-center bg-white/40">
+              <div className="flex items-center gap-2">
+                <Sparkles size={18} className="text-purple-500" />
+                <h2 className="font-serif font-bold text-lg text-[#1e2d1f]">ИИ-Соавтор</h2>
+              </div>
+              <button onClick={() => setIsCoauthoring(false)} className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/50 transition-colors">
+                <X size={18} />
+              </button>
             </div>
-          )}
-        </div>
+            
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {chatMessages.map((msg, idx) => (
+                <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                  <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
+                    msg.role === 'user' 
+                      ? 'bg-[#1e2d1f] text-white rounded-br-sm' 
+                      : 'bg-white border border-[#1e2d1f]/10 text-[#1e2d1f] rounded-bl-sm shadow-sm'
+                  }`}>
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+              <div ref={chatEndRef} />
+            </div>
+
+            <div className="p-4 bg-white/40 border-t border-[#1e2d1f]/5">
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && chatInput.trim()) {
+                      setChatMessages(prev => [...prev, { role: 'user', text: chatInput.trim() }]);
+                      setChatInput('');
+                      setTimeout(() => {
+                        setChatMessages(prev => [...prev, { role: 'ai', text: 'Отличная идея! Давайте добавим больше деталей к этой сцене.' }]);
+                      }, 1000);
+                    }
+                  }}
+                  placeholder="Спросите соавтора..."
+                  className="w-full bg-white border border-[#1e2d1f]/10 rounded-full pl-4 pr-10 py-2.5 text-sm outline-none focus:border-[#1e2d1f]/30 transition-colors shadow-sm"
+                />
+                <button 
+                  onClick={() => {
+                    if (chatInput.trim()) {
+                      setChatMessages(prev => [...prev, { role: 'user', text: chatInput.trim() }]);
+                      setChatInput('');
+                      setTimeout(() => {
+                        setChatMessages(prev => [...prev, { role: 'ai', text: 'Отличная идея! Давайте добавим больше деталей к этой сцене.' }]);
+                      }, 1000);
+                    }
+                  }}
+                  className="absolute right-1.5 p-1.5 bg-[#1e2d1f] text-white rounded-full hover:bg-[#2a3f2b] transition-colors"
+                >
+                  <Send size={14} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </aside>
     </div>
 
-    <SearchOverlay 
+    <FindReplacePopup 
       isOpen={isSearchOpen} 
       onClose={() => setIsSearchOpen(false)} 
       editorText={paragraphs.join('\n\n')}
@@ -524,6 +637,7 @@ export default function Editor() {
             setIsExtracting(false);
             setSuggestions(INITIAL_SUGGESTIONS);
             setIsBibleOpen(true);
+            setIsCoauthoring(false);
             setActiveBibleTab('inbox');
           }, 1500);
         }
@@ -534,6 +648,7 @@ export default function Editor() {
           setActiveSceneId(id);
         } else if (type === 'lore') {
           setIsBibleOpen(true);
+          setIsCoauthoring(false);
           setActiveBibleTab('characters');
         }
       }}

@@ -4,7 +4,7 @@
  */
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
@@ -13,6 +13,8 @@ import Editor from './pages/Editor';
 import StoryBible from './pages/StoryBible';
 import Settings from './pages/Settings';
 import AppLayout from './layouts/AppLayout';
+
+import IdeaLibrary from './pages/IdeaLibrary';
 
 function RoutePersister() {
   const location = useLocation();
@@ -54,6 +56,7 @@ export default function App() {
           
           {/* Dashboard is standalone now */}
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/ideas" element={<ProtectedRoute><IdeaLibrary /></ProtectedRoute>} />
           
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
             <Route path="/settings" element={<Settings />} />

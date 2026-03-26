@@ -1,11 +1,19 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged, signOut } from 'firebase/auth';
-import { auth } from '../firebase';
+import { api } from '../services/api';
+
+export interface User {
+  id: string;
+  email: string;
+  displayName: string | null;
+  photoURL?: string | null;
+}
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  logout: () => Promise<void>;
+  login: (token: string, userData: User) => void;
+  logout: () => void;
+  updateUser: (partial: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -15,24 +23,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    // Check for existing token
+    const token = localStorage.getItem('pero_token');
+    
+    if (token) {
+      // Validate token and get user profile
+      api.get<{ user: User }>('/auth/me')
+      .then(data => {
+        setUser(data.user);
+      })
+      .catch(err => {
+        console.error('Auth verification failed', err);
+        localStorage.removeItem('pero_token');
+      })
+      .finally(() => setLoading(false));
+    } else {
       setLoading(false);
-    });
-
-    return () => unsubscribe();
+    }
   }, []);
 
-  const logout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error('Error signing out', error);
-    }
+  const login = (token: string, userData: User) => {
+    localStorage.setItem('pero_token', token);
+    setUser(userData);
+  };
+
+  const logout = () => {
+    localStorage.removeItem('pero_token');
+    setUser(null);
+  };
+
+  const updateUser = (partial: Partial<User>) => {
+    setUser(prev => prev ? { ...prev, ...partial } : prev);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>
       {!loading && children}
     </AuthContext.Provider>
   );

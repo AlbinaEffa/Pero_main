@@ -20,12 +20,12 @@ export default function AppLayout() {
           <p className="text-xs uppercase tracking-widest text-black/50 mt-1 font-sans font-semibold">Студия Писателя</p>
         </div>
         
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="flex-1 p-5 space-y-2">
           <NavLink 
             to="/dashboard" 
             className={({ isActive }) => 
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isActive ? 'bg-black text-white' : 'text-black/70 hover:bg-black/5 hover:text-black'
+              `flex items-center gap-3 px-4 py-3 rounded-xl text-[15px] font-medium transition-all ${
+                isActive ? 'bg-[#2d3748] text-white shadow-sm' : 'text-[#4a5568] hover:bg-black/5 hover:text-black'
               }`
             }
           >
@@ -35,8 +35,8 @@ export default function AppLayout() {
           <NavLink 
             to="/settings" 
             className={({ isActive }) => 
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isActive ? 'bg-black text-white' : 'text-black/70 hover:bg-black/5 hover:text-black'
+              `flex items-center gap-3 px-4 py-3 rounded-xl text-[15px] font-medium transition-all ${
+                isActive ? 'bg-[#2d3748] text-white shadow-sm' : 'text-[#4a5568] hover:bg-black/5 hover:text-black'
               }`
             }
           >
@@ -63,7 +63,7 @@ export default function AppLayout() {
           )}
           <button 
             onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-sm font-medium text-black/70 hover:bg-black/5 hover:text-black transition-colors"
+            className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-[15px] font-medium text-[#4a5568] hover:bg-red-50 hover:text-red-600 transition-colors"
           >
             <LogOut size={18} />
             Выйти

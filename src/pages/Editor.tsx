@@ -1,1482 +1,1169 @@
-import { useState, useRef, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { 
-  ChevronLeft, 
-  BookOpen, 
-  Sparkles, 
-  Mic, 
-  Headphones, 
-  Search, 
-  FileText,
-  X,
-  Check,
-  Inbox,
-  Users,
-  MapPin,
-  Box,
-  Plus,
-  ChevronDown,
-  ChevronRight,
-  Bell,
-  Globe,
-  Bold,
-  Italic,
-  MoreHorizontal,
-  Square,
-  SkipBack,
-  Pause,
-  SkipForward,
-  Send,
-  MessageSquare,
-  Undo2,
-  Redo2,
-  Underline,
-  Strikethrough,
-  Pencil,
-  List,
-  AlertTriangle,
-  Castle,
-  Mountain,
-  Quote,
-  Scale,
-  Clock,
-  Globe2,
-  Bookmark,
-  BarChart2,
-  ChevronUp,
-  User
-} from 'lucide-react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useEditor, type Editor as TiptapEditor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Placeholder from '@tiptap/extension-placeholder';
+import UnderlineExtension from '@tiptap/extension-underline';
+import CharacterCount from '@tiptap/extension-character-count';
 
+import { api } from '../services/api';
+import { track } from '../services/analytics';
+import { useDictation } from '../hooks/useDictation';
+import { useAutosave } from '../hooks/useAutosave';
+import { useEmbedding } from '../hooks/useEmbedding';
+import { useAiChat } from '../hooks/useAiChat';
+import { useBibleExtraction } from '../hooks/useBibleExtraction';
+import { useRevision } from '../hooks/useRevision';
+
+import { ChapterSidebar } from '../components/editor/ChapterSidebar';
+import { EditorCanvas } from '../components/editor/EditorCanvas';
+import { BottomToolbar } from '../components/editor/BottomToolbar';
+import { StoryBiblePanel } from '../components/editor/StoryBiblePanel';
+import { CoauthorPanel } from '../components/editor/CoauthorPanel';
+import { RevisionPanel } from '../components/editor/RevisionPanel';
+import { ProjectSyncPanel } from '../components/editor/ProjectSyncPanel';
 import { FindReplacePopup } from '../components/FindReplacePopup';
+import { SearchPanel } from '../components/editor/SearchPanel';
+import { SearchHighlightExtension, searchHighlightKey } from '../components/editor/searchHighlightExtension';
+import { ExportPanel } from '../components/ExportPanel';
 import Settings from './Settings';
 
-const MOCK_CHARACTERS = [
-  {
-    id: '1',
-    name: 'Maia',
-    role: 'PROTAGONIST',
-    image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-    appearance: 'Высокая девушка с серебристыми волосами и пронзительными изумрудными глазами. Всегда носит кулон в форме полумесяца.',
-    motivation: '"Я найду правду о падении цитадели, чего бы мне это ни стоило."',
-    incomplete: true,
-  },
-  {
-    id: '2',
-    name: 'Kael',
-    role: 'MENTOR',
-    image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&q=80',
-  },
-  {
-    id: '3',
-    name: 'Elowen',
-    role: 'ALLY',
-    image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80',
-  },
-  {
-    id: '4',
-    name: 'Thorne',
-    role: 'ANTAGONIST',
-    image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
-  }
-];
+import { Chapter, Entity } from '../components/editor/types';
+import { Users, MapPin, Box, Scale, Bookmark, X, AlertTriangle, ChevronUp, ChevronDown } from 'lucide-react';
 
-const MOCK_LOCATIONS = [
-  {
-    id: '1',
-    name: 'Цитадель',
-    type: 'ГЛАВНАЯ КРЕПОСТЬ',
-    icon: 'castle',
-    color: 'bg-[#93B5E9]',
-    x: 50,
-    y: 50,
-    image: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=400&q=80',
-    description: 'Центральный оплот человечества, возвышающийся над облаками. Стены из древнего камня хранят секреты забытой магии. Окружен защитными барьерами, питаемыми кристаллами эфира.',
-    history: '"Она стояла тысячи лет и простоит еще столько же, пока последний защитник не падет."',
-  },
-  {
-    id: '2',
-    name: 'Мертвая равнина',
-    type: 'WASTELAND',
-    icon: 'mountain',
-    color: 'bg-[#A3A8A4]',
-    x: 20,
-    y: 30,
-    image: 'https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0?auto=format&fit=crop&w=400&q=80',
-  },
-  {
-    id: '3',
-    name: 'Серые Утесы',
-    type: 'COASTAL ROCKS',
-    icon: 'mountain',
-    color: 'bg-[#85B8A6]',
-    x: 70,
-    y: 70,
-    image: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=400&q=80',
-  }
-];
+/**
+ * Stem-based matching for Russian morphology.
+ * Drops the last character of the entity name (covers most single-letter case endings)
+ * and checks whether any word in the text starts with that stem.
+ * For short names (≤4 chars) the full name is used as the stem.
+ */
+function russianStemMatch(entityName: string, text: string): boolean {
+  const name = entityName.toLowerCase().trim();
+  if (!name || name.length < 2) return false;
+  const stemLen = name.length <= 4 ? name.length : name.length - 1;
+  const stem = name.slice(0, stemLen);
+  const words = text.toLowerCase().split(/[^а-яёa-z0-9'-]+/i).filter(w => w.length > 0);
+  return words.some(w => w.startsWith(stem));
+}
 
-const MOCK_ITEMS = [
-  {
-    id: '1',
-    name: 'Кулон Полумесяца',
-    type: 'АРТЕФАКТ',
-    image: 'https://images.unsplash.com/photo-1602173574767-37ac01994b2a?auto=format&fit=crop&w=400&q=80',
-    description: 'Древний серебряный амулет, принадлежавший матери Майи. Светится слабым голубым светом в присутствии магии.',
-    history: 'Передается из поколения в поколение в роду Хранителей.',
-    incomplete: false,
-  },
-  {
-    id: '2',
-    name: 'Клинок Рассвета',
-    type: 'ОРУЖИЕ',
-    image: 'https://images.unsplash.com/photo-1595590424283-b8f17842773f?auto=format&fit=crop&w=400&q=80',
-  },
-  {
-    id: '3',
-    name: 'Эфирный кристалл',
-    type: 'МАТЕРИАЛ',
-    image: 'https://images.unsplash.com/photo-1515083049182-3e288283a311?auto=format&fit=crop&w=400&q=80',
-  },
-  {
-    id: '4',
-    name: 'Карта Пустошей',
-    type: 'КВЕСТОВЫЙ ПРЕДМЕТ',
-    image: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=400&q=80',
-  }
-];
+const ENTITY_SECTIONS = [
+  { type: 'character', label: 'Персонажи',    icon: Users  },
+  { type: 'location',  label: 'Локации',      icon: MapPin },
+  { type: 'item',      label: 'Предметы',     icon: Box    },
+  { type: 'rule',      label: 'Правила мира', icon: Scale  },
+] as const;
 
-const MOCK_RULES = [
-  {
-    id: '1',
-    name: 'Закон Магии',
-    type: 'ФУНДАМЕНТАЛЬНОЕ',
-    icon: 'sparkles',
-    color: 'bg-[#E8EAE6]',
-    iconColor: 'text-[#2C3E2D]',
-    shortDescription: 'Основной принцип распределения эфира в пространстве и времени.',
-    description: '"Магия в этом мире не бесконечна. Каждый глоток силы требует отдачи. Эфир — это не топливо, это дыхание самой планеты, которое нельзя задерживать слишком долго."',
-    history: 'Был сформулирован первым советом магов после Великого Раскола. До этого времени использование силы было хаотичным, что привело к истощению целых континентов и превращению их в мертвые пустоши.',
-  },
-  {
-    id: '2',
-    name: 'Кодекс Чести',
-    type: 'СОЦИАЛЬНОЕ',
-    icon: 'scale',
-    color: 'bg-[#F0F4F8]',
-    iconColor: 'text-[#4A90E2]',
-  },
-  {
-    id: '3',
-    name: 'Циклы Времени',
-    type: 'ФИЗИЧЕСКОЕ',
-    icon: 'clock',
-    color: 'bg-[#F8F9FA]',
-    iconColor: 'text-[#8C92AC]',
-  },
-  {
-    id: '4',
-    name: 'Дрейф Континентов',
-    type: 'ГЕОГРАФИЧЕСКОЕ',
-    icon: 'globe',
-    color: 'bg-[#F0F7F4]',
-    iconColor: 'text-[#5C8D89]',
-  }
-];
+function EntityCard({ entity, hasConflict }: { entity: Entity; hasConflict: boolean }) {
+  return (
+    <div className={`rounded-xl p-3 shadow-sm border transition-colors cursor-default ${
+      hasConflict
+        ? 'bg-amber-50/80 border-amber-200/60 hover:bg-amber-50'
+        : 'bg-white/60 border-[#1e2d1f]/5 hover:bg-white'
+    }`}>
+      <div className="flex items-start justify-between gap-2">
+        <h4 className="font-bold text-[15px] text-[#1e2d1f] truncate leading-snug">{entity.name}</h4>
+        {hasConflict && (
+          <span title="Возможное противоречие с другой версией этого объекта">
+            <AlertTriangle size={13} className="text-amber-500 flex-shrink-0 mt-0.5" />
+          </span>
+        )}
+      </div>
+      {entity.description && (
+        <p className="text-sm text-[#1e2d1f]/55 line-clamp-2 mt-0.5 leading-snug">{entity.description}</p>
+      )}
+    </div>
+  );
+}
 
-const MOCK_CHAPTERS = [
-  { 
-    id: '1', title: 'Глава 1', subtitle: 'Пробуждение',
-    scenes: [{ id: '1-1', title: 'Сцена 1: Темная комната' }, { id: '1-2', title: 'Сцена 2: Побег' }]
-  },
-  { 
-    id: '2', title: 'Глава 2', subtitle: 'Медный город',
-    scenes: [{ id: '2-1', title: 'Сцена 1: Врата' }]
-  },
-  { 
-    id: '11', title: 'Глава 11', subtitle: 'Письмо',
-    scenes: [{ id: '11-1', title: 'Сцена 1: Утро' }, { id: '11-2', title: 'Сцена 2: Почтальон' }]
-  },
-  { 
-    id: '12', title: 'Глава 12', subtitle: 'Тени прошлого',
-    scenes: [{ id: '12-1', title: 'Сцена 1: Дорога к усадьбе' }, { id: '12-2', title: 'Сцена 2: Встреча с Воронцовым' }]
-  },
-  { 
-    id: '13', title: 'Глава 13', subtitle: 'Встреча',
-    scenes: []
-  },
-];
+// ─── Jump-to-match ────────────────────────────────────────────────────────────
+/**
+ * Find the first occurrence of `query` in the TipTap editor using a two-pass
+ * strategy:
+ *
+ * Pass 1 — fingerprint-guided (precise): search for the longer `fingerprint`
+ *   text (e.g. "…15 chars before + query + 15 chars after…" returned by the
+ *   backend). If found in a text node, locate `query` within that window and
+ *   select it. This handles cases where the same query word appears multiple
+ *   times and we need the specific occurrence the user searched for.
+ *
+ * Pass 2 — fallback: if the fingerprint isn't found (e.g. it spans a paragraph
+ *   boundary so it crosses multiple text nodes), fall back to a plain search
+ *   for `query` directly.
+ *
+ * Selects the matched range, scrolls it into view, and returns { from, to }.
+ * Returns null if nothing is found (no error thrown).
+ */
+function jumpToMatch(
+  editor: TiptapEditor,
+  fingerprint: string,
+  query: string,
+): { from: number; to: number } | null {
+  if (!fingerprint || editor.isDestroyed) return null;
+  const fpLower = fingerprint.toLowerCase();
+  const qLower  = query.toLowerCase();
+  const { doc }  = editor.state;
+  let result: { from: number; to: number } | null = null;
 
-const INITIAL_SUGGESTIONS = [
-  {
-    id: 1,
-    type: 'ПЕРСОНАЖ',
-    colorClass: 'bg-rose-100 text-rose-800',
-    title: 'Граф Воронцов',
-    description: 'Новый персонаж. Упоминается шрам на левой щеке.',
-    quote: '«Воронцов усмехнулся, и старый шрам на его левой щеке побелел в лунном свете...»'
-  },
-  {
-    id: 2,
-    type: 'ЛОКАЦИЯ',
-    colorClass: 'bg-[#e3e8e3] text-[#4a5d4e]',
-    title: 'Усадьба Черных Сосен',
-    description: 'Новая локация. Заброшенное поместье на окраине.',
-    quote: '«Дорога к Усадьбе Черных Сосен давно заросла чертополохом...»'
-  },
-  {
-    id: 3,
-    type: 'ПРЕДМЕТ',
-    colorClass: 'bg-amber-100 text-amber-800',
-    title: 'Серебряный портсигар',
-    description: 'Важная деталь. Принадлежал убитому.',
-    quote: '«Он достал из внутреннего кармана тяжелый серебряный портсигар с вензелем "А.К."...»'
-  }
-];
+  // Pass 1: fingerprint search
+  doc.descendants((node, pos) => {
+    if (result || !node.isText || !node.text) return;
+    const text   = node.text.toLowerCase();
+    const fpIdx  = text.indexOf(fpLower);
+    if (fpIdx === -1 || fpIdx + fingerprint.length > node.text.length) return;
 
-const INITIAL_PARAGRAPHS = [
-  "Дорога к Усадьбе Черных Сосен давно заросла чертополохом. Экипаж трясло на каждом ухабе, и Анна невольно вцепилась в кожаный ремешок у окна. Вечерний туман уже начал ползти от реки, окутывая низины густым молочным саваном.",
-  "— Мы почти на месте, сударыня, — глухо донесся голос кучера сквозь шум колес.",
-  "Она кивнула, хотя он не мог этого видеть. В сумочке на коленях лежал тот самый предмет, ради которого она проделала этот долгий путь. Она нащупала его сквозь тонкую ткань — холодный металл. Он достал из внутреннего кармана тяжелый серебряный портсигар с вензелем \"А.К.\"... Нет, это было воспоминание. Воспоминание о той ночи.",
-  "Внезапно лошади всхрапнули и резко остановились. Дверца кареты распахнулась, впуская сырой осенний воздух. На пороге стоял высокий человек в темном пальто. Воронцов усмехнулся, и старый шрам на его левой щеке побелел в лунном свете.",
-  "— Вы все-таки приехали, Анна Николаевна, — произнес он мягко, но в этом тоне слышалась скрытая угроза."
-];
+    // Within the fingerprint window, locate the query for a precise selection.
+    const window = text.slice(fpIdx, fpIdx + fingerprint.length);
+    const qIdx   = window.indexOf(qLower);
+    if (qIdx !== -1 && qIdx + query.length <= window.length) {
+      result = { from: pos + fpIdx + qIdx, to: pos + fpIdx + qIdx + query.length };
+    } else {
+      // Fingerprint found but query not isolated inside it — select the fingerprint range.
+      result = { from: pos + fpIdx, to: pos + fpIdx + fingerprint.length };
+    }
+    editor.commands.setTextSelection(result);
+    editor.commands.scrollIntoView();
+  });
+
+  if (result) return result;
+
+  // Pass 2: fallback — plain query search
+  doc.descendants((node, pos) => {
+    if (result || !node.isText || !node.text) return;
+    const idx = node.text.toLowerCase().indexOf(qLower);
+    if (idx === -1 || idx + query.length > node.text.length) return;
+    result = { from: pos + idx, to: pos + idx + query.length };
+    editor.commands.setTextSelection(result);
+    editor.commands.scrollIntoView();
+  });
+
+  return result;
+}
+
+/**
+ * Collect ALL occurrences of `query` in the editor document.
+ * Iterates text nodes in document order; works within individual nodes
+ * (same constraint as jumpToMatch — cross-node matches are not found).
+ * Non-overlapping — advances by query.length after each hit.
+ */
+function findAllMatches(
+  editor: TiptapEditor,
+  query: string,
+): { from: number; to: number }[] {
+  if (!query || editor.isDestroyed) return [];
+  const needle = query.toLowerCase();
+  const { doc } = editor.state;
+  const matches: { from: number; to: number }[] = [];
+
+  doc.descendants((node, pos) => {
+    if (!node.isText || !node.text) return;
+    const text = node.text.toLowerCase();
+    let searchFrom = 0;
+    while (searchFrom < text.length) {
+      const idx = text.indexOf(needle, searchFrom);
+      if (idx === -1 || idx + query.length > node.text.length) break;
+      matches.push({ from: pos + idx, to: pos + idx + query.length });
+      searchFrom = idx + Math.max(1, query.length); // non-overlapping advance
+    }
+  });
+
+  return matches;
+}
+
+/** Apply a persistent inline decoration over the matched range. */
+function applySearchHighlight(editor: TiptapEditor, from: number, to: number): void {
+  if (editor.isDestroyed) return;
+  editor.view.dispatch(editor.view.state.tr.setMeta(searchHighlightKey, { from, to }));
+}
+
+/** Remove the persistent search highlight decoration. */
+function clearSearchHighlight(editor: TiptapEditor): void {
+  if (editor.isDestroyed) return;
+  editor.view.dispatch(editor.view.state.tr.setMeta(searchHighlightKey, 'clear'));
+}
 
 export default function Editor() {
-  const { id } = useParams();
-  const [activeSceneId, setActiveSceneId] = useState('12-2');
-  const [expandedChapterId, setExpandedChapterId] = useState<string | null>('12');
+  const { projectId, chapterId } = useParams<{ projectId: string; chapterId?: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const _locState      = location.state as { searchHighlight?: string; searchQuery?: string } | null;
+  const routeHighlight = _locState?.searchHighlight;   // matchText fingerprint from backend
+  const routeSearchQuery = _locState?.searchQuery;     // raw user query (for selection + highlight)
+
+  const { isListening, isSupported, interimTranscript, toggleListening } = useDictation({
+    language: 'ru-RU',
+    onResult: (text, isFinal) => {
+      if (isFinal && editor) editor.commands.insertContent(text + ' ');
+    },
+  });
+  const isDictating = isListening;
+
+  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [isLoadingChapters, setIsLoadingChapters] = useState(false);
+  const [projectTitle, setProjectTitle] = useState('');
+  const [bibleEntities, setBibleEntities] = useState<Entity[]>([]);
+  const [referenceScope, setReferenceScope] = useState<'project' | 'chapter'>('project');
+
   const [isBibleOpen, setIsBibleOpen] = useState(false);
   const [isReferenceOpen, setIsReferenceOpen] = useState(false);
   const [isBibleMenuOpen, setIsBibleMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isFormatMenuOpen, setIsFormatMenuOpen] = useState(false);
-  const [showWordCount, setShowWordCount] = useState(true);
-  const [indentParagraphs, setIndentParagraphs] = useState(false);
-
-  const toggleChapter = (chapterId: string) => {
-    setExpandedChapterId(prev => prev === chapterId ? null : chapterId);
-  };
-  const [activeBibleTab, setActiveBibleTab] = useState('inbox');
-  const [isExtracting, setIsExtracting] = useState(false);
-  const [suggestions, setSuggestions] = useState<{id: number, type: string, colorClass: string, title: string, description: string, quote: string}[]>([]);
-  const [isDictating, setIsDictating] = useState(false);
-  const [isReading, setIsReading] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
   const [isCoauthoring, setIsCoauthoring] = useState(false);
+  const [isRevisionOpen, setIsRevisionOpen] = useState(false);
+  const [isSyncOpen, setIsSyncOpen] = useState(false);
+  const [isRecheckingAll, setIsRecheckingAll] = useState(false);
+  const [isReading, setIsReading] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
-  const [selectedLocId, setSelectedLocId] = useState<string | null>(null);
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
-  const [paragraphs, setParagraphs] = useState(INITIAL_PARAGRAPHS);
-  
-  const wordCount = paragraphs.join(' ').split(/\s+/).filter(word => word.length > 0).length;
-  const [chatMessages, setChatMessages] = useState<{role: 'user' | 'ai', text: string}[]>([
-    { role: 'ai', text: 'Привет! Я твой ИИ-соавтор. Чем могу помочь с этой главой?' }
+  const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
+  // Match navigation: active when user arrives via a text_match search result.
+  const [matchNav, setMatchNav] = useState<{
+    query:      string;
+    matches:    { from: number; to: number }[];
+    currentIdx: number;
+  } | null>(null);
+  const [activeBibleTab, setActiveBibleTab] = useState('inbox');
+  const [showWordCount, setShowWordCount] = useState<boolean>(() => {
+    const stored = localStorage.getItem('pero_showWordCount');
+    return stored !== null ? stored === 'true' : true;
+  });
+  const [indentParagraphs, setIndentParagraphs] = useState<boolean>(() => {
+    const stored = localStorage.getItem('pero_indentParagraphs');
+    return stored !== null ? stored === 'true' : false;
+  });
+
+  const { isSaving, lastSavedAt, saveError, onUpdate: autosaveUpdate, forceSave } = useAutosave(chapterId);
+  const [isLoadingContent, setIsLoadingContent] = useState(false);
+  const { scheduleEmbed } = useEmbedding(projectId, chapterId);
+  const [selectedText, setSelectedText] = useState('');
+
+  // Combined update handler: autosave (1s debounce) + background embedding (45s debounce)
+  const onUpdate = useCallback(
+    ({ editor }: { editor: import('@tiptap/react').Editor }) => {
+      autosaveUpdate({ editor });
+      scheduleEmbed(editor.getHTML());
+      // Any content edit makes existing match positions stale — dismiss the nav bar.
+      // setMatchNav is a stable React setter, so it doesn't need to be in deps.
+      setMatchNav(null);
+    },
+    [autosaveUpdate, scheduleEmbed]
+  );
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      UnderlineExtension,
+      CharacterCount,
+      Placeholder.configure({ placeholder: 'Напишите свою историю...' }),
+      SearchHighlightExtension,
+    ],
+    content: '',
+    editorProps: {
+      attributes: {
+        class: 'editor-body focus:outline-none min-h-[500px] pb-32',
+      },
+    },
+    onUpdate,
+    onSelectionUpdate: ({ editor: ed }) => {
+      const { from, to } = ed.state.selection;
+      setSelectedText(from === to ? '' : ed.state.doc.textBetween(from, to, ' '));
+    },
+  });
+
+  const getContent = useCallback(() => editor?.getText() || '', [editor]);
+
+  const handleInsertText = useCallback((text: string) => {
+    if (!editor || editor.isDestroyed) return;
+    editor.chain().focus().insertContent(text).run();
+  }, [editor]);
+
+  const {
+    chatMessages,
+    isHistoryLoaded,
+    chatInput,
+    setChatInput,
+    isAiLoading,
+    isCheckingConsistency,
+    chatEndRef,
+    handleSendMessage,
+    handleSendPrompt,
+    handleCheckConsistency,
+  } = useAiChat({ projectId, chapterId, getContent });
+
+  const {
+    isExtracting, suggestions, approvedEntities,
+    updateSuggestions,
+    handleExtract: rawHandleExtract,
+    recheckChapter: rawRecheckChapter,
+    approveSuggestion, rejectSuggestion,
+    loadUpdateSuggestions,
+    acceptUpdate, rejectUpdate, dismissUpdate,
+    bulkDismissChapter, bulkRejectChapter,
+  } = useBibleExtraction(projectId, chapterId, getContent);
+
+  // Wrap rawHandleExtract to also optimistically mark the chapter as freshly extracted.
+  const handleExtract = useCallback(async () => {
+    await rawHandleExtract();
+    if (chapterId) {
+      setChapters(prev => prev.map(c =>
+        c.id === chapterId ? { ...c, lastExtractedAt: new Date().toISOString() } : c
+      ));
+    }
+  }, [rawHandleExtract, chapterId]);
+
+  // Server-side recheck wrapper — updates local freshness after the API responds.
+  const handleRecheckChapter = useCallback(async () => {
+    await rawRecheckChapter();
+    if (chapterId) {
+      setChapters(prev => prev.map(c =>
+        c.id === chapterId ? { ...c, lastExtractedAt: new Date().toISOString() } : c
+      ));
+    }
+  }, [rawRecheckChapter, chapterId]);
+
+  // Load pending update suggestions when Bible or Sync panel is opened.
+  // Sync panel needs the count for the "updates" tile; Bible panel needs full list.
+  useEffect(() => {
+    if ((isBibleOpen || isSyncOpen) && projectId) {
+      loadUpdateSuggestions();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isBibleOpen, isSyncOpen, projectId]);
+
+  // Navigate to the source location of a bible update suggestion.
+  // Uses the existing jump-to-match pipeline (searchHighlight = sourceExcerpt fingerprint,
+  // searchQuery = entity name that gets selected in the editor).
+  const handleOpenInEditor = useCallback((
+    targetChapterId: string,
+    searchHighlight: string,
+    searchQuery: string,
+  ) => {
+    if (!projectId) return;
+    navigate(
+      `/editor/${projectId}/${targetChapterId}`,
+      { state: { searchHighlight, searchQuery } },
+    );
+  }, [navigate, projectId]);
+
+  const {
+    searchQuery, setSearchQuery,
+    traceResults, isTracing, traceDone, traceSemantic, handleTrace,
+    arcText, isArcLoading, handleArc,
+    bibleSuggestions, isBibleLoading, bibleDone, handleBibleUpdate, dismissBibleSuggestion,
+  } = useRevision(projectId, chapterId, getContent);
+
+  useEffect(() => {
+    if (!projectId) return;
+    setIsLoadingChapters(true);
+    // Fetch project info (for title) alongside chapters
+    api.get<{ project: any }>(`/projects/${projectId}`)
+      .then(data => { if (data.project?.title) setProjectTitle(data.project.title); })
+      .catch(() => {});
+    api.get<{ chapters: Chapter[] }>(`/projects/${projectId}/chapters`)
+      .then(data => {
+        const loaded = data.chapters || [];
+        setChapters(loaded);
+        if (loaded.length > 0) {
+          const validIds = loaded.map(c => c.id);
+          if (!chapterId || !validIds.includes(chapterId)) {
+            navigate(`/editor/${projectId}/${loaded[0].id}`, { replace: true });
+          }
+        }
+      })
+      .catch(e => console.error('Failed to load chapters:', e))
+      .finally(() => setIsLoadingChapters(false));
+  }, [projectId]);
+
+  // Guard: if chapterId is not in the loaded chapter list, redirect to first valid chapter
+  useEffect(() => {
+    if (!chapterId || chapters.length === 0) return;
+    if (!chapters.some(c => c.id === chapterId)) {
+      navigate(`/editor/${projectId}/${chapters[0].id}`, { replace: true });
+    }
+  }, [chapterId, chapters]);
+
+  // Keep a ref to the previous chapterId so we can force-save before switching
+  const prevChapterIdRef = useRef<string | undefined>(undefined);
+
+  // Pending search highlight: written during render (safe for refs) so effects can read it
+  // before and after async chapter load. Stores both the matchText fingerprint (for locating the
+  // exact occurrence) and the raw query (for selection range + highlight decoration).
+  const pendingHighlightRef  = useRef<{ fingerprint: string; query: string } | null>(null);
+  // Synchronous loading flag — avoids stale isLoadingContent state in same-chapter jump effect.
+  const isLoadingContentRef  = useRef(false);
+  // Capture incoming highlight immediately (render runs before effects).
+  if (routeHighlight) {
+    pendingHighlightRef.current = {
+      fingerprint: routeHighlight,
+      query: routeSearchQuery || routeHighlight,
+    };
+  }
+
+  useEffect(() => {
+    if (!chapterId || !editor) return;
+
+    // Force-save the previous chapter's content before loading the new one
+    if (prevChapterIdRef.current && prevChapterIdRef.current !== chapterId) {
+      const currentContent = editor.getHTML();
+      // forceSave uses chapterIdRef internally — we need to save with the OLD id.
+      // We call the API directly here to avoid any ref timing issues.
+      api.put(`/chapters/${prevChapterIdRef.current}`, { content: currentContent })
+        .catch(() => {}); // silent — main autosave will retry
+    }
+    prevChapterIdRef.current = chapterId;
+
+    // Reset any match navigation from the previous chapter immediately (before async load).
+    setMatchNav(null);
+    if (!editor.isDestroyed) clearSearchHighlight(editor);
+
+    track('chapter_opened', { projectId, chapterId });
+    isLoadingContentRef.current = true; // synchronous gate for same-chapter jump effect
+    setIsLoadingContent(true);
+    api.get<{ chapter: Chapter }>(`/chapters/${chapterId}`)
+      .then(data => {
+        editor.commands.setContent(data.chapter?.content || '');
+        // Apply pending search highlight after content is in the editor.
+        // rAF gives ProseMirror one paint cycle to update the DOM before we scroll.
+        const hl = pendingHighlightRef.current;
+        if (hl) {
+          pendingHighlightRef.current = null;
+          requestAnimationFrame(() => {
+            if (editor.isDestroyed) return;
+            const match = jumpToMatch(editor, hl.fingerprint, hl.query);
+            if (match) {
+              applySearchHighlight(editor, match.from, match.to);
+              // Compute all occurrences and activate the navigation bar.
+              const allMatches = findAllMatches(editor, hl.query);
+              const idx = allMatches.findIndex(m => m.from === match.from);
+              setMatchNav({
+                query:      hl.query,
+                matches:    allMatches,
+                currentIdx: idx >= 0 ? idx : 0,
+              });
+            }
+          });
+        }
+      })
+      .catch(e => console.error('Failed to fetch chapter:', e))
+      .finally(() => { isLoadingContentRef.current = false; setIsLoadingContent(false); });
+  }, [chapterId, editor]);
+
+  // Same-chapter search jump: fires when a highlight arrives but the chapter is already loaded.
+  // isLoadingContentRef is a synchronous ref (not state) to avoid stale-closure timing issues:
+  // the content load effect sets it to true before the state update is batched.
+  useEffect(() => {
+    if (!routeHighlight || !editor || isLoadingContentRef.current) return;
+    pendingHighlightRef.current = null;
+    const fingerprint = routeHighlight;
+    const query       = routeSearchQuery || routeHighlight;
+    requestAnimationFrame(() => {
+      if (editor.isDestroyed) return;
+      const match = jumpToMatch(editor, fingerprint, query);
+      if (match) {
+        applySearchHighlight(editor, match.from, match.to);
+        // Compute all occurrences and activate the navigation bar.
+        const allMatches = findAllMatches(editor, query);
+        const idx = allMatches.findIndex(m => m.from === match.from);
+        setMatchNav({
+          query,
+          matches:    allMatches,
+          currentIdx: idx >= 0 ? idx : 0,
+        });
+      }
+    });
+  }, [routeHighlight, routeSearchQuery, editor]);
+
+  // Clear the navigation state after consuming the highlight (prevents replay on back/forward nav).
+  useEffect(() => {
+    if (!routeHighlight) return;
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [routeHighlight, navigate, location.pathname]);
+
+  // ── Match navigation ──────────────────────────────────────────────────────
+
+  /** Move to the next (+1) or previous (−1) match and update highlight. */
+  const handleMatchNavGo = useCallback((delta: 1 | -1) => {
+    if (!matchNav || !editor || editor.isDestroyed) return;
+    const total   = matchNav.matches.length;
+    const nextIdx = (matchNav.currentIdx + delta + total) % total;
+    const match   = matchNav.matches[nextIdx];
+    editor.commands.setTextSelection(match);
+    editor.commands.scrollIntoView();
+    applySearchHighlight(editor, match.from, match.to);
+    setMatchNav(prev => prev ? { ...prev, currentIdx: nextIdx } : null);
+  }, [matchNav, editor]);
+
+  /** Dismiss match navigation bar and clear the highlight decoration. */
+  const handleMatchNavClose = useCallback(() => {
+    if (editor && !editor.isDestroyed) clearSearchHighlight(editor);
+    setMatchNav(null);
+  }, [editor]);
+
+  // F3 / Shift+F3 — next / previous match while navigation bar is open.
+  // Escape also closes the bar (fires after the main Escape handler, which is a no-op
+  // when no modal is open, so there is no conflict).
+  useEffect(() => {
+    if (!matchNav) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'F3') {
+        e.preventDefault();
+        handleMatchNavGo(e.shiftKey ? -1 : 1);
+      }
+      if (e.key === 'Escape') {
+        handleMatchNavClose();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [matchNav, handleMatchNavGo, handleMatchNavClose]);
+
+  // Load approved entities for the reference panel
+  useEffect(() => {
+    if (!projectId) return;
+    api.get<{ entities: Entity[] }>(`/bible/${projectId}`)
+      .then(data => {
+        setBibleEntities((data.entities ?? []).filter(e => e.status === 'approved'));
+      })
+      .catch(e => console.error('Failed to load bible entities:', e));
+  }, [projectId]);
+
+  // ── Keyboard shortcuts ────────────────────────────────────────────────────
+  useEffect(() => {
+    const isMac = /mac/i.test(navigator.platform);
+    const handler = (e: KeyboardEvent) => {
+      const mod = isMac ? e.metaKey : e.ctrlKey;
+
+      // Escape — close topmost open panel (in priority order)
+      if (e.key === 'Escape') {
+        if (isGlobalSearchOpen) { setIsGlobalSearchOpen(false); return; }
+        if (isExportOpen)    { setIsExportOpen(false);    return; }
+        if (isSettingsOpen)  { setIsSettingsOpen(false);  return; }
+        if (isCoauthoring)   { setIsCoauthoring(false);   return; }
+        if (isBibleOpen)     { setIsBibleOpen(false);     return; }
+        if (isRevisionOpen)  { setIsRevisionOpen(false);  return; }
+        if (isReferenceOpen) { setIsReferenceOpen(false); return; }
+        if (isSearchOpen)    { setIsSearchOpen(false);    return; }
+        if (isBibleMenuOpen) { setIsBibleMenuOpen(false); return; }
+      }
+
+      // Cmd/Ctrl+S — force-save immediately
+      if (mod && e.key === 's') {
+        e.preventDefault();
+        if (editor) forceSave(editor.getHTML());
+      }
+
+      // Cmd/Ctrl+K — open global project search
+      if (mod && e.key === 'k') {
+        e.preventDefault();
+        setIsGlobalSearchOpen(true);
+      }
+
+      // Cmd/Ctrl+F — open find/replace
+      if (mod && e.key === 'f') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [
+    isGlobalSearchOpen,
+    isExportOpen, isSettingsOpen, isCoauthoring, isBibleOpen,
+    isRevisionOpen, isReferenceOpen, isSearchOpen, isBibleMenuOpen,
+    editor, forceSave,
   ]);
-  const [chatInput, setChatInput] = useState('');
-  const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // ── beforeunload guard — warn if a save is in-flight ─────────────────────
   useEffect(() => {
-    const parentChapter = MOCK_CHAPTERS.find(c => c.scenes.some(s => s.id === activeSceneId));
-    if (parentChapter) {
-      setExpandedChapterId(parentChapter.id);
-    }
-  }, [activeSceneId]);
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isSaving) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isSaving]);
 
-  useEffect(() => {
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [chatMessages, isCoauthoring]);
+  // ── Bible freshness for the current chapter ──────────────────────────────
+  // 'fresh'   — lastExtractedAt is present and >= updatedAt
+  // 'stale'   — chapter was edited after the last extraction
+  // 'unknown' — this chapter has never been extracted (chapter-level datum only)
+  const currentChapterFreshness = useMemo((): 'fresh' | 'stale' | 'unknown' => {
+    if (!chapterId) return 'unknown';
+    const chapter = chapters.find(c => c.id === chapterId);
+    if (!chapter) return 'unknown';
+    if (!chapter.lastExtractedAt) return 'unknown';
+    const editedAt    = new Date(chapter.updatedAt).getTime();
+    const extractedAt = new Date(chapter.lastExtractedAt).getTime();
+    return editedAt > extractedAt ? 'stale' : 'fresh';
+  }, [chapterId, chapters]);
 
-  const BIBLE_MENU_ITEMS = [
-    { id: 'inbox', label: 'Новое', icon: Bell },
-    { id: 'characters', label: 'Персонажи', icon: Users },
-    { id: 'locations', label: 'Локации', icon: MapPin },
-    { id: 'items', label: 'Предметы', icon: Box },
-    { id: 'rules', label: 'Правила мира', icon: Globe },
-  ];
+  // Merge API-loaded entities with in-session approvals from the extraction hook
+  const allApprovedEntities = useMemo(() => {
+    const ids = new Set(bibleEntities.map(e => e.id));
+    const sessionNew = approvedEntities.filter(e => !ids.has(e.id));
+    return [...bibleEntities, ...sessionNew];
+  }, [bibleEntities, approvedEntities]);
+
+  // Chapter scope tier 1: entities explicitly extracted FROM this chapter
+  const chapterLinkedEntities = useMemo(() => {
+    if (!chapterId) return [];
+    return allApprovedEntities.filter(e => e.chapterId === chapterId);
+  }, [allApprovedEntities, chapterId]);
+
+  // Chapter scope tier 2: entities matched in text by stem (not already in tier 1)
+  const chapterMentionedEntities = useMemo(() => {
+    const linkedIds = new Set(chapterLinkedEntities.map(e => e.id));
+    const text = editor?.getText() ?? '';
+    return allApprovedEntities.filter(e => !linkedIds.has(e.id) && russianStemMatch(e.name, text));
+  }, [allApprovedEntities, chapterLinkedEntities, editor]);
+
+  // Contradiction detection: same name (case-insensitive) with differing descriptions
+  const contradictions = useMemo(() => {
+    const nameGroups = new Map<string, Entity[]>();
+    allApprovedEntities.forEach(e => {
+      const key = e.name.toLowerCase().trim();
+      if (!nameGroups.has(key)) nameGroups.set(key, []);
+      nameGroups.get(key)!.push(e);
+    });
+    const flagged = new Set<string>();
+    nameGroups.forEach(group => {
+      if (group.length < 2) return;
+      const uniqueDescs = new Set(
+        group.map(e => e.description?.trim().toLowerCase()).filter(Boolean)
+      );
+      if (uniqueDescs.size > 1) group.forEach(e => flagged.add(e.id));
+    });
+    return flagged;
+  }, [allApprovedEntities]);
+
+  const handleCreateChapter = async () => {
+    if (!projectId) return;
+    try {
+      const data = await api.post<{ chapter: Chapter }>(
+        `/projects/${projectId}/chapters`,
+        { title: `Глава ${chapters.length + 1}` }
+      );
+      setChapters(prev => [...prev, data.chapter]);
+      navigate(`/editor/${projectId}/${data.chapter.id}`);
+    } catch (e) {
+      console.error('Failed to create chapter:', e);
+    }
+  };
+
+  const handleRenameChapter = async (id: string, title: string) => {
+    await api.patch(`/chapters/${id}`, { title });
+    setChapters(prev => prev.map(c => c.id === id ? { ...c, title } : c));
+  };
+
+  const handleToggleChapterStatus = async (id: string, currentStatus: 'draft' | 'done') => {
+    const newStatus = currentStatus === 'draft' ? 'done' : 'draft';
+    await api.patch(`/chapters/${id}`, { status: newStatus });
+    setChapters(prev => prev.map(c => c.id === id ? { ...c, status: newStatus } : c));
+  };
+
+  const handleReorderChapters = async (ids: string[]) => {
+    await api.put(`/projects/${projectId}/chapters/order`, { ids });
+    setChapters(prev => {
+      const map = Object.fromEntries(prev.map(c => [c.id, c]));
+      return ids.map((id, i) => ({ ...map[id], order: i }));
+    });
+  };
+
+  const handleToggleCoauthor = () => {
+    const next = !isCoauthoring;
+    setIsCoauthoring(next);
+    if (next) { setIsBibleOpen(false); setIsReferenceOpen(false); setIsRevisionOpen(false); setIsSyncOpen(false); }
+  };
+
+  const handleToggleRevision = () => {
+    const next = !isRevisionOpen;
+    setIsRevisionOpen(next);
+    if (next) { setIsBibleOpen(false); setIsCoauthoring(false); setIsReferenceOpen(false); setIsSyncOpen(false); }
+  };
+
+  const handleToggleSync = () => {
+    const next = !isSyncOpen;
+    setIsSyncOpen(next);
+    if (next) { setIsBibleOpen(false); setIsCoauthoring(false); setIsReferenceOpen(false); setIsRevisionOpen(false); }
+  };
+
+  /** Sequentially recheck every stale chapter via the bible/recheck API. */
+  const handleRecheckAllStale = async () => {
+    if (isRecheckingAll) return;
+    setIsRecheckingAll(true);
+    const stale = chapters.filter(ch => {
+      if (!ch.lastExtractedAt) return false; // unknown, not stale
+      return new Date(ch.updatedAt).getTime() > new Date(ch.lastExtractedAt).getTime();
+    });
+    for (const ch of stale) {
+      try {
+        await api.post(`/bible/recheck/chapter/${ch.id}`, {});
+        setChapters(prev => prev.map(c =>
+          c.id === ch.id ? { ...c, lastExtractedAt: new Date().toISOString() } : c
+        ));
+      } catch (e) {
+        console.error(`Recheck failed for chapter ${ch.id}:`, e);
+      }
+    }
+    setIsRecheckingAll(false);
+  };
 
   const handleBibleMenuClick = (tabId: string) => {
     setActiveBibleTab(tabId);
     setIsBibleOpen(true);
     setIsCoauthoring(false);
     setIsReferenceOpen(false);
-    setIsDictating(false);
+    setIsRevisionOpen(false);
+    setIsSyncOpen(false);
+    if (isDictating) toggleListening();
     setIsReading(false);
   };
 
-  const handleExtract = () => {
-    setIsExtracting(true);
-    setTimeout(() => {
-      setSuggestions(INITIAL_SUGGESTIONS);
-      setIsExtracting(false);
-    }, 1500);
+  const handleToggleReading = () => {
+    const next = !isReading;
+    setIsReading(next);
+    if (next) { if (isDictating) toggleListening(); setIsCoauthoring(false); }
   };
 
-  const dismissSuggestion = (id: number) => {
-    setSuggestions(prev => prev.filter(s => s.id !== id));
+  const handleToggleReference = () => {
+    const next = !isReferenceOpen;
+    setIsReferenceOpen(next);
+    if (next) {
+      setIsBibleOpen(false);
+      setIsCoauthoring(false);
+      setIsRevisionOpen(false);
+      setIsSyncOpen(false);
+      if (isDictating) toggleListening();
+      setIsReading(false);
+    }
   };
 
   return (
     <>
       <style>{`
-        @keyframes waveform {
-          0% { height: 4px; }
-          100% { height: 16px; }
-        }
-        .animate-waveform {
-          animation: waveform 0.4s ease-in-out infinite alternate;
+        @keyframes waveform { 0% { height: 4px; } 100% { height: 16px; } }
+        .animate-waveform { animation: waveform 0.4s ease-in-out infinite alternate; }
+
+        /* Temporary search-jump highlight — applied via ProseMirror Decoration,
+           does NOT modify document content so autosave is unaffected. */
+        .search-highlight {
+          background: rgba(250, 204, 21, 0.42);
+          border-radius: 2px;
+          box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.28);
         }
       `}</style>
+
       <div className="flex h-screen w-full bg-[#f5f0e8] overflow-hidden font-sans text-[#1e2d1f]">
-      
-      {/* Left Sidebar (220px) */}
-      <aside className="w-[220px] bg-[#1e2d1f] text-white/80 flex flex-col flex-shrink-0 shadow-xl z-20">
-        <div className="p-4 flex items-center gap-3 border-b border-white/10">
-          <Link to="/dashboard" className="p-1.5 rounded-md hover:bg-white/10 transition-colors text-white/60 hover:text-white">
-            <ChevronLeft size={18} />
-          </Link>
-          <span className="font-serif font-medium text-white tracking-wide">Перо</span>
-        </div>
+        <ChapterSidebar
+          projectId={projectId!}
+          chapterId={chapterId}
+          chapters={chapters}
+          isLoadingChapters={isLoadingChapters}
+          isCoauthoring={isCoauthoring}
+          onToggleCoauthor={handleToggleCoauthor}
+          onCreateChapter={handleCreateChapter}
+          onRenameChapter={handleRenameChapter}
+          onToggleChapterStatus={handleToggleChapterStatus}
+          onReorderChapters={handleReorderChapters}
+        />
 
-        <div className="p-3 space-y-1 border-b border-white/10">
-          <Link 
-            to={`/bible/${id}`}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-white/10`}
-          >
-            <BookOpen size={16} className="text-white/50" />
-            Библия истории
-          </Link>
-          <button 
-            onClick={() => {
-              const nextState = !isCoauthoring;
-              setIsCoauthoring(nextState);
-              if (nextState) {
-                setIsBibleOpen(false);
-                setIsReferenceOpen(false);
-              }
-            }}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${isCoauthoring ? 'bg-white/15 text-white' : 'hover:bg-white/10'}`}
-          >
-            <Sparkles size={16} className={isCoauthoring ? 'text-purple-300' : 'text-white/50'} />
-            ИИ-Соавтор
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-3 space-y-0.5">
-          <div className="flex items-center justify-between px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1 mt-2">
-            <span>Главы</span>
-            <button className="hover:text-white transition-colors"><Plus size={14} /></button>
-          </div>
-          {MOCK_CHAPTERS.map(chapter => {
-            const isChapterActive = chapter.scenes.some(s => s.id === activeSceneId) || activeSceneId === chapter.id;
-            return (
-            <div key={chapter.id} className="mb-0.5">
-              <div
-                className={`w-full flex items-start gap-2 px-2 py-2 rounded-lg text-sm transition-colors text-left ${
-                  isChapterActive 
-                    ? 'bg-[rgba(255,255,255,0.08)]' 
-                    : 'bg-transparent hover:bg-white/5'
-                }`}
-              >
-                <div 
-                  className="mt-1 text-[#f5f0e8]/40 transition-colors cursor-pointer hover:text-white p-0.5 -m-0.5"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // Prevent collapsing the active chapter if that's what "remain expanded" implies,
-                    // but allow accordion behavior to collapse it if another chapter is expanded.
-                    if (isChapterActive && expandedChapterId === chapter.id) return;
-                    toggleChapter(chapter.id);
-                  }}
-                >
-                  {expandedChapterId === chapter.id ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                </div>
-                <div 
-                  className="flex flex-1 gap-2 cursor-pointer overflow-hidden"
-                  onClick={() => {
-                    setActiveSceneId(chapter.scenes.length > 0 ? chapter.scenes[0].id : chapter.id);
-                    setExpandedChapterId(chapter.id);
-                  }}
-                >
-                  <div className="mt-1 flex-shrink-0 relative">
-                    <FileText size={14} className="text-[#f5f0e8]/50" />
-                  </div>
-                  <div className="flex flex-col overflow-hidden">
-                    <span className={`truncate ${isChapterActive ? 'text-white font-medium' : 'text-[#f5f0e8]/60'}`}>
-                      {chapter.title}
-                    </span>
-                    <span className={`text-[11px] truncate mt-0.5 ${isChapterActive ? 'text-white font-medium' : 'text-[#f5f0e8]/40'}`}>
-                      {chapter.subtitle}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              
-              {expandedChapterId === chapter.id && chapter.scenes.length > 0 && (
-                <div className="ml-5 pl-3 border-l border-white/10 mt-1 mb-2 space-y-0.5">
-                  {chapter.scenes.map(scene => {
-                    const isSceneActive = activeSceneId === scene.id;
-                    return (
-                    <button
-                      key={scene.id}
-                      onClick={() => setActiveSceneId(scene.id)}
-                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors text-left ${
-                        isSceneActive 
-                          ? 'bg-[rgba(255,255,255,0.08)] text-white font-medium' 
-                          : 'bg-transparent text-[#f5f0e8]/60 hover:bg-white/5'
-                      }`}
-                    >
-                      <span className="truncate">{scene.title}</span>
-                    </button>
-                  )})}
-                </div>
-              )}
-            </div>
-          )})}
-        </div>
-
-        <div className="p-4 border-t border-white/10 bg-[#1e2d1f]">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between border-2 border-[#1a56db] rounded-md px-3 py-2.5 text-white bg-[#1e2d1f]">
-              <div className="flex items-center gap-2.5">
-                <BarChart2 size={18} strokeWidth={2} />
-                <span className="font-semibold text-[15px] tracking-wide">Statistics</span>
-              </div>
-              <ChevronUp size={16} className="text-white/60" strokeWidth={2} />
-            </div>
-            
-            <div className="flex flex-col gap-3.5 px-1">
-              <div className="flex items-center justify-between">
-                <span className="text-white/60 font-medium text-[13px] tracking-wide">Total Words</span>
-                <span className="text-white font-bold text-[13px] tracking-wide">7,460</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-white/60 font-medium text-[13px] tracking-wide">Avg. Session</span>
-                <span className="text-white font-bold text-[13px] tracking-wide">45 min</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-white/60 font-medium text-[13px] tracking-wide">Streak</span>
-                <span className="text-white font-bold text-[13px] tracking-wide">12 days</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      {/* Center Editor */}
-      <main className="flex-1 flex flex-col relative bg-white shadow-[-10px_0_20px_rgba(0,0,0,0.02)] z-10 transition-all duration-300">
-        
-        {/* Top Formatting Toolbar */}
-        <div className="h-14 border-b border-[#1e2d1f]/5 bg-white flex items-center justify-between px-6 sticky top-0 z-30 shrink-0">
-          <div className="w-8" /> {/* Spacer for balance */}
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3">
-              <button className="text-[#a1a1aa] hover:text-[#1e2d1f] transition-colors">
-                <Undo2 size={20} strokeWidth={2.5} />
-              </button>
-              <button className="text-[#a1a1aa] hover:text-[#1e2d1f] transition-colors">
-                <Redo2 size={20} strokeWidth={2.5} />
-              </button>
-            </div>
-            
-            <div className="flex items-center gap-4">
-              <button className="text-[#a1a1aa] hover:text-[#1e2d1f] transition-colors">
-                <Bold size={20} strokeWidth={2.5} />
-              </button>
-              <button className="text-[#a1a1aa] hover:text-[#1e2d1f] transition-colors">
-                <Italic size={20} strokeWidth={2.5} />
-              </button>
-              <button className="text-[#a1a1aa] hover:text-[#1e2d1f] transition-colors">
-                <Underline size={20} strokeWidth={2.5} />
-              </button>
-              <button className="text-[#a1a1aa] hover:text-[#1e2d1f] transition-colors">
-                <Strikethrough size={20} strokeWidth={2.5} />
-              </button>
-              <button className="text-[#a1a1aa] hover:text-[#1e2d1f] transition-colors">
-                <Pencil size={18} strokeWidth={2.5} />
-              </button>
-            </div>
-            
-            <div className="flex items-center">
-              <button className="text-[#a1a1aa] hover:text-[#1e2d1f] transition-colors">
-                <List size={22} strokeWidth={2.5} />
-              </button>
-            </div>
-            
-            <div className="flex items-center gap-2 relative">
-              <button 
-                onClick={() => setIsFormatMenuOpen(!isFormatMenuOpen)}
-                className={`px-3 py-1.5 font-serif font-bold rounded-lg transition-colors text-[16px] ${isFormatMenuOpen ? 'bg-[#1e2d1f] text-white' : 'bg-[#f4f4f5] text-[#1e2d1f]'}`}
-              >
-                Aa
-              </button>
-              
-              {isFormatMenuOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setIsFormatMenuOpen(false)} />
-                  <div className="absolute top-full mt-2 left-0 w-64 bg-[#2d3748] rounded-xl shadow-xl border border-white/10 p-5 z-50 flex flex-col gap-5">
-                    {/* Show word count */}
-                    <div className="flex items-center gap-4 cursor-pointer" onClick={() => setShowWordCount(!showWordCount)}>
-                      <button 
-                        className={`w-[52px] h-7 rounded-full transition-colors relative shrink-0 ${showWordCount ? 'bg-[#bca4ff]' : 'bg-[#4b5563] ring-2 ring-[#6b21a8]'}`}
-                      >
-                        <div className={`w-6 h-6 rounded-full bg-white absolute top-0.5 transition-transform ${showWordCount ? 'translate-x-[26px] left-0' : 'translate-x-0.5 left-0'}`} />
-                      </button>
-                      <span className="text-white text-[15px] font-medium tracking-wide">Количество слов</span>
-                    </div>
-                    
-                    {/* Indent paragraphs */}
-                    <div className="flex items-center gap-4 cursor-pointer" onClick={() => setIndentParagraphs(!indentParagraphs)}>
-                      <button 
-                        className={`w-[52px] h-7 rounded-full transition-colors relative shrink-0 ${indentParagraphs ? 'bg-[#bca4ff]' : 'bg-[#4b5563] ring-2 ring-[#6b21a8]'}`}
-                      >
-                        <div className={`w-6 h-6 rounded-full bg-white absolute top-0.5 transition-transform ${indentParagraphs ? 'translate-x-[26px] left-0' : 'translate-x-0.5 left-0'}`} />
-                      </button>
-                      <span className="text-white text-[15px] font-medium tracking-wide">Отступ абзацев</span>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              <button className="px-2 py-1.5 text-[#a1a1aa] hover:text-[#1e2d1f] font-serif font-bold transition-colors text-[16px]">
-                H1
-              </button>
-              <button className="px-2 py-1.5 text-[#a1a1aa] hover:text-[#1e2d1f] font-serif font-bold transition-colors text-[16px]">
-                H2
-              </button>
-              <button className="px-2 py-1.5 text-[#a1a1aa] hover:text-[#1e2d1f] font-serif font-bold transition-colors text-[16px]">
-                H3
-              </button>
-            </div>
-          </div>
-          
-          <button 
-            onClick={() => setIsSettingsOpen(true)} 
-            className="w-8 h-8 rounded-full bg-black/5 hover:bg-black/10 border-none cursor-pointer flex items-center justify-center text-black/50 hover:text-black/80 transition-colors flex-shrink-0"
-          >
-            <User size={16} />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto flex justify-center pt-12 pb-40 px-12">
-          <div className="w-full max-w-2xl">
-            <h1 className="text-3xl font-serif italic text-[#1e2d1f]/80 mb-10 text-center outline-none" contentEditable suppressContentEditableWarning>
-              Глава 12. Тени прошлого
-            </h1>
-            
-            <div 
-              className="outline-none text-lg leading-[1.8] font-serif text-[#1e2d1f]/90 min-h-[50vh] text-justify"
-              contentEditable
-              suppressContentEditableWarning
-            >
-              {paragraphs.map((p, i) => (
-                <p key={i} className={`mb-6 ${indentParagraphs ? 'indent-8' : ''}`}>
-                  {p}
-                  {i === paragraphs.length - 1 && isDictating && (
-                    <span className="text-[#1e2d1f]/50 italic ml-2">
-                      Я знал, что вы не сможете остаться в стороне...<span className="animate-pulse">|</span>
-                    </span>
-                  )}
-                </p>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {showWordCount && (
-          <div className="absolute bottom-6 right-6 bg-white/90 backdrop-blur-md shadow-sm border border-[#1e2d1f]/5 rounded-xl px-4 py-2 flex items-center gap-2 z-30">
-            <span className="text-[#1e2d1f]/60 font-medium text-sm">Слов:</span>
-            <span className="text-[#1e2d1f] font-bold text-sm">{wordCount}</span>
-          </div>
-        )}
-
-        {isBibleMenuOpen && (
-          <div 
-            className="fixed inset-0 z-30"
-            onClick={() => setIsBibleMenuOpen(false)}
+        <div className="flex-1 flex flex-col relative">
+          <EditorCanvas
+            editor={editor}
+            isSaving={isSaving}
+            lastSavedAt={lastSavedAt}
+            saveError={saveError}
+            isLoadingContent={isLoadingContent}
+            chapterTitle={chapters.find(c => c.id === chapterId)?.title}
+            showWordCount={showWordCount}
+            onShowWordCountChange={setShowWordCount}
+            indentParagraphs={indentParagraphs}
+            onIndentParagraphsChange={setIndentParagraphs}
+            isDictating={isDictating}
+            interimTranscript={interimTranscript}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+            onOpenExport={() => setIsExportOpen(true)}
           />
-        )}
 
-        {/* Bottom Floating Toolbar */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-stretch gap-3 z-40">
-          {/* Read Aloud Bar */}
-          {isReading && (
-            <div className="bg-[#1e2d1f] rounded-[16px] px-4 py-3 flex items-center justify-between shadow-lg animate-in slide-in-from-bottom-2 fade-in duration-200 relative overflow-hidden">
-              <div className="absolute bottom-0 left-0 w-full h-1 bg-[#f5f0e8]/10">
-                <div className="h-full bg-[#f5f0e8]/50 w-[45%]" />
-              </div>
-              
-              <div className="flex-1 flex justify-center">
-                <span className="text-[#f5f0e8] text-sm italic font-medium mx-6">
-                  Она нащупала его сквозь тонкую ткань — холодный металл.
-                </span>
-              </div>
-              
-              <div className="flex items-center gap-3 text-white/80 relative z-10">
-                <button className="hover:text-white transition-colors">
-                  <SkipBack size={16} fill="currentColor" />
-                </button>
-                <button className="hover:text-white transition-colors">
-                  <Pause size={16} fill="currentColor" />
-                </button>
-                <button className="hover:text-white transition-colors">
-                  <SkipForward size={16} fill="currentColor" />
-                </button>
-                <div className="w-px h-4 bg-white/20 mx-1" />
-                <button 
-                  onClick={() => setIsReading(false)}
-                  className="hover:text-white transition-colors"
-                >
+          {isBibleMenuOpen && (
+            <div className="fixed inset-0 z-30" onClick={() => setIsBibleMenuOpen(false)} />
+          )}
+
+          <BottomToolbar
+            isDictating={isDictating}
+            isSupported={isSupported}
+            toggleListening={toggleListening}
+            isCoauthoring={isCoauthoring}
+            onToggleCoauthor={handleToggleCoauthor}
+            isReading={isReading}
+            onToggleReading={handleToggleReading}
+            isBibleOpen={isBibleOpen}
+            isBibleMenuOpen={isBibleMenuOpen}
+            onSetBibleMenuOpen={setIsBibleMenuOpen}
+            onBibleMenuClick={handleBibleMenuClick}
+            isReferenceOpen={isReferenceOpen}
+            onToggleReference={handleToggleReference}
+            isRevisionOpen={isRevisionOpen}
+            onToggleRevision={handleToggleRevision}
+            isSyncOpen={isSyncOpen}
+            onToggleSync={handleToggleSync}
+            syncBadgeCount={chapters.reduce((acc, ch) => {
+              if (!ch.lastExtractedAt) return acc + 1;
+              return new Date(ch.updatedAt).getTime() > new Date(ch.lastExtractedAt).getTime() ? acc + 1 : acc;
+            }, 0)}
+            onOpenSearch={() => setIsSearchOpen(true)}
+          />
+
+          {/* ── Match navigation bar ── */}
+          {matchNav && matchNav.matches.length > 0 && (
+            <div
+              style={{
+                position: 'fixed',
+                bottom: '80px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 60,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '2px',
+                background: '#fff',
+                border: '1px solid rgba(30,45,31,0.12)',
+                borderRadius: '24px',
+                padding: '5px 6px 5px 14px',
+                boxShadow: '0 4px 24px rgba(0,0,0,0.14)',
+                fontSize: '13px',
+                color: '#1e2d1f',
+                userSelect: 'none',
+                whiteSpace: 'nowrap',
+                pointerEvents: 'auto',
+              }}
+            >
+              {/* Query label */}
+              <span style={{ color: 'rgba(30,45,31,0.45)', marginRight: '4px', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                «{matchNav.query}»
+              </span>
+
+              {/* Counter */}
+              <span style={{ fontWeight: 600, marginRight: '4px' }}>
+                {matchNav.currentIdx + 1} из {matchNav.matches.length}
+              </span>
+
+              {/* Prev */}
+              <button
+                onClick={() => handleMatchNavGo(-1)}
+                disabled={matchNav.matches.length <= 1}
+                title="Предыдущее (Shift+F3)"
+                style={{
+                  background: 'none', border: 'none', cursor: matchNav.matches.length > 1 ? 'pointer' : 'default',
+                  padding: '4px', borderRadius: '8px', display: 'flex', alignItems: 'center',
+                  color: matchNav.matches.length > 1 ? '#1e2d1f' : 'rgba(30,45,31,0.25)',
+                  transition: 'background 0.12s',
+                }}
+                onMouseEnter={e => { if (matchNav.matches.length > 1) (e.currentTarget as HTMLElement).style.background = 'rgba(30,45,31,0.06)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'none'; }}
+              >
+                <ChevronUp size={15} />
+              </button>
+
+              {/* Next */}
+              <button
+                onClick={() => handleMatchNavGo(1)}
+                disabled={matchNav.matches.length <= 1}
+                title="Следующее (F3)"
+                style={{
+                  background: 'none', border: 'none', cursor: matchNav.matches.length > 1 ? 'pointer' : 'default',
+                  padding: '4px', borderRadius: '8px', display: 'flex', alignItems: 'center',
+                  color: matchNav.matches.length > 1 ? '#1e2d1f' : 'rgba(30,45,31,0.25)',
+                  transition: 'background 0.12s',
+                }}
+                onMouseEnter={e => { if (matchNav.matches.length > 1) (e.currentTarget as HTMLElement).style.background = 'rgba(30,45,31,0.06)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'none'; }}
+              >
+                <ChevronDown size={15} />
+              </button>
+
+              {/* Close */}
+              <button
+                onClick={handleMatchNavClose}
+                title="Закрыть (Esc)"
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  padding: '4px', borderRadius: '8px', display: 'flex', alignItems: 'center',
+                  color: 'rgba(30,45,31,0.4)', marginLeft: '2px',
+                  transition: 'background 0.12s',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(30,45,31,0.06)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'none'; }}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        <aside
+          className={`bg-[#f5f0e8] border-l border-[#1e2d1f]/10 flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out z-20 ${
+            (isBibleOpen || isCoauthoring || isReferenceOpen || isRevisionOpen || isSyncOpen)
+              ? 'w-[320px] translate-x-0'
+              : 'w-0 translate-x-full border-none'
+          }`}
+        >
+          {isBibleOpen && (
+            <StoryBiblePanel
+              activeBibleTab={activeBibleTab}
+              onTabChange={setActiveBibleTab}
+              isExtracting={isExtracting}
+              suggestions={suggestions}
+              approvedEntities={approvedEntities}
+              updateSuggestions={updateSuggestions}
+              chapters={chapters.map(c => ({ id: c.id, title: c.title, order: c.order }))}
+              onExtract={handleExtract}
+              chapterFreshnessStatus={currentChapterFreshness}
+              onRecheck={handleRecheckChapter}
+              onApproveSuggestion={approveSuggestion}
+              onRejectSuggestion={rejectSuggestion}
+              onAcceptUpdate={acceptUpdate}
+              onRejectUpdate={rejectUpdate}
+              onDismissUpdate={dismissUpdate}
+              onBulkDismissChapter={bulkDismissChapter}
+              onBulkRejectChapter={bulkRejectChapter}
+              onOpenInEditor={handleOpenInEditor}
+              onClose={() => setIsBibleOpen(false)}
+            />
+          )}
+
+          {isRevisionOpen && (
+            <RevisionPanel
+              searchQuery={searchQuery}
+              onSearchQueryChange={setSearchQuery}
+              traceResults={traceResults}
+              isTracing={isTracing}
+              traceDone={traceDone}
+              traceSemantic={traceSemantic}
+              onTrace={handleTrace}
+              arcText={arcText}
+              isArcLoading={isArcLoading}
+              onArc={handleArc}
+              bibleSuggestions={bibleSuggestions}
+              isBibleLoading={isBibleLoading}
+              bibleDone={bibleDone}
+              onBibleUpdate={handleBibleUpdate}
+              onDismissBibleSuggestion={dismissBibleSuggestion}
+              onClose={() => setIsRevisionOpen(false)}
+            />
+          )}
+
+          {isSyncOpen && (
+            <ProjectSyncPanel
+              chapters={chapters}
+              currentChapterId={chapterId}
+              pendingUpdatesCount={updateSuggestions.filter(u => u.status === 'pending').length}
+              isRecheckingAll={isRecheckingAll}
+              onNavigateToChapter={(id) => navigate(`/editor/${projectId}/${id}`)}
+              onRecheckAllStale={handleRecheckAllStale}
+              onOpenBibleUpdates={() => { handleBibleMenuClick('updates'); }}
+              onClose={() => setIsSyncOpen(false)}
+            />
+          )}
+
+          {isCoauthoring && (
+            <CoauthorPanel
+              chatMessages={chatMessages}
+              isHistoryLoaded={isHistoryLoaded}
+              chatInput={chatInput}
+              onChatInputChange={setChatInput}
+              isAiLoading={isAiLoading}
+              isCheckingConsistency={isCheckingConsistency}
+              chatEndRef={chatEndRef}
+              selectedText={selectedText}
+              onSendMessage={handleSendMessage}
+              onSendPrompt={handleSendPrompt}
+              onCheckConsistency={handleCheckConsistency}
+              onInsertText={handleInsertText}
+              onClose={() => setIsCoauthoring(false)}
+            />
+          )}
+
+          {isReferenceOpen && (
+            <div className="flex flex-col h-full w-[320px]">
+              {/* Header */}
+              <div className="p-5 border-b border-[#1e2d1f]/5 flex justify-between items-center bg-white/40">
+                <div className="flex items-center gap-2">
+                  <Bookmark size={18} className="text-[#1e2d1f]" />
+                  <h2 className="font-serif font-bold text-lg text-[#1e2d1f] uppercase tracking-wider">Справочник</h2>
+                </div>
+                <button onClick={() => setIsReferenceOpen(false)} className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/50 transition-colors">
                   <X size={18} />
                 </button>
               </div>
-            </div>
-          )}
 
-          {/* Main Toolbar */}
-          <div className="relative">
-            {isBibleMenuOpen && (
-              <div className="absolute bottom-full mb-2 right-0 w-48 bg-white rounded-xl shadow-xl border border-[#1e2d1f]/10 py-2 z-50">
-                  <div className="px-4 py-2 text-[10px] font-bold text-black/40 uppercase tracking-widest mb-1">
-                    Библия истории
-                  </div>
-                  {BIBLE_MENU_ITEMS.map(item => {
-                    const Icon = item.icon;
-                    return (
-                      <button
-                        key={item.id}
-                        onClick={() => {
-                          handleBibleMenuClick(item.id);
-                          setIsBibleMenuOpen(false);
-                        }}
-                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-left hover:bg-[#f5f0e8] transition-colors"
-                      >
-                        <Icon size={16} className="text-[#1e2d1f]/40" />
-                        <span className="font-medium text-[#1e2d1f]">{item.label}</span>
-                      </button>
-                    );
-                  })}
-                  {isBibleOpen && (
-                    <>
-                      <div className="h-px bg-black/5 my-1 mx-2" />
-                      <button
-                        onClick={() => {
-                          setIsBibleOpen(false);
-                          setIsBibleMenuOpen(false);
-                        }}
-                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-left hover:bg-red-50 text-red-600 transition-colors"
-                      >
-                        <X size={16} className="text-red-500/70" />
-                        <span className="font-medium">Закрыть панель</span>
-                      </button>
-                    </>
-                  )}
+              {/* Scope toggle */}
+              <div className="px-4 py-3 border-b border-[#1e2d1f]/5 bg-white/20">
+                <div className="flex rounded-lg overflow-hidden border border-[#1e2d1f]/10 text-[13px] font-medium">
+                  <button
+                    onClick={() => setReferenceScope('project')}
+                    className={`flex-1 py-1.5 transition-colors ${
+                      referenceScope === 'project'
+                        ? 'bg-[#1e2d1f] text-white'
+                        : 'text-[#1e2d1f]/60 hover:bg-[#1e2d1f]/5'
+                    }`}
+                  >
+                    Проект
+                  </button>
+                  <button
+                    onClick={() => setReferenceScope('chapter')}
+                    className={`flex-1 py-1.5 transition-colors ${
+                      referenceScope === 'chapter'
+                        ? 'bg-[#1e2d1f] text-white'
+                        : 'text-[#1e2d1f]/60 hover:bg-[#1e2d1f]/5'
+                    }`}
+                  >
+                    Эта глава
+                  </button>
                 </div>
-            )}
-            <div className="bg-white/90 backdrop-blur-md shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-[#1e2d1f]/5 rounded-2xl px-2 py-2 flex items-center gap-1 max-w-[calc(100vw-2rem)] overflow-x-auto hide-scrollbar">
-              <button 
-                onClick={() => {
-                  const nextState = !isDictating;
-                  setIsDictating(nextState);
-                  if (nextState) {
-                    setIsReading(false);
-                    setIsCoauthoring(false);
-                  }
-                }}
-                className={`flex items-center justify-center w-auto sm:w-[130px] h-[36px] whitespace-nowrap gap-2 px-3 sm:px-4 py-2 transition-colors text-sm font-medium rounded-lg outline-none focus:outline-none focus:ring-0 shrink-0 ${
-                  isDictating 
-                    ? 'bg-[#1e2d1f] text-white' 
-                    : 'bg-transparent text-[#6b7280] hover:bg-[#f5f0e8] hover:text-[#1e2d1f]'
-                }`}
-              >
-                <Mic size={16} /> <span className="hidden sm:inline">Диктовка</span><span className="sm:hidden">Дикт.</span>
-              </button>
+              </div>
 
-              <button 
-                onClick={() => {
-                  const nextState = !isCoauthoring;
-                  setIsCoauthoring(nextState);
-                  if (nextState) {
-                    setIsDictating(false);
-                    setIsReading(false);
-                    setIsBibleOpen(false);
-                    setIsReferenceOpen(false);
-                  }
-                }}
-                className={`flex items-center justify-center w-auto sm:w-[130px] h-[36px] whitespace-nowrap gap-2 px-3 sm:px-4 py-2 transition-colors text-sm font-medium rounded-lg outline-none focus:outline-none focus:ring-0 shrink-0 ${
-                  isCoauthoring 
-                    ? 'bg-[#1e2d1f] text-white' 
-                    : 'bg-transparent text-[#6b7280] hover:bg-[#f5f0e8] hover:text-[#1e2d1f]'
-                }`}
-              >
-                <Sparkles size={16} /> Соавтор
-              </button>
-              <button 
-                onClick={() => {
-                  const nextState = !isReading;
-                  setIsReading(nextState);
-                  if (nextState) {
-                    setIsDictating(false);
-                    setIsCoauthoring(false);
-                  }
-                }}
-                className={`flex items-center justify-center w-auto sm:w-[130px] h-[36px] whitespace-nowrap gap-2 px-3 sm:px-4 py-2 transition-colors text-sm font-medium rounded-lg outline-none focus:outline-none focus:ring-0 shrink-0 ${
-                  isReading 
-                    ? 'bg-[#1e2d1f] text-white' 
-                    : 'bg-transparent text-[#6b7280] hover:bg-[#f5f0e8] hover:text-[#1e2d1f]'
-                }`}
-              >
-                <Headphones size={16} /> Слушать
-              </button>
-              <div className="w-px h-6 bg-[#1e2d1f]/10 mx-1 shrink-0" />
-              <button 
-                onClick={() => setIsSearchOpen(true)}
-                className="p-2 rounded-lg outline-none focus:outline-none focus:ring-0 bg-transparent text-[#6b7280] hover:bg-[#f5f0e8] hover:text-[#1e2d1f] transition-colors shrink-0"
-              >
-                <Search size={18} />
-              </button>
-              <button 
-                onClick={() => setIsBibleMenuOpen(!isBibleMenuOpen)}
-                className={`p-2 transition-colors rounded-lg outline-none focus:outline-none focus:ring-0 flex items-center justify-center shrink-0 ${
-                  isBibleOpen || isBibleMenuOpen
-                    ? 'bg-[#1e2d1f] text-white' 
-                    : 'bg-transparent text-[#6b7280] hover:bg-[#f5f0e8] hover:text-[#1e2d1f]'
-                }`}
-                title="Библия истории"
-              >
-                <BookOpen size={18} />
-              </button>
-              <button 
-                onClick={() => {
-                  const nextState = !isReferenceOpen;
-                  setIsReferenceOpen(nextState);
-                  if (nextState) {
-                    setIsBibleOpen(false);
-                    setIsCoauthoring(false);
-                    setIsDictating(false);
-                    setIsReading(false);
-                  }
-                }}
-                className={`p-2 transition-colors rounded-lg outline-none focus:outline-none focus:ring-0 flex items-center justify-center shrink-0 ${
-                  isReferenceOpen
-                    ? 'bg-[#1e2d1f] text-white' 
-                    : 'bg-transparent text-[#6b7280] hover:bg-[#f5f0e8] hover:text-[#1e2d1f]'
-                }`}
-                title="Справочник главы"
-              >
-                <Bookmark size={18} />
-              </button>
-            </div>
-          </div>
-        </div>
-      </main>
-
-      {/* Right Panel: Story Bible, AI Co-author, or Reference (320px) */}
-      <aside 
-        className={`bg-[#f5f0e8] border-l border-[#1e2d1f]/10 flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out z-20 ${
-          (isBibleOpen || isCoauthoring || isReferenceOpen) ? 'w-[320px] translate-x-0' : 'w-0 translate-x-full border-none'
-        }`}
-      >
-        {isBibleOpen && (
-          <div className="flex flex-col h-full w-[320px]">
-            <div className="p-5 border-b border-[#1e2d1f]/5 flex justify-between items-center bg-white/40">
-              <h2 className="font-serif font-bold text-lg text-[#1e2d1f]">Библия истории</h2>
-              <button onClick={() => setIsBibleOpen(false)} className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/50 transition-colors">
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex px-2 pt-2 border-b border-[#1e2d1f]/5 bg-white/40 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-              {BIBLE_MENU_ITEMS.map(item => (
-                <button 
-                  key={item.id}
-                  onClick={() => setActiveBibleTab(item.id)}
-                  className={`flex-shrink-0 px-3 pb-2.5 pt-1.5 text-xs font-medium flex items-center justify-center gap-1.5 border-b-2 transition-colors ${activeBibleTab === item.id ? 'border-[#1e2d1f] text-[#1e2d1f]' : 'border-transparent text-[#1e2d1f]/50 hover:text-[#1e2d1f]/80'}`}
-                >
-                  <item.icon size={14} />
-                  {item.label}
-                  {item.id === 'inbox' && suggestions.length > 0 && (
-                    <span className="bg-rose-500 text-white text-[9px] px-1.5 py-0.5 rounded-full ml-0.5 leading-none">{suggestions.length}</span>
-                  )}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4">
-              {activeBibleTab === 'inbox' && (
-                <div className="flex flex-col h-full">
-                  {suggestions.length === 0 && !isExtracting ? (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
-                      <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center mb-4 text-[#1e2d1f]/20">
-                        <Sparkles size={24} />
-                      </div>
-                      <h3 className="font-medium text-[#1e2d1f]/80 mb-2">Нет новых фактов</h3>
-                      <p className="text-xs text-[#1e2d1f]/50 mb-6 leading-relaxed">
-                        Нажмите кнопку ниже, чтобы ИИ проанализировал текущую главу и нашел новые детали для Библии.
+              {/* Entity sections */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-5">
+                {referenceScope === 'chapter' ? (
+                  chapterLinkedEntities.length === 0 && chapterMentionedEntities.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-[#1e2d1f]/30 text-center">
+                      <Bookmark size={32} className="mb-3 opacity-40" />
+                      <p className="text-sm font-medium leading-relaxed">
+                        Нет привязанных объектов.<br />
+                        Попробуйте ИИ-извлечение или напишите больше текста.
                       </p>
-                      <button 
-                        onClick={handleExtract}
-                        className="bg-[#1e2d1f] text-[#f5f0e8] px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-[#2a3f2b] transition-colors shadow-sm flex items-center gap-2"
-                      >
-                        <Sparkles size={16} />
-                        Извлечь факты
-                      </button>
-                    </div>
-                  ) : isExtracting ? (
-                    <div className="flex-1 flex flex-col items-center justify-center">
-                      <div className="w-8 h-8 border-2 border-[#1e2d1f]/20 border-t-[#1e2d1f] rounded-full animate-spin mb-4"></div>
-                      <span className="text-sm font-medium text-[#1e2d1f]/70">Анализ текста...</span>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs font-bold uppercase tracking-widest text-[#1e2d1f]/40">Найдено в тексте</span>
-                        <button className="text-xs font-medium text-[#1e2d1f]/60 hover:text-[#1e2d1f]">Одобрить все</button>
-                      </div>
-                      
-                      {suggestions.map(suggestion => (
-                        <div key={suggestion.id} className="bg-white rounded-2xl p-4 shadow-sm border border-[#1e2d1f]/5 relative group">
-                          <button 
-                            onClick={() => dismissSuggestion(suggestion.id)}
-                            className="absolute top-3 right-3 p-1 rounded-md text-[#1e2d1f]/30 hover:bg-[#f5f0e8] hover:text-[#1e2d1f] transition-colors opacity-0 group-hover:opacity-100"
-                          >
-                            <X size={14} />
-                          </button>
-                          
-                          <div className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold tracking-widest mb-2 ${suggestion.colorClass}`}>
-                            {suggestion.type}
+                    <>
+                      {chapterLinkedEntities.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-1.5 text-[#1e2d1f]/40 font-bold text-[10px] uppercase tracking-widest mb-2.5">
+                            <span>Из этой главы</span>
+                            <span className="bg-[#1e2d1f]/8 rounded-full px-1.5 py-0.5 text-[10px]">{chapterLinkedEntities.length}</span>
                           </div>
-                          
-                          <h4 className="font-serif font-bold text-[#1e2d1f] mb-1">{suggestion.title}</h4>
-                          <p className="text-xs text-[#1e2d1f]/70 mb-3">{suggestion.description}</p>
-                          
-                          <div className="bg-[#f5f0e8] rounded-lg p-3 mb-4">
-                            <p className="text-xs font-serif italic text-[#1e2d1f]/80 leading-relaxed">
-                              {suggestion.quote}
-                            </p>
+                          <div className="space-y-2">
+                            {chapterLinkedEntities.map(entity => (
+                              <EntityCard key={entity.id} entity={entity} hasConflict={contradictions.has(entity.id)} />
+                            ))}
                           </div>
-                          
-                          <button 
-                            onClick={() => dismissSuggestion(suggestion.id)}
-                            className="w-full py-2 rounded-xl bg-[#f5f0e8] hover:bg-[#e8e2d5] text-[#1e2d1f] text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
-                          >
-                            <Check size={14} />
-                            Одобрить
-                          </button>
                         </div>
-                      ))}
+                      )}
+                      {chapterMentionedEntities.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-1.5 text-[#1e2d1f]/40 font-bold text-[10px] uppercase tracking-widest mb-2.5">
+                            <span>В тексте</span>
+                            <span className="bg-[#1e2d1f]/8 rounded-full px-1.5 py-0.5 text-[10px]">{chapterMentionedEntities.length}</span>
+                          </div>
+                          <div className="space-y-2">
+                            {chapterMentionedEntities.map(entity => (
+                              <EntityCard key={entity.id} entity={entity} hasConflict={contradictions.has(entity.id)} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )
+                ) : (
+                  allApprovedEntities.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-[#1e2d1f]/30 text-center">
+                      <Bookmark size={32} className="mb-3 opacity-40" />
+                      <p className="text-sm font-medium">
+                        Библия пуста — используйте ИИ-извлечение в нижней панели
+                      </p>
                     </div>
-                  )}
-                </div>
-              )}
-              
-              {activeBibleTab === 'characters' && (
-                <div className="flex flex-col">
-                  {selectedCharId ? (() => {
-                    const selectedChar = MOCK_CHARACTERS.find(c => c.id === selectedCharId);
-                    if (!selectedChar) return null;
-                    return (
-                      <div className="flex flex-col">
-                        <button 
-                          onClick={() => setSelectedCharId(null)} 
-                          className="flex items-center gap-2 text-xs text-[#1e2d1f]/60 hover:text-[#1e2d1f] mb-6 transition-colors"
-                        >
-                          <ChevronLeft size={14} /> Назад к списку
-                        </button>
-                        
-                        <div className="flex flex-col items-center text-center mb-6">
-                          <div className="w-24 h-24 rounded-full p-1 bg-white shadow-md mb-4 relative">
-                            <div className="w-full h-full rounded-full overflow-hidden bg-[#f3d3c1]">
-                              <img 
-                                src={selectedChar.image} 
-                                alt={selectedChar.name} 
-                                className="w-full h-full object-cover"
-                                referrerPolicy="no-referrer"
-                              />
-                            </div>
-                          </div>
-                          <h2 className="text-xl font-bold text-[#1a1a1a] mb-1">{selectedChar.name}</h2>
-                          <p className="text-[11px] font-bold text-[#4A90E2] uppercase tracking-wider mb-3">
-                            {selectedChar.role}
-                          </p>
-                          
-                          {selectedChar.incomplete && (
-                            <div className="inline-flex items-center gap-1.5 bg-[#FFF4E5] text-[#B86B11] px-2.5 py-1 rounded-full text-[9px] font-bold tracking-wider uppercase border border-[#FFE0B2]">
-                              <AlertTriangle size={12} />
-                              Incomplete Bio
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex flex-col gap-5">
-                          {selectedChar.appearance && (
-                            <div>
-                              <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">
-                                Внешность
-                              </h4>
-                              <div className="bg-white p-4 rounded-xl border border-black/5 shadow-sm text-[13px] leading-relaxed text-black/80">
-                                {selectedChar.appearance}
-                              </div>
-                            </div>
-                          )}
-
-                          {selectedChar.motivation && (
-                            <div>
-                              <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">
-                                Мотивация
-                              </h4>
-                              <div className="bg-white p-4 rounded-xl border border-black/5 shadow-sm text-[13px] leading-relaxed text-black/80 italic">
-                                {selectedChar.motivation}
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="mt-2 flex flex-col gap-3">
-                            <button className="w-full bg-[#2C3E2D] hover:bg-[#1e2b1f] text-white py-3 rounded-xl text-xs font-medium flex items-center justify-center gap-2 transition-colors shadow-sm">
-                              <Sparkles size={14} />
-                              Спросить AI
-                            </button>
-                            <button className="text-[11px] text-black/40 hover:text-black/60 underline underline-offset-4 transition-colors text-center">
-                              Редактировать
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })() : (
-                    <div className="grid grid-cols-2 gap-3">
-                      {MOCK_CHARACTERS.map(char => (
-                        <div 
-                          key={char.id}
-                          onClick={() => setSelectedCharId(char.id)}
-                          className="group cursor-pointer rounded-xl p-2 transition-all border border-transparent hover:bg-white hover:shadow-sm"
-                        >
-                          <div className="relative aspect-square rounded-lg overflow-hidden mb-3 bg-black/5">
-                            <img 
-                              src={char.image} 
-                              alt={char.name} 
-                              className="w-full h-full object-cover"
-                              referrerPolicy="no-referrer"
-                            />
-                          </div>
-                          <div className="px-1 text-center">
-                            <h3 className="font-bold text-[14px] text-[#1a1a1a] mb-0.5 truncate">{char.name}</h3>
-                            <p className="text-[9px] font-bold text-black/40 uppercase tracking-wider truncate">
-                              {char.role}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeBibleTab === 'locations' && (
-                <div className="flex flex-col">
-                  {selectedLocId ? (() => {
-                    const selectedLoc = MOCK_LOCATIONS.find(l => l.id === selectedLocId);
-                    if (!selectedLoc) return null;
-                    return (
-                      <div className="flex flex-col">
-                        <button 
-                          onClick={() => setSelectedLocId(null)} 
-                          className="flex items-center gap-2 text-xs text-[#1e2d1f]/60 hover:text-[#1e2d1f] mb-6 transition-colors"
-                        >
-                          <ChevronLeft size={14} /> Назад к списку
-                        </button>
-                        
-                        <div className="flex flex-col items-center text-center mb-6">
-                          <div className={`w-24 h-24 rounded-full p-1 bg-white shadow-md mb-4 relative`}>
-                            <div className={`w-full h-full rounded-full flex items-center justify-center text-white ${selectedLoc.color}`}>
-                              {selectedLoc.icon === 'castle' ? <Castle size={36} /> : <Mountain size={36} />}
-                            </div>
-                          </div>
-                          <h2 className="text-xl font-bold text-[#1a1a1a] mb-1">{selectedLoc.name}</h2>
-                          <p className="text-[11px] font-bold text-[#4A90E2] uppercase tracking-wider mb-3">
-                            {selectedLoc.type}
+                  ) : (
+                    <>
+                      {contradictions.size > 0 && (
+                        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200/80 rounded-xl px-3 py-2.5">
+                          <AlertTriangle size={14} className="text-amber-500 flex-shrink-0" />
+                          <p className="text-[12px] text-amber-700 leading-snug">
+                            {contradictions.size === 1
+                              ? '1 объект с возможным противоречием'
+                              : `${contradictions.size} объекта с возможными противоречиями`}
                           </p>
                         </div>
-
-                        <div className="flex flex-col gap-5">
-                          {selectedLoc.description && (
-                            <div>
-                              <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">
-                                Описание
-                              </h4>
-                              <div className="bg-white p-4 rounded-xl border border-black/5 shadow-sm text-[13px] leading-relaxed text-black/80">
-                                {selectedLoc.description}
-                              </div>
-                            </div>
-                          )}
-
-                          {selectedLoc.history && (
-                            <div>
-                              <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">
-                                История
-                              </h4>
-                              <div className="bg-white p-4 rounded-xl border border-black/5 shadow-sm text-[13px] leading-relaxed text-black/80 italic relative">
-                                <Quote size={16} className="absolute -top-2 -left-1 text-black/10 rotate-180" />
-                                {selectedLoc.history}
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="mt-2 flex flex-col gap-3">
-                            <button className="w-full bg-[#2C3E2D] hover:bg-[#1e2b1f] text-white py-3 rounded-xl text-xs font-medium flex items-center justify-center gap-2 transition-colors shadow-sm">
-                              <Sparkles size={14} />
-                              Спросить AI
-                            </button>
-                            <button className="text-[11px] text-black/40 hover:text-black/60 underline underline-offset-4 transition-colors text-center">
-                              Редактировать
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })() : (
-                    <div className="grid grid-cols-2 gap-3">
-                      {MOCK_LOCATIONS.map(loc => (
-                        <div 
-                          key={loc.id}
-                          onClick={() => setSelectedLocId(loc.id)}
-                          className="group cursor-pointer rounded-xl p-2 transition-all border border-transparent hover:bg-white hover:shadow-sm flex flex-col items-center text-center"
-                        >
-                          <div className={`w-16 h-16 rounded-full flex items-center justify-center text-white shadow-sm mb-3 ${loc.color}`}>
-                            {loc.icon === 'castle' ? <Castle size={24} /> : <Mountain size={24} />}
-                          </div>
-                          <h3 className="font-bold text-[14px] text-[#1a1a1a] mb-0.5 truncate w-full">{loc.name}</h3>
-                          <p className="text-[9px] font-bold text-black/40 uppercase tracking-wider truncate w-full">
-                            {loc.type}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeBibleTab === 'items' && (
-                <div className="flex flex-col">
-                  {selectedItemId ? (() => {
-                    const selectedItem = MOCK_ITEMS.find(i => i.id === selectedItemId);
-                    if (!selectedItem) return null;
-                    return (
-                      <div className="flex flex-col">
-                        <button 
-                          onClick={() => setSelectedItemId(null)} 
-                          className="flex items-center gap-2 text-xs text-[#1e2d1f]/60 hover:text-[#1e2d1f] mb-6 transition-colors"
-                        >
-                          <ChevronLeft size={14} /> Назад к списку
-                        </button>
-                        
-                        <div className="flex flex-col items-center text-center mb-6">
-                          <div className="w-24 h-24 rounded-full p-1 bg-white shadow-md mb-4 relative">
-                            <div className="w-full h-full rounded-full overflow-hidden bg-[#f3d3c1]">
-                              <img 
-                                src={selectedItem.image} 
-                                alt={selectedItem.name} 
-                                className="w-full h-full object-cover"
-                                referrerPolicy="no-referrer"
-                              />
-                            </div>
-                          </div>
-                          <h2 className="text-xl font-bold text-[#1a1a1a] mb-1">{selectedItem.name}</h2>
-                          <p className="text-[11px] font-bold text-[#4A90E2] uppercase tracking-wider mb-3">
-                            {selectedItem.type}
-                          </p>
-                          
-                          {selectedItem.incomplete && (
-                            <div className="inline-flex items-center gap-1.5 bg-[#FFF4E5] text-[#B86B11] px-2.5 py-1 rounded-full text-[9px] font-bold tracking-wider uppercase border border-[#FFE0B2]">
-                              <AlertTriangle size={12} />
-                              Incomplete Data
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex flex-col gap-5">
-                          {selectedItem.description && (
-                            <div>
-                              <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">
-                                Описание
-                              </h4>
-                              <div className="bg-white p-4 rounded-xl border border-black/5 shadow-sm text-[13px] leading-relaxed text-black/80">
-                                {selectedItem.description}
-                              </div>
-                            </div>
-                          )}
-
-                          {selectedItem.history && (
-                            <div>
-                              <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">
-                                История
-                              </h4>
-                              <div className="bg-white p-4 rounded-xl border border-black/5 shadow-sm text-[13px] leading-relaxed text-black/80 italic relative">
-                                <Quote size={16} className="absolute -top-2 -left-1 text-black/10 rotate-180" />
-                                {selectedItem.history}
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="mt-2 flex flex-col gap-3">
-                            <button className="w-full bg-[#2C3E2D] hover:bg-[#1e2b1f] text-white py-3 rounded-xl text-xs font-medium flex items-center justify-center gap-2 transition-colors shadow-sm">
-                              <Sparkles size={14} />
-                              Спросить AI
-                            </button>
-                            <button className="text-[11px] text-black/40 hover:text-black/60 underline underline-offset-4 transition-colors text-center">
-                              Редактировать
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })() : (
-                    <div className="grid grid-cols-2 gap-3">
-                      {MOCK_ITEMS.map(item => (
-                        <div 
-                          key={item.id}
-                          onClick={() => setSelectedItemId(item.id)}
-                          className="group cursor-pointer rounded-xl p-2 transition-all border border-transparent hover:bg-white hover:shadow-sm"
-                        >
-                          <div className="relative aspect-square rounded-lg overflow-hidden mb-3 bg-black/5">
-                            <img 
-                              src={item.image} 
-                              alt={item.name} 
-                              className="w-full h-full object-cover"
-                              referrerPolicy="no-referrer"
-                            />
-                          </div>
-                          <div className="px-1 text-center">
-                            <h3 className="font-bold text-[14px] text-[#1a1a1a] mb-0.5 truncate">{item.name}</h3>
-                            <p className="text-[9px] font-bold text-black/40 uppercase tracking-wider truncate">
-                              {item.type}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeBibleTab === 'rules' && (
-                <div className="flex flex-col">
-                  {selectedRuleId ? (() => {
-                    const selectedRule = MOCK_RULES.find(r => r.id === selectedRuleId);
-                    if (!selectedRule) return null;
-                    
-                    let Icon = Sparkles;
-                    if (selectedRule.icon === 'scale') Icon = Scale;
-                    if (selectedRule.icon === 'clock') Icon = Clock;
-                    if (selectedRule.icon === 'globe') Icon = Globe2;
-
-                    return (
-                      <div className="flex flex-col">
-                        <button 
-                          onClick={() => setSelectedRuleId(null)} 
-                          className="flex items-center gap-2 text-xs text-[#1e2d1f]/60 hover:text-[#1e2d1f] mb-6 transition-colors"
-                        >
-                          <ChevronLeft size={14} /> Назад к списку
-                        </button>
-                        
-                        <div className="flex flex-col items-center text-center mb-6">
-                          <div className={`w-20 h-20 rounded-2xl flex items-center justify-center mb-4 ${selectedRule.color} ${selectedRule.iconColor} border border-black/5 shadow-sm`}>
-                            <Icon size={32} />
-                          </div>
-                          <h2 className="text-xl font-bold text-[#1a1a1a] mb-1">{selectedRule.name}</h2>
-                          <p className={`text-[11px] font-bold uppercase tracking-wider mb-3 ${
-                            selectedRule.type === 'ФУНДАМЕНТАЛЬНОЕ' ? 'text-[#D35400]' : 'text-black/40'
-                          }`}>
-                            {selectedRule.type}
-                          </p>
-                          {selectedRule.shortDescription && (
-                            <p className="text-[12px] text-black/60 leading-relaxed max-w-[240px]">
-                              {selectedRule.shortDescription}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="flex flex-col gap-5">
-                          {selectedRule.description && (
-                            <div>
-                              <div className="flex items-center gap-2 mb-3">
-                                <div className="w-1.5 h-1.5 rounded-full bg-[#D35400]" />
-                                <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-widest">
-                                  ОПИСАНИЕ
-                                </h4>
-                              </div>
-                              <div className="text-[13px] leading-relaxed text-black/80 italic font-serif bg-white p-4 rounded-xl border border-black/5 shadow-sm">
-                                {selectedRule.description}
-                              </div>
-                            </div>
-                          )}
-
-                          {selectedRule.history && (
-                            <div>
-                              <div className="flex items-center gap-2 mb-3">
-                                <div className="w-1.5 h-1.5 rounded-full bg-black/20" />
-                                <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-widest">
-                                  ИСТОРИЯ
-                                </h4>
-                              </div>
-                              <div className="text-[13px] leading-relaxed text-black/70 font-serif bg-white p-4 rounded-xl border border-black/5 shadow-sm">
-                                {selectedRule.history}
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="mt-2 flex flex-col gap-3">
-                            <button className="w-full bg-[#2C3E2D] hover:bg-[#1e2b1f] text-white py-3 rounded-xl text-xs font-medium flex items-center justify-center gap-2 transition-colors shadow-sm">
-                              <Sparkles size={14} />
-                              Спросить AI
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })() : (
-                    <div className="flex flex-col gap-3">
-                      {MOCK_RULES.map(rule => {
-                        let Icon = Sparkles;
-                        if (rule.icon === 'scale') Icon = Scale;
-                        if (rule.icon === 'clock') Icon = Clock;
-                        if (rule.icon === 'globe') Icon = Globe2;
-
+                      )}
+                      {ENTITY_SECTIONS.map(({ type, label, icon: Icon }) => {
+                        const items = allApprovedEntities.filter(e => e.type === type);
+                        if (items.length === 0) return null;
                         return (
-                          <div 
-                            key={rule.id}
-                            onClick={() => setSelectedRuleId(rule.id)}
-                            className="group cursor-pointer rounded-xl p-4 transition-all bg-white border border-transparent hover:border-black/10 hover:shadow-sm flex items-center gap-4"
-                          >
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${rule.color} ${rule.iconColor}`}>
-                              <Icon size={20} />
+                          <div key={type}>
+                            <div className="flex items-center gap-2 text-[#1e2d1f]/50 font-bold text-[10px] uppercase tracking-widest mb-2">
+                              <Icon size={13} />
+                              <span>{label}</span>
+                              <span className="bg-[#1e2d1f]/8 rounded-full px-1.5 py-0.5 text-[10px]">{items.length}</span>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-bold text-[14px] text-[#1a1a1a] mb-0.5 truncate">{rule.name}</h3>
-                              <p className={`text-[9px] font-bold uppercase tracking-wider truncate ${
-                                rule.type === 'ФУНДАМЕНТАЛЬНОЕ' ? 'text-[#D35400]' : 'text-black/40'
-                              }`}>
-                                {rule.type}
-                              </p>
+                            <div className="space-y-2">
+                              {items.map(entity => (
+                                <EntityCard key={entity.id} entity={entity} hasConflict={contradictions.has(entity.id)} />
+                              ))}
                             </div>
                           </div>
                         );
                       })}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {isCoauthoring && (
-          <div className="flex flex-col h-full w-[320px]">
-            <div className="p-5 border-b border-[#1e2d1f]/5 flex justify-between items-center bg-white/40">
-              <div className="flex items-center gap-2">
-                <Sparkles size={18} className="text-purple-500" />
-                <h2 className="font-serif font-bold text-lg text-[#1e2d1f]">ИИ-Соавтор</h2>
-              </div>
-              <button onClick={() => setIsCoauthoring(false)} className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/50 transition-colors">
-                <X size={18} />
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {chatMessages.map((msg, idx) => (
-                <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                  <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
-                    msg.role === 'user' 
-                      ? 'bg-[#1e2d1f] text-white rounded-br-sm' 
-                      : 'bg-white border border-[#1e2d1f]/10 text-[#1e2d1f] rounded-bl-sm shadow-sm'
-                  }`}>
-                    {msg.text}
-                  </div>
-                </div>
-              ))}
-              <div ref={chatEndRef} />
-            </div>
-
-            <div className="p-4 bg-white/40 border-t border-[#1e2d1f]/5">
-              <div className="relative flex items-center">
-                <input
-                  type="text"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && chatInput.trim()) {
-                      setChatMessages(prev => [...prev, { role: 'user', text: chatInput.trim() }]);
-                      setChatInput('');
-                      setTimeout(() => {
-                        setChatMessages(prev => [...prev, { role: 'ai', text: 'Отличная идея! Давайте добавим больше деталей к этой сцене.' }]);
-                      }, 1000);
-                    }
-                  }}
-                  placeholder="Спросите соавтора..."
-                  className="w-full bg-white border border-[#1e2d1f]/10 rounded-full pl-4 pr-10 py-2.5 text-sm outline-none focus:border-[#1e2d1f]/30 transition-colors shadow-sm"
-                />
-                <button 
-                  onClick={() => {
-                    if (chatInput.trim()) {
-                      setChatMessages(prev => [...prev, { role: 'user', text: chatInput.trim() }]);
-                      setChatInput('');
-                      setTimeout(() => {
-                        setChatMessages(prev => [...prev, { role: 'ai', text: 'Отличная идея! Давайте добавим больше деталей к этой сцене.' }]);
-                      }, 1000);
-                    }
-                  }}
-                  className="absolute right-1.5 p-1.5 bg-[#1e2d1f] text-white rounded-full hover:bg-[#2a3f2b] transition-colors"
-                >
-                  <Send size={14} />
-                </button>
+                    </>
+                  )
+                )}
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </aside>
+      </div>
 
-        {isReferenceOpen && (
-          <div className="flex flex-col h-full w-[320px]">
-            <div className="p-5 border-b border-[#1e2d1f]/5 flex justify-between items-center bg-white/40">
-              <div className="flex items-center gap-2">
-                <Bookmark size={18} className="text-[#1e2d1f]" />
-                <h2 className="font-serif font-bold text-lg text-[#1e2d1f] uppercase tracking-wider">Справочник</h2>
-              </div>
-              <button onClick={() => setIsReferenceOpen(false)} className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/50 transition-colors">
-                <X size={18} />
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-4 space-y-6">
-              {/* Characters Section */}
-              <div>
-                <div className="flex items-center gap-2 text-[#1e2d1f]/60 font-medium text-base mb-3">
-                  <Users size={18} />
-                  <span>Упомянутые персонажи (1)</span>
-                </div>
-                <div className="space-y-2">
-                  {MOCK_CHARACTERS.slice(0, 1).map(char => (
-                    <div key={char.id} className="bg-white/60 rounded-xl p-3 shadow-sm border border-[#1e2d1f]/5 hover:bg-white transition-colors cursor-pointer flex gap-3">
-                      <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 bg-[#1e2d1f]/5">
-                        <img src={char.image} alt={char.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                      </div>
-                      <div className="flex-1 min-w-0 flex flex-col justify-center">
-                        <h4 className="font-bold text-base text-[#1e2d1f] truncate">{char.name}</h4>
-                        <p className="text-sm text-[#1e2d1f]/60 line-clamp-2 mt-0.5">{char.appearance || char.role}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Locations Section */}
-              <div>
-                <div className="flex items-center gap-2 text-[#1e2d1f]/60 font-medium text-base mb-3">
-                  <MapPin size={18} />
-                  <span>Локации (1)</span>
-                </div>
-                <div className="space-y-2">
-                  {MOCK_LOCATIONS.slice(0, 1).map(loc => (
-                    <div key={loc.id} className="bg-white/60 rounded-xl p-3 shadow-sm border border-[#1e2d1f]/5 hover:bg-white transition-colors cursor-pointer">
-                      <h4 className="font-bold text-base text-[#1e2d1f] mb-2">{loc.name}</h4>
-                      <div className="h-32 rounded-lg overflow-hidden mb-2 bg-black/5">
-                        <img src={loc.image} alt={loc.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                      </div>
-                      <p className="text-sm text-[#1e2d1f]/60 line-clamp-2">{loc.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Items Section */}
-              <div>
-                <div className="flex items-center gap-2 text-[#1e2d1f]/60 font-medium text-base mb-3">
-                  <Box size={18} />
-                  <span>Ключевые предметы (1)</span>
-                </div>
-                <div className="space-y-2">
-                  {MOCK_ITEMS.slice(0, 1).map(item => (
-                    <div key={item.id} className="bg-white/60 rounded-xl p-3 shadow-sm border border-[#1e2d1f]/5 hover:bg-white transition-colors cursor-pointer">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className="text-yellow-600"><Box size={16} /></span>
-                        <h4 className="font-bold text-base text-[#1e2d1f] truncate">{item.name}</h4>
-                      </div>
-                      <p className="text-sm text-[#1e2d1f]/60 line-clamp-2">{item.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Rules Section */}
-              <div>
-                <div className="flex items-center gap-2 text-[#1e2d1f]/60 font-medium text-base mb-3">
-                  <Scale size={18} />
-                  <span>Правила мира (1)</span>
-                </div>
-                <div className="space-y-2">
-                  {MOCK_RULES.slice(0, 1).map(rule => (
-                    <div key={rule.id} className="bg-white/60 rounded-xl p-3 shadow-sm border border-[#1e2d1f]/5 hover:bg-white transition-colors cursor-pointer">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className={rule.iconColor || "text-[#1e2d1f]/60"}><Scale size={16} /></span>
-                        <h4 className="font-bold text-base text-[#1e2d1f] truncate">{rule.name}</h4>
-                      </div>
-                      <p className="text-sm text-[#1e2d1f]/60 line-clamp-2">{rule.shortDescription || rule.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </aside>
-    </div>
-
-    <FindReplacePopup 
-      isOpen={isSearchOpen} 
-      onClose={() => setIsSearchOpen(false)} 
-      editorText={paragraphs.join('\n\n')}
-      onReplace={(newText) => {
-        setParagraphs(newText.split('\n\n'));
-        // Mock lore extraction on replace
-        if (!isExtracting && suggestions.length === 0) {
-          setIsExtracting(true);
-          setTimeout(() => {
-            setIsExtracting(false);
-            setSuggestions(INITIAL_SUGGESTIONS);
-            setIsBibleOpen(true);
-            setIsReferenceOpen(false);
-            setIsCoauthoring(false);
-            setActiveBibleTab('inbox');
-          }, 1500);
-        }
-      }}
-      onNavigate={(type, id) => {
-        setIsSearchOpen(false);
-        if (type === 'scene') {
-          setActiveSceneId(id);
-        } else if (type === 'lore') {
+      <FindReplacePopup
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        editorText={editor?.getText() || ''}
+        onReplace={newText => {
+          editor?.commands.setContent(`<p>${newText.split(/\n\n+/).join('</p><p>')}</p>`);
           setIsBibleOpen(true);
           setIsReferenceOpen(false);
           setIsCoauthoring(false);
-          setActiveBibleTab('characters');
-        }
-      }}
-    />
+          setActiveBibleTab('inbox');
+          handleExtract();
+        }}
+        onNavigate={(type, _id) => {
+          setIsSearchOpen(false);
+          if (type === 'lore') {
+            setIsBibleOpen(true);
+            setIsReferenceOpen(false);
+            setIsCoauthoring(false);
+            setActiveBibleTab('characters');
+          }
+        }}
+      />
 
-    {isSettingsOpen && (
-      <div className="fixed inset-0 z-[100] bg-[#1e2d1f]/20 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8">
-        <div className="bg-[#f8f9fa] rounded-3xl shadow-2xl w-full max-w-5xl max-h-full overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
-          <Settings 
-            onClose={() => setIsSettingsOpen(false)} 
-            showWordCount={showWordCount}
-            setShowWordCount={setShowWordCount}
-            indentParagraphs={indentParagraphs}
-            setIndentParagraphs={setIndentParagraphs}
-          />
+      {isGlobalSearchOpen && projectId && (
+        <SearchPanel
+          projectId={projectId}
+          onClose={() => setIsGlobalSearchOpen(false)}
+        />
+      )}
+
+      {isExportOpen && projectId && (
+        <ExportPanel
+          projectId={projectId}
+          projectTitle={projectTitle || 'Проект'}
+          onClose={() => setIsExportOpen(false)}
+        />
+      )}
+
+      {isSettingsOpen && (
+        <div className="fixed inset-0 z-[100] bg-[#1e2d1f]/20 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8">
+          <div className="bg-[#f8f9fa] rounded-3xl shadow-2xl w-full max-w-5xl max-h-full overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            <Settings
+              onClose={() => setIsSettingsOpen(false)}
+              showWordCount={showWordCount}
+              setShowWordCount={setShowWordCount}
+              indentParagraphs={indentParagraphs}
+              setIndentParagraphs={setIndentParagraphs}
+            />
+          </div>
         </div>
-      </div>
-    )}
+      )}
     </>
   );
 }

@@ -1,0 +1,45 @@
+version: '3.9'
+
+# Production compose — requires a real DATABASE_URL pointing to external Postgres
+# (Supabase, Neon, Railway, etc. — do NOT run pg in the same container in prod)
+#
+# Usage:
+#   cp .env.example .env.prod   # fill in all secrets
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://server:3001/api}
+      VITE_POSTHOG_KEY: ${VITE_POSTHOG_KEY:-}
+      VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
+    depends_on:
+      server:
+        condition: service_healthy

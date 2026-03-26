@@ -27,10 +27,75 @@
   display: block; /* For Firefox */
 }
 
+/* ── Literary editor typography ── */
+.editor-body {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1.28rem;
+  line-height: 2.05;
+  color: #1a1a1a;
+  text-align: justify;
+  hyphens: auto;
+}
+
+.editor-body p {
+  margin: 0 0 0 0;
+  text-indent: 2em;
+}
+
+/* First paragraph after heading — no indent */
+.editor-body h1 + p,
+.editor-body h2 + p,
+.editor-body h3 + p {
+  text-indent: 0;
+}
+
+.editor-body p:first-child {
+  text-indent: 0;
+}
+
+/* Headings */
+.editor-body h1,
+.editor-body h2,
+.editor-body h3 {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 700;
+  color: #1e2d1f;
+  text-align: left;
+  text-indent: 0;
+  margin: 1.8em 0 0.6em;
+  hyphens: none;
+}
+
+.editor-body h1 { font-size: 2rem; }
+.editor-body h2 { font-size: 1.6rem; }
+.editor-body h3 { font-size: 1.3rem; }
+
+/* Placeholder */
+.editor-body .is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: #a0a0a0;
+  font-style: italic;
+  pointer-events: none;
+  float: left;
+  height: 0;
+  text-indent: 0;
+}
+
+/* Indent mode (toggled per-user) */
+.tiptap-indent .editor-body p,
+.tiptap-indent.editor-body p {
+  text-indent: 2.5em;
+}
+
 .hide-scrollbar {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }

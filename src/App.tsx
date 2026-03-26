@@ -59,12 +59,9 @@ export default function App() {
           <Route path="/ideas" element={<ProtectedRoute><IdeaLibrary /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           
-          <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-            {/* Other routes if any */}
-          </Route>
-          
-          {/* Editor and Bible have their own specific layouts */}
-          <Route path="/editor/:id" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
+          {/* Editor: primary route includes chapterId. The /editor/:projectId shortcut is handled inside the Editor by loading the first chapter */}
+          <Route path="/editor/:projectId/:chapterId" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
+          <Route path="/editor/:projectId" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
           <Route path="/bible/:id" element={<ProtectedRoute><StoryBible /></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>

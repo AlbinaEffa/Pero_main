@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  db:
+    image: ankane/pgvector:v0.5.1
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=pero_admin
+      - POSTGRES_PASSWORD=pero_secret
+      - POSTGRES_DB=pero_db
+    volumes:
+      - pero_pgdata:/var/lib/postgresql/data
+
+volumes:
+  pero_pgdata:

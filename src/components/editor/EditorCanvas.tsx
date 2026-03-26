@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Editor as TiptapEditor } from '@tiptap/react';
 import { EditorContent } from '@tiptap/react';
+import { createPortal } from 'react-dom';
 import {
   Bold, Italic, Underline, Strikethrough, List,
-  Undo2, Redo2, Sparkles, User, Download, AlertCircle,
+  Undo2, Redo2, Sparkles, User, Download, AlertCircle, Settings2
 } from 'lucide-react';
 
 interface Props {
@@ -40,7 +41,21 @@ export function EditorCanvas({
   onOpenExport,
 }: Props) {
   const [isFormatMenuOpen, setIsFormatMenuOpen] = useState(false);
+  const [textWidth, setTextWidth] = useState<'narrow' | 'medium' | 'wide'>(() => {
+    return (localStorage.getItem('pero_textWidth') as 'narrow' | 'medium' | 'wide') || 'medium';
+  });
   const wordCount = editor?.storage.characterCount.words() || 0;
+
+  const handleWidthChange = (w: 'narrow' | 'medium' | 'wide') => {
+    setTextWidth(w);
+    localStorage.setItem('pero_textWidth', w);
+  };
+  
+  const widthClass = {
+    narrow: 'max-w-xl',
+    medium: 'max-w-2xl',
+    wide: 'max-w-4xl'
+  }[textWidth];
 
   // Decide what to show in the save indicator
   const saveStatusEl = isSaving ? (
@@ -62,9 +77,9 @@ export function EditorCanvas({
   const showBadge = showWordCount || saveError;
 
   return (
-    <main className="flex-1 flex flex-col relative bg-white shadow-[-10px_0_20px_rgba(0,0,0,0.02)] z-10 transition-all duration-300">
+    <main className="flex-1 flex flex-col relative bg-transparent shadow-[-10px_0_20px_rgba(0,0,0,0.02)] z-10 transition-all duration-300">
       {/* Top Formatting Toolbar */}
-      <div className="h-14 border-b border-[#1e2d1f]/5 bg-white flex items-center justify-between px-6 sticky top-0 z-30 shrink-0">
+      <div className="h-14 border-b border-[#1e2d1f]/5 bg-transparent backdrop-blur-[2px] flex items-center justify-between px-6 sticky top-0 z-30 shrink-0">
         <div className="w-8" />
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-3">
@@ -130,15 +145,19 @@ export function EditorCanvas({
           <div className="flex items-center gap-2 relative">
             <button
               onClick={() => setIsFormatMenuOpen(!isFormatMenuOpen)}
-              className={`px-3 py-1.5 font-serif font-bold rounded-lg transition-colors text-[16px] ${isFormatMenuOpen ? 'bg-[#1e2d1f] text-white' : 'bg-[#f4f4f5] text-[#1e2d1f]'}`}
+              className={`p-2 rounded-lg transition-colors flex items-center justify-center ${isFormatMenuOpen ? 'bg-[#1e2d1f] text-white' : 'bg-[#f4f4f5] text-[#1e2d1f]'}`}
+              title="Настройки отображения"
             >
-              Aa
+              <Settings2 size={18} />
             </button>
 
             {isFormatMenuOpen && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setIsFormatMenuOpen(false)} />
-                <div className="absolute top-full mt-2 left-0 w-64 bg-[#2d3748] rounded-xl shadow-xl border border-white/10 p-5 z-50 flex flex-col gap-5">
+                {createPortal(
+                  <div className="fixed inset-0 z-[100]" onClick={(e) => { e.stopPropagation(); setIsFormatMenuOpen(false); }} />,
+                  document.body
+                )}
+                <div className="absolute top-full mt-2 left-0 w-64 bg-[#2d3748] rounded-xl shadow-xl border border-white/10 p-5 z-[101] flex flex-col gap-5">
                   <div
                     className="flex items-center gap-4 cursor-pointer"
                     onClick={() => onShowWordCountChange(!showWordCount)}
@@ -163,8 +182,33 @@ export function EditorCanvas({
                     <span className="text-white text-[15px] font-medium tracking-wide">Отступ абзацев</span>
                   </div>
 
+                  {/* Text Width Toggle */}
+                  <div className="flex flex-col gap-2 mt-2">
+                    <span className="text-white/60 text-[13px] font-medium tracking-wide">Ширина страницы</span>
+                    <div className="flex bg-white/5 p-1 rounded-xl">
+                      <button
+                        onClick={() => handleWidthChange('narrow')}
+                        className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors ${textWidth === 'narrow' ? 'bg-white/20 text-white shadow-sm' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}
+                      >
+                        Узкая
+                      </button>
+                      <button
+                        onClick={() => handleWidthChange('medium')}
+                        className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors ${textWidth === 'medium' ? 'bg-white/20 text-white shadow-sm' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}
+                      >
+                        Средняя
+                      </button>
+                      <button
+                        onClick={() => handleWidthChange('wide')}
+                        className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors ${textWidth === 'wide' ? 'bg-white/20 text-white shadow-sm' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}
+                      >
+                        Широкая
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Keyboard shortcuts hint */}
-                  <div className="border-t border-white/10 pt-4">
+                  <div className="border-t border-white/10 pt-4 mt-2">
                     <p className="text-white/30 text-[11px] font-semibold uppercase tracking-widest mb-3">Горячие клавиши</p>
                     <div className="flex flex-col gap-2 text-[12px] text-white/50">
                       <div className="flex justify-between"><span>Сохранить</span><kbd className="font-mono bg-white/10 px-1.5 py-0.5 rounded text-[10px]">⌘S</kbd></div>
@@ -219,7 +263,7 @@ export function EditorCanvas({
 
       {/* Scrollable Writing Area */}
       <div className="absolute inset-0 pt-28 px-8 md:px-16 overflow-y-auto hide-scrollbar scroll-smooth">
-        <div className="max-w-2xl mx-auto relative h-full">
+        <div className={`${widthClass} mx-auto relative h-full transition-all duration-500`}>
           {chapterTitle && (
             <h1 className="font-serif italic font-normal text-[2.6rem] leading-tight text-[#1e2d1f]/90 mb-10 mt-4 tracking-tight">
               {chapterTitle}

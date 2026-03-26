@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, Plus, User, Settings, HelpCircle,
   FileText, Upload, X, BookOpen, TrendingUp,
-  Trash2, Edit3, Eye, Archive, ArchiveRestore, Download,
+  Trash2, Edit3, Eye, Archive, ArchiveRestore, Download, MoreVertical, Copy
 } from 'lucide-react';
 import ImportModal from '../components/ImportModal';
 import { ProcessingStatusPanel } from '../components/ProcessingStatusPanel';
@@ -78,8 +79,11 @@ function formatWords(n: number) {
   return n.toString();
 }
 
-function BookContextMenu({ project, onClose, onEdit, onOpen, onBible, onExport, onArchive, onDelete }: {
+const PRESET_COLORS = ['#3A4F41', '#C66B49', '#2C3E50', '#806B8A', '#2B7A6B', '#8B6B32', '#6B2B2B', '#2B4A8B'];
+
+function BookContextMenu({ project, position, onClose, onEdit, onOpen, onBible, onExport, onArchive, onDelete, onDuplicate, onChangeColor }: {
   project: Project;
+  position: { top: number, left: number };
   onClose: () => void;
   onEdit: () => void;
   onOpen: () => void;
@@ -87,60 +91,120 @@ function BookContextMenu({ project, onClose, onEdit, onOpen, onBible, onExport, 
   onExport: () => void;
   onArchive: () => void;
   onDelete: () => void;
+  onDuplicate: () => void;
+  onChangeColor: (color: string) => void;
 }) {
   const isArchived = project.status === 'archive';
-  return (
-    <div
-      className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-hidden min-w-[170px]"
-      onClick={e => e.stopPropagation()}
-    >
-      <button onClick={onEdit} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-white/80 hover:bg-white/10 transition-colors">
-        <Edit3 size={14} /> Переименовать
-      </button>
-      <button onClick={onOpen} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-white/80 hover:bg-white/10 transition-colors">
-        <Eye size={14} /> Открыть
-      </button>
-      <button onClick={onBible} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-white/80 hover:bg-white/10 transition-colors">
-        <BookOpen size={14} /> Библия истории
-      </button>
-      <button onClick={onExport} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-white/80 hover:bg-white/10 transition-colors">
-        <Download size={14} /> Экспорт
-      </button>
-      <button onClick={onArchive} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-white/80 hover:bg-white/10 transition-colors">
-        {isArchived ? <ArchiveRestore size={14} /> : <Archive size={14} />}
-        {isArchived ? 'Восстановить' : 'В архив'}
-      </button>
-      <div className="h-px bg-white/10 mx-3" />
-      <button onClick={onDelete} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors">
-        <Trash2 size={14} /> Удалить
-      </button>
-    </div>
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [adjustedPos, setAdjustedPos] = useState({ top: position.top, left: position.left, opacity: 0 });
+
+  useEffect(() => {
+    if (menuRef.current) {
+      const rect = menuRef.current.getBoundingClientRect();
+      let newTop = position.top;
+      
+      // If the menu goes off the bottom of the screen (with 20px padding)
+      if (position.top + rect.height > window.innerHeight - 20) {
+        // Shift it up so it fits exactly
+        newTop = Math.max(20, window.innerHeight - rect.height - 20);
+      }
+      
+      setAdjustedPos({ top: newTop, left: position.left, opacity: 1 });
+    }
+  }, [position]);
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999]" onClick={onClose} onContextMenu={e => { e.preventDefault(); onClose(); }}>
+      <div
+        ref={menuRef}
+        style={{ 
+          top: adjustedPos.top, 
+          left: adjustedPos.left, 
+          transform: 'translate(-50%, 0)',
+          opacity: adjustedPos.opacity,
+          transition: 'opacity 0.15s ease-out'
+        }}
+        className="absolute bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-hidden min-w-[180px]"
+        onClick={e => e.stopPropagation()}
+      >
+        <button onClick={onEdit} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-white/80 hover:bg-white/10 transition-colors">
+          <Edit3 size={14} /> Переименовать
+        </button>
+        <button onClick={onOpen} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-white/80 hover:bg-white/10 transition-colors">
+          <Eye size={14} /> Открыть
+        </button>
+        <button onClick={onExport} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-white/80 hover:bg-white/10 transition-colors">
+          <Download size={14} /> Экспорт
+        </button>
+        <button onClick={onDuplicate} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-white/80 hover:bg-white/10 transition-colors">
+          <Copy size={14} /> Создать копию
+        </button>
+        <button onClick={onArchive} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-white/80 hover:bg-white/10 transition-colors">
+          {isArchived ? <ArchiveRestore size={14} /> : <Archive size={14} />}
+          {isArchived ? 'Восстановить' : 'В архив'}
+        </button>
+
+        <div className="h-px bg-white/10 mx-3 my-1" />
+        
+        <div className="px-4 py-2 my-1 flex items-center justify-between">
+          {PRESET_COLORS.map(c => (
+            <button
+              key={c}
+              onClick={(e) => { e.stopPropagation(); onChangeColor(c); onClose(); }}
+              className="w-4 h-4 rounded-full transition-transform hover:scale-110"
+              style={{
+                backgroundColor: c,
+                border: project.color === c ? '2px solid white' : '1px solid rgba(255,255,255,0.2)',
+                boxShadow: project.color === c ? '0 0 0 1px #1a1a1a inset' : 'none'
+              }}
+              title="Изменить цвет обложки"
+            />
+          ))}
+        </div>
+
+        <div className="h-px bg-white/10 mx-3 my-1" />
+        
+        <button onClick={onDelete} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors">
+          <Trash2 size={14} /> Удалить
+        </button>
+      </div>
+    </div>,
+    document.body
   );
 }
 
 
-function Book({ project, onOpen, onDelete, onEdit, onBible, onExport, onArchive, isProcessing, onProcessingClick }: { project: Project; onOpen: (id: string) => void; onDelete: (id: string) => void; onEdit: (id: string) => void; onBible: (id: string) => void; onExport: (id: string) => void; onArchive: (id: string) => void; isProcessing?: boolean; onProcessingClick?: (id: string) => void }) {
+function Book({ project, onOpen, onDelete, onEdit, onBible, onExport, onArchive, onDuplicate, onChangeColor, isProcessing, onProcessingClick }: { project: Project; onOpen: (id: string) => void; onDelete: (id: string) => void; onEdit: (id: string) => void; onBible: (id: string) => void; onExport: (id: string) => void; onArchive: (id: string) => void; onDuplicate: (id: string) => void; onChangeColor: (id: string, color: string) => void; isProcessing?: boolean; onProcessingClick?: (id: string) => void }) {
   const [hovered, setHovered] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number, left: number } | null>(null);
+
+  const openMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setMenuPos({ top: rect.bottom + 8, left: rect.left + rect.width / 2 });
+  };
 
   return (
     <div style={{ position: 'relative', flexShrink: 0, alignSelf: 'flex-end' }}>
-      {menuOpen && (
+      {menuPos && (
         <BookContextMenu
           project={project}
-          onClose={() => setMenuOpen(false)}
-          onEdit={() => { onEdit(project.id); setMenuOpen(false); }}
-          onOpen={() => { onOpen(project.id); setMenuOpen(false); }}
-          onBible={() => { onBible(project.id); setMenuOpen(false); }}
-          onExport={() => { onExport(project.id); setMenuOpen(false); }}
-          onArchive={() => { onArchive(project.id); setMenuOpen(false); }}
-          onDelete={() => { onDelete(project.id); setMenuOpen(false); }}
+          position={menuPos}
+          onClose={() => setMenuPos(null)}
+          onEdit={() => { onEdit(project.id); setMenuPos(null); }}
+          onOpen={() => { onOpen(project.id); setMenuPos(null); }}
+          onBible={() => { onBible(project.id); setMenuPos(null); }}
+          onExport={() => { onExport(project.id); setMenuPos(null); }}
+          onArchive={() => { onArchive(project.id); setMenuPos(null); }}
+          onDelete={() => { onDelete(project.id); setMenuPos(null); }}
+          onDuplicate={() => { onDuplicate(project.id); setMenuPos(null); }}
+          onChangeColor={(color) => onChangeColor(project.id, color)}
         />
       )}
 
-
       <div
-        className="cursor-pointer select-none"
+        className="group cursor-pointer select-none"
         style={{
           height: `${project.height}px`,
           width: '72px',
@@ -157,10 +221,17 @@ function Book({ project, onOpen, onDelete, onEdit, onBible, onExport, onArchive,
           position: 'relative',
         }}
         onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => { setHovered(false); setMenuOpen(false); }}
+        onMouseLeave={() => setHovered(false)}
         onClick={() => onOpen(project.id)}
-        onContextMenu={e => { e.preventDefault(); setMenuOpen(!menuOpen); }}
+        onContextMenu={openMenu}
       >
+        {/* Three dots button */}
+        <button
+          className={`absolute top-2 right-1.5 p-1 rounded-full text-white/80 hover:bg-black/20 transition-opacity ${(hovered || menuPos) ? 'opacity-100' : 'opacity-0'} z-10`}
+          onClick={openMenu}
+        >
+          <MoreVertical size={16} />
+        </button>
         {/* Spine lines */}
         <div style={{ position: 'absolute', top: '12px', left: 0, right: 0, height: '1px', background: 'rgba(255,255,255,0.12)' }} />
         <div style={{ position: 'absolute', top: '16px', left: 0, right: 0, height: '1px', background: 'rgba(255,255,255,0.07)' }} />
@@ -202,7 +273,7 @@ function Book({ project, onOpen, onDelete, onEdit, onBible, onExport, onArchive,
   );
 }
 
-function Shelf({ projects, label, onOpen, onDelete, onEdit, onBible, onExport, onArchive, emptyLabel, getProcessing, onProcessingClick }: {
+function Shelf({ projects, label, onOpen, onDelete, onEdit, onBible, onExport, onArchive, onDuplicate, onChangeColor, emptyLabel, getProcessing, onProcessingClick }: {
   projects: Project[];
   label: string;
   onOpen: (id: string) => void;
@@ -211,6 +282,8 @@ function Shelf({ projects, label, onOpen, onDelete, onEdit, onBible, onExport, o
   onBible: (id: string) => void;
   onExport: (id: string) => void;
   onArchive: (id: string) => void;
+  onDuplicate: (id: string) => void;
+  onChangeColor: (id: string, color: string) => void;
   emptyLabel?: string;
   getProcessing?: (id: string) => boolean;
   onProcessingClick?: (id: string) => void;
@@ -260,7 +333,7 @@ function Shelf({ projects, label, onOpen, onDelete, onEdit, onBible, onExport, o
                   animationDelay: `${i * 0.05}s`,
                   opacity: 0,
                 }}>
-                  <Book project={p} onOpen={onOpen} onDelete={onDelete} onEdit={onEdit} onBible={onBible} onExport={onExport} onArchive={onArchive} isProcessing={getProcessing?.(p.id)} onProcessingClick={onProcessingClick} />
+                  <Book project={p} onOpen={onOpen} onDelete={onDelete} onEdit={onEdit} onBible={onBible} onExport={onExport} onArchive={onArchive} onDuplicate={onDuplicate} onChangeColor={onChangeColor} isProcessing={getProcessing?.(p.id)} onProcessingClick={onProcessingClick} />
                 </div>
               ))}
             </div>
@@ -618,30 +691,77 @@ function ConfirmDeleteModal({ title, onClose, onConfirm }: {
 }) {
   return (
     <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', animation: 'fadeIn 0.15s ease' }}
+      style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)',
+        zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '16px', animation: 'fadeIn 0.15s ease'
+      }}
       onClick={onClose}
     >
       <div
-        style={{ background: '#F4F1E9', borderRadius: '20px', width: '100%', maxWidth: '360px', overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.3)', animation: 'slideUp 0.2s cubic-bezier(0.34,1.56,0.64,1)' }}
+        style={{
+          background: '#F4F1E9', borderRadius: '20px', width: '100%', maxWidth: '400px',
+          overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.28)',
+          animation: 'slideUp 0.2s cubic-bezier(0.34,1.56,0.64,1)',
+        }}
         onClick={e => e.stopPropagation()}
       >
-        <div style={{ padding: '22px 24px 0' }}>
-          <h2 style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: '20px', fontWeight: 700, margin: '0 0 8px' }}>
+        {/* Header */}
+        <div style={{
+          background: '#fff', padding: '16px 22px', borderBottom: '1px solid rgba(0,0,0,0.06)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+        }}>
+          <h2 style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: '20px', fontWeight: 700, margin: 0, color: '#1a1a1a' }}>
             Удалить проект?
           </h2>
-          <p style={{ fontSize: '14px', color: 'rgba(0,0,0,0.55)', margin: 0, lineHeight: 1.5 }}>
-            «{title}» будет удалён безвозвратно вместе со всеми главами.
+          <button
+            onClick={onClose}
+            style={{
+              background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: '50%',
+              width: '30px', height: '30px', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(0,0,0,0.5)'
+            }}
+          >
+            <X size={15} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '24px 22px' }}>
+          <p style={{ fontSize: '14px', color: 'rgba(0,0,0,0.6)', margin: 0, lineHeight: 1.5 }}>
+            Проект <strong>«{title}»</strong> будет удалён безвозвратно вместе со всеми написанными главами, материалами и статистикой.<br/><br/>
+            Это действие нельзя отменить.
           </p>
         </div>
-        <div style={{ padding: '18px 24px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ padding: '9px 18px', borderRadius: '12px', border: 'none', background: 'transparent', fontSize: '13px', cursor: 'pointer', color: 'rgba(0,0,0,0.5)', fontWeight: 500 }}>
+
+        {/* Footer */}
+        <div style={{
+          background: '#fff', padding: '14px 22px', borderTop: '1px solid rgba(0,0,0,0.06)',
+          display: 'flex', gap: '10px', justifyContent: 'flex-end', alignItems: 'center'
+        }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '9px 16px', borderRadius: '12px', border: 'none',
+              background: 'transparent', fontSize: '13px', cursor: 'pointer',
+              color: 'rgba(0,0,0,0.5)', fontWeight: 500
+            }}
+          >
             Отмена
           </button>
           <button
             onClick={onConfirm}
-            style={{ padding: '9px 20px', borderRadius: '12px', border: 'none', background: '#dc2626', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'background 0.2s' }}
+            style={{
+              padding: '9px 20px', borderRadius: '12px', border: 'none',
+              background: '#934b4b', color: '#fff', fontSize: '13px',
+              fontWeight: 600, cursor: 'pointer', transition: 'background 0.2s',
+              display: 'flex', alignItems: 'center', gap: '6px'
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = '#814141'}
+            onMouseLeave={e => e.currentTarget.style.background = '#934b4b'}
           >
-            Удалить
+            <Trash2 size={14} /> Удалить безвозвратно
           </button>
         </div>
       </div>
@@ -777,6 +897,28 @@ export default function Dashboard() {
     } catch (err) {
       console.error('Failed to archive project:', err);
       showToast('Ошибка при обновлении проекта');
+    }
+  };
+
+  const handleDuplicate = async (projectId: string) => {
+    try {
+      const { project } = await api.post<{ project: any }>(`/projects/${projectId}/duplicate`, {});
+      setProjects(prev => [fromApiProject(project), ...prev]);
+      showToast('Копия проекта создана');
+    } catch (err) {
+      console.error('Failed to duplicate project:', err);
+      showToast('Ошибка при копировании проекта');
+    }
+  };
+
+  const handleChangeColor = async (id: string, color: string) => {
+    try {
+      setProjects(prev => prev.map(p => p.id === id ? { ...p, color } : p));
+      await api.patch(`/projects/${id}`, { color });
+      showToast('Цвет обложки изменён');
+    } catch (err) {
+      console.error('Failed to change color:', err);
+      showToast('Ошибка при изменении цвета');
     }
   };
 
@@ -1038,6 +1180,8 @@ export default function Dashboard() {
                 onBible={handleBible}
                 onExport={id => setExportingProjectId(id)}
                 onArchive={handleArchive}
+                onDuplicate={handleDuplicate}
+                onChangeColor={handleChangeColor}
                 emptyLabel="Нет проектов с такими фильтрами"
                 getProcessing={getProcessing}
                 onProcessingClick={id => {
@@ -1054,6 +1198,8 @@ export default function Dashboard() {
                 onBible={handleBible}
                 onExport={id => setExportingProjectId(id)}
                 onArchive={handleArchive}
+                onDuplicate={handleDuplicate}
+                onChangeColor={handleChangeColor}
                 emptyLabel="Архив пуст"
                 getProcessing={getProcessing}
                 onProcessingClick={id => {

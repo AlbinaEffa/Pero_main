@@ -276,6 +276,84 @@ router.post('/:id/chapters', authenticateToken, async (req: any, res) => {
   }
 });
 
+// POST /api/projects/:id/duplicate — duplicate project, chapters, and story bible
+router.post('/:id/duplicate', authenticateToken, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const owned = await assertOwnership(id, req.user.userId);
+    if (!owned) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const { project, chapterCount, doneChapterCount } = await db.transaction(async (tx) => {
+      // 1. Fetch original project
+      const [origProj] = await tx.select().from(schema.projects).where(eq(schema.projects.id, id));
+      
+      // 2. Create new project
+      const [newProj] = await tx
+        .insert(schema.projects)
+        .values({
+          userId: req.user.userId,
+          title: `${origProj.title} (Копия)`,
+          genre: origProj.genre,
+          color: origProj.color,
+          status: 'active',
+        })
+        .returning();
+
+      // 3. Duplicate chapters
+      const origChapters = await tx
+        .select()
+        .from(schema.chapters)
+        .where(eq(schema.chapters.projectId, id))
+        .orderBy(asc(schema.chapters.order));
+        
+      if (origChapters.length > 0) {
+        await tx.insert(schema.chapters).values(origChapters.map(c => ({
+          projectId: newProj.id,
+          title: c.title,
+          content: c.content,
+          order: c.order,
+          status: c.status,
+        })));
+      }
+
+      // 4. Duplicate story entities
+      const origEntities = await tx
+        .select()
+        .from(schema.storyEntities)
+        .where(eq(schema.storyEntities.projectId, id));
+        
+      if (origEntities.length > 0) {
+        await tx.insert(schema.storyEntities).values(origEntities.map(e => ({
+          projectId: newProj.id,
+          name: e.name,
+          description: e.description,
+          type: e.type,
+          status: e.status, 
+        })));
+      }
+
+      return { 
+        project: newProj, 
+        chapterCount: origChapters.length, 
+        doneChapterCount: origChapters.filter(c => c.status === 'done').length 
+      };
+    });
+
+    res.status(201).json({ 
+      project: {
+        ...project,
+        chapterCount,
+        doneChapterCount,
+      }
+    });
+  } catch (error) {
+    console.error('Error duplicating project:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // PUT /api/projects/:id/chapters/order — bulk reorder
 router.put('/:id/chapters/order', authenticateToken, async (req: any, res) => {
   try {

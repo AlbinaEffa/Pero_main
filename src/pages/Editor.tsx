@@ -191,8 +191,10 @@ export default function Editor() {
 
   const { isListening, isSupported, interimTranscript, toggleListening } = useDictation({
     language: 'ru-RU',
-    onResult: (text, isFinal) => {
-      if (isFinal && editor) editor.commands.insertContent(text + ' ');
+    onResult: (text: string, isFinal: boolean) => {
+      if (isFinal && editor) {
+        editor.chain().focus().insertContent(text + ' ').run();
+      }
     },
   });
   const isDictating = isListening;

@@ -18,6 +18,11 @@ export function useDictation({ onResult, language = 'ru-RU' }: UseDictationOptio
   const [isSupported, setIsSupported] = useState(true);
   const [interimTranscript, setInterimTranscript] = useState('');
   const recognitionRef = useRef<any>(null);
+  const onResultRef = useRef(onResult);
+
+  useEffect(() => {
+    onResultRef.current = onResult;
+  }, [onResult]);
 
   useEffect(() => {
     // Check support for SpeechRecognition
@@ -52,12 +57,12 @@ export function useDictation({ onResult, language = 'ru-RU' }: UseDictationOptio
 
       setInterimTranscript(currentInterimTranscript);
 
-      if (finalTranscript && onResult) {
-        onResult(finalTranscript, true);
+      if (finalTranscript && onResultRef.current) {
+        onResultRef.current(finalTranscript, true);
       }
       
-      if (currentInterimTranscript && onResult) {
-        onResult(currentInterimTranscript, false);
+      if (currentInterimTranscript && onResultRef.current) {
+        onResultRef.current(currentInterimTranscript, false);
       }
     };
 
@@ -83,7 +88,7 @@ export function useDictation({ onResult, language = 'ru-RU' }: UseDictationOptio
         recognitionRef.current.stop();
       }
     };
-  }, [language, onResult]);
+  }, [language]);
 
   const startListening = useCallback(() => {
     if (recognitionRef.current && !isListening) {

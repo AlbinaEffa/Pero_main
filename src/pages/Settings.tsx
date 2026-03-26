@@ -72,7 +72,7 @@ export default function Settings({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#f8f9fa] p-8 md:p-12 overflow-y-auto">
+    <div className="flex-1 flex flex-col h-full bg-[var(--color-paper)] p-8 md:p-12 overflow-y-auto w-full text-left">
       <div className="max-w-5xl mx-auto w-full">
         {/* Navigation back */}
         <button 

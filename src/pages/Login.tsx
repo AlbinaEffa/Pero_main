@@ -85,11 +85,14 @@ export default function Login() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {!isLogin && (
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-black/60 mb-2">Имя</label>
+              <label htmlFor="name" className="block text-xs font-bold uppercase tracking-widest text-black/60 mb-2">Имя</label>
               <input 
+                id="name"
+                name="name"
                 type="text" 
                 value={displayName}
                 onChange={e => setDisplayName(e.target.value)}
+                autoComplete="name"
                 className="w-full px-4 py-3 rounded-xl border border-black/10 focus:border-black focus:ring-1 focus:ring-black outline-none transition-all bg-[var(--color-paper-dark)] focus:bg-white"
                 placeholder="Имя автора"
               />
@@ -97,12 +100,15 @@ export default function Login() {
           )}
           
           <div>
-            <label className="block text-xs font-bold uppercase tracking-widest text-black/60 mb-2">Email</label>
+            <label htmlFor="email" className="block text-xs font-bold uppercase tracking-widest text-black/60 mb-2">Email</label>
             <input 
+              id="email"
+              name="email"
               type="email" 
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
+              autoComplete="email"
               className="w-full px-4 py-3 rounded-xl border border-black/10 focus:border-black focus:ring-1 focus:ring-black outline-none transition-all bg-[var(--color-paper-dark)] focus:bg-white"
               placeholder="author@example.com"
             />
@@ -110,13 +116,16 @@ export default function Login() {
           
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-xs font-bold uppercase tracking-widest text-black/60">Пароль</label>
+              <label htmlFor="password" className="block text-xs font-bold uppercase tracking-widest text-black/60">Пароль</label>
             </div>
             <input 
+              id="password"
+              name="password"
               type="password" 
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
+              autoComplete={isLogin ? "current-password" : "new-password"}
               className="w-full px-4 py-3 rounded-xl border border-black/10 focus:border-black focus:ring-1 focus:ring-black outline-none transition-all bg-[var(--color-paper-dark)] focus:bg-white"
               placeholder="••••••••"
             />

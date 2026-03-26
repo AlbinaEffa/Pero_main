@@ -119,6 +119,7 @@ export function BottomToolbar({
 
         <div className="bg-white/95 backdrop-blur-md shadow-[0_4px_25px_rgba(0,0,0,0.06)] border border-[#1e2d1f]/5 rounded-2xl px-2 py-2 flex items-center gap-1 max-w-[calc(100vw-2rem)] overflow-x-auto hide-scrollbar">
           <button
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => {
               if (!isSupported) {
                 alert('Ваш браузер не поддерживает встроенное распознавание речи. Пожалуйста, используйте Google Chrome.');

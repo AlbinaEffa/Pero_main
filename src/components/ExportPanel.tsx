@@ -18,8 +18,6 @@ interface Props {
   onClose: () => void;
 }
 
-type ExportFilter = 'all' | 'draft' | 'done';
-
 interface Format {
   id: string;
   label: string;
@@ -27,7 +25,6 @@ interface Format {
   description: string;
   icon: React.ReactNode;
   endpoint: string;
-  supportsBible?: boolean;
 }
 
 const FORMATS: Format[] = [
@@ -38,7 +35,6 @@ const FORMATS: Format[] = [
     description: 'Для Notion, Obsidian и других редакторов',
     icon: <FileText size={18} />,
     endpoint: 'markdown',
-    supportsBible: true,
   },
   {
     id: 'txt',
@@ -55,22 +51,15 @@ const FORMATS: Format[] = [
     description: 'Для Microsoft Word и Google Docs',
     icon: <FileText size={18} />,
     endpoint: 'docx',
-    supportsBible: true,
   },
   {
     id: 'backup',
     label: 'Полный архив',
     ext: '.zip',
-    description: 'Рукопись + Библия + главы + метаданные',
+    description: 'Рукопись + Библия + метаданные',
     icon: <Archive size={18} />,
     endpoint: 'backup',
   },
-];
-
-const FILTER_OPTIONS: { id: ExportFilter; label: string; hint: string }[] = [
-  { id: 'all',   label: 'Все главы',     hint: 'Черновики и готовые'    },
-  { id: 'done',  label: 'Готовые',       hint: 'Только отмеченные «✓»' },
-  { id: 'draft', label: 'Черновики',     hint: 'Только незавершённые'  },
 ];
 
 async function downloadFile(url: string, filename: string, token: string): Promise<void> {
@@ -90,13 +79,9 @@ async function downloadFile(url: string, filename: string, token: string): Promi
 export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
   const [loading, setLoading]             = useState<string | null>(null);
   const [error, setError]                 = useState<string | null>(null);
-  const [filter, setFilter]               = useState<ExportFilter>('all');
-  const [includeBible, setIncludeBible]   = useState(false);
 
   const buildUrl = (endpoint: string) => {
-    const params = new URLSearchParams({ filter });
-    if (includeBible) params.set('bible', '1');
-    return `${API}/export/${projectId}/${endpoint}?${params}`;
+    return `${API}/export/${projectId}/${endpoint}`;
   };
 
   const handleDownload = async (fmt: Format) => {
@@ -175,54 +160,6 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
         </div>
 
         <div style={{ padding: '16px 22px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* ── Export mode ── */}
-          <div>
-            <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(0,0,0,0.35)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
-              Что экспортировать
-            </p>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              {FILTER_OPTIONS.map(opt => (
-                <button
-                  key={opt.id}
-                  onClick={() => setFilter(opt.id)}
-                  title={opt.hint}
-                  style={{
-                    flex: 1, padding: '8px 4px', borderRadius: '10px', border: '1.5px solid',
-                    borderColor: filter === opt.id ? '#1e2d1f' : 'rgba(0,0,0,0.1)',
-                    background: filter === opt.id ? '#1e2d1f' : '#fff',
-                    color: filter === opt.id ? '#fff' : 'rgba(0,0,0,0.6)',
-                    fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* ── Bible appendix toggle ── */}
-          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none' }}>
-            <div
-              onClick={() => setIncludeBible(v => !v)}
-              style={{
-                width: '18px', height: '18px', borderRadius: '5px', border: '1.5px solid',
-                borderColor: includeBible ? '#1e2d1f' : 'rgba(0,0,0,0.2)',
-                background: includeBible ? '#1e2d1f' : '#fff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'all 0.15s', flexShrink: 0,
-              }}
-            >
-              {includeBible && <Check size={11} color="#fff" strokeWidth={3} />}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <BookOpen size={14} style={{ color: 'rgba(0,0,0,0.4)' }} />
-              <span style={{ fontSize: '13px', color: 'rgba(0,0,0,0.7)', fontWeight: 500 }}>
-                Добавить Библию истории как приложение
-              </span>
-            </div>
-          </label>
-
           {/* ── Format list ── */}
           <div>
             <p style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(0,0,0,0.35)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
@@ -230,7 +167,6 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
               {FORMATS.map(fmt => {
-                const bibleNote = includeBible && !fmt.supportsBible;
                 return (
                   <button
                     key={fmt.id}
@@ -265,9 +201,6 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
                           color: 'rgba(0,0,0,0.35)', background: 'rgba(0,0,0,0.04)',
                           padding: '1px 5px', borderRadius: '3px',
                         }}>{fmt.ext}</span>
-                        {bibleNote && (
-                          <span style={{ fontSize: '10px', color: 'rgba(0,0,0,0.3)', fontStyle: 'italic' }}>без Библии</span>
-                        )}
                       </div>
                       <p style={{ fontSize: '11px', color: 'rgba(0,0,0,0.42)', margin: 0, lineHeight: 1.4 }}>
                         {fmt.description}

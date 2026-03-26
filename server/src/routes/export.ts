@@ -326,36 +326,15 @@ router.get('/:projectId/backup', authenticateToken, async (req: any, res) => {
   if (!data) return res.status(404).json({ error: 'Project not found' });
 
   const { project, entities } = data;
-  // Backup applies the same filter as other exports so users get what they expect.
-  // bible.json always contains all approved entities — it's metadata, not manuscript content.
   const { filter } = parseExportParams(req.query);
   const chapters = filterChapters(data.chapters, filter);
   const zip = new JSZip();
 
-  // Manuscript (filtered)
+  // Manuscript (MD and DOCX only for simplicity)
   zip.file('manuscript.md', buildMarkdown(project, chapters));
-  zip.file('manuscript.txt', (() => {
-    const lines: string[] = [`${project.title}\n${'─'.repeat(50)}\n`];
-    for (const ch of chapters) {
-      lines.push(`\n${ch.title}\n${'─'.repeat(30)}\n`);
-      lines.push(htmlToText(ch.content || ''));
-    }
-    return lines.join('\n');
-  })());
-
-  // DOCX
+  
   const docBuffer = await Packer.toBuffer(buildDocx(project, chapters));
   zip.file('manuscript.docx', docBuffer);
-
-  // Individual chapters
-  const chaptersFolder = zip.folder('chapters')!;
-  for (let i = 0; i < chapters.length; i++) {
-    const ch = chapters[i];
-    const slug = ch.title.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-').toLowerCase();
-    chaptersFolder.file(`${String(i + 1).padStart(2, '0')}-${slug}.md`,
-      `## ${ch.title}\n\n${htmlToMarkdown(ch.content || '')}`
-    );
-  }
 
   // Story Bible
   const bibleByType: Record<string, any[]> = {};
@@ -386,12 +365,10 @@ router.get('/:projectId/backup', authenticateToken, async (req: any, res) => {
     `Создана: ${new Date().toLocaleString('ru-RU')}`,
     '',
     'Содержимое:',
-    '  manuscript.md    — полная рукопись в формате Markdown',
-    '  manuscript.txt   — полная рукопись в виде текста',
+    '  manuscript.md    — полная рукопись в формате Markdown (для импорта обратно в Перо)',
     '  manuscript.docx  — полная рукопись в формате Word',
-    '  chapters/        — отдельные главы в формате Markdown',
     '  bible.json       — Библия истории (персонажи, локации, предметы, правила)',
-    '  metadata.json    — метаданные проекта',
+    '  metadata.json    — статистика и метаданные проекта',
     '',
     'Восстановление:',
     '  Откройте Перо → нажмите «Импорт» → выберите manuscript.md',

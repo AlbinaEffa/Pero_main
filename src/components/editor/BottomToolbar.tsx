@@ -162,12 +162,6 @@ export function BottomToolbar({
 
           <div className="w-px h-6 bg-[#1e2d1f]/10 mx-1 shrink-0" />
 
-          <button
-            onClick={onOpenSearch}
-            className="p-2 rounded-lg outline-none focus:outline-none focus:ring-0 bg-transparent text-[#6b7280] hover:bg-[#f5f0e8] hover:text-[#1e2d1f] transition-colors shrink-0"
-          >
-            <Search size={18} />
-          </button>
 
           <button
             onClick={() => onSetBibleMenuOpen(!isBibleMenuOpen)}

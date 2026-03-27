@@ -38,8 +38,8 @@
 }
 
 .editor-body p {
-  margin: 0 0 0 0;
-  text-indent: 2em;
+  margin: 0 0 1em 0;
+  text-indent: 0;
 }
 
 /* First paragraph after heading — no indent */
@@ -84,7 +84,16 @@
 /* Indent mode (toggled per-user) */
 .tiptap-indent .editor-body p,
 .tiptap-indent.editor-body p {
-  text-indent: 2.5em;
+  margin: 0 0 0 0;
+  text-indent: 2em;
+}
+
+.tiptap-indent .editor-body p:first-child,
+.tiptap-indent.editor-body p:first-child,
+.tiptap-indent .editor-body h1 + p,
+.tiptap-indent .editor-body h2 + p,
+.tiptap-indent .editor-body h3 + p {
+  text-indent: 0;
 }
 
 .hide-scrollbar {

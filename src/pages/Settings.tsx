@@ -72,7 +72,7 @@ export default function Settings({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[var(--color-paper)] p-8 md:p-12 overflow-y-auto w-full text-left">
+    <div className="flex-1 flex flex-col h-full bg-[#f5f0e8] p-8 md:p-12 overflow-y-auto w-full text-left">
       <div className="max-w-5xl mx-auto w-full">
         {/* Navigation back */}
         <button 
@@ -133,7 +133,7 @@ export default function Settings({
                   type="text" 
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-[#f1f5f9] border-transparent focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-200 outline-none transition-all text-[#1a1f2c]"
+                  className="w-full px-4 py-3 rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 focus:border-[#1e2d1f]/20 focus:bg-white/90 focus:ring-4 focus:ring-[#1e2d1f]/5 outline-none transition-all text-[#1e2d1f] shadow-sm"
                 />
               </div>
               
@@ -145,7 +145,7 @@ export default function Settings({
                   disabled
                   rows={4}
                   placeholder="Будет доступно в следующей версии"
-                  className="w-full px-4 py-3 rounded-xl bg-[#f1f5f9] border-transparent outline-none transition-all text-[#1a1f2c] resize-none"
+                  className="w-full px-4 py-3 rounded-xl bg-white/40 border border-white/50 outline-none transition-all text-[#1e2d1f] resize-none shadow-sm"
                 />
               </div>
 
@@ -157,7 +157,7 @@ export default function Settings({
                   disabled
                   type="text"
                   placeholder="Будет доступно в следующей версии"
-                  className="w-full px-4 py-3 rounded-xl bg-[#f1f5f9] border-transparent outline-none transition-all text-[#1a1f2c]"
+                  className="w-full px-4 py-3 rounded-xl bg-white/40 border border-white/50 outline-none transition-all text-[#1e2d1f] shadow-sm"
                 />
               </div>
             </div>
@@ -166,14 +166,14 @@ export default function Settings({
           {/* Right Column - Settings Cards */}
           <div className="space-y-8">
             {/* Studio Settings */}
-            <div className="bg-white rounded-3xl p-8 shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-gray-100">
+            <div className="bg-white/40 backdrop-blur-xl rounded-3xl p-8 shadow-sm border border-white/60">
               <h2 className="text-xl font-bold text-[#1a1f2c] mb-6">Настройки студии</h2>
               
               <div className="space-y-6">
                 {/* Dark Theme — coming soon */}
                 <div className="flex items-center justify-between opacity-40 pointer-events-none">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-[#f8f9fa] flex items-center justify-center text-[#6b7280]">
+                    <div className="w-10 h-10 rounded-full bg-white/60 border border-white/80 shadow-sm flex items-center justify-center text-[#1e2d1f]/60">
                       <Moon size={20} />
                     </div>
                     <div>
@@ -189,7 +189,7 @@ export default function Settings({
                 {/* Background Sounds — coming soon */}
                 <div className="flex items-center justify-between opacity-40 pointer-events-none">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-[#f8f9fa] flex items-center justify-center text-[#6b7280]">
+                    <div className="w-10 h-10 rounded-full bg-white/60 border border-white/80 shadow-sm flex items-center justify-center text-[#1e2d1f]/60">
                       <Volume2 size={20} />
                     </div>
                     <div>
@@ -205,7 +205,7 @@ export default function Settings({
                 {/* Smart Hints — coming soon */}
                 <div className="flex items-center justify-between opacity-40 pointer-events-none">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-[#f8f9fa] flex items-center justify-center text-[#6b7280]">
+                    <div className="w-10 h-10 rounded-full bg-white/60 border border-white/80 shadow-sm flex items-center justify-center text-[#1e2d1f]/60">
                       <Sparkles size={20} />
                     </div>
                     <div>
@@ -221,7 +221,7 @@ export default function Settings({
                 {/* Show Word Count */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-[#f8f9fa] flex items-center justify-center text-[#6b7280]">
+                    <div className="w-10 h-10 rounded-full bg-white/60 border border-white/80 shadow-sm flex items-center justify-center text-[#1e2d1f]/60">
                       <Type size={20} />
                     </div>
                     <div>
@@ -240,7 +240,7 @@ export default function Settings({
                 {/* Indent Paragraphs */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-[#f8f9fa] flex items-center justify-center text-[#6b7280]">
+                    <div className="w-10 h-10 rounded-full bg-white/60 border border-white/80 shadow-sm flex items-center justify-center text-[#1e2d1f]/60">
                       <AlignLeft size={20} />
                     </div>
                     <div>
@@ -259,13 +259,13 @@ export default function Settings({
             </div>
 
             {/* Security */}
-            <div className="bg-white rounded-3xl p-8 shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-gray-100">
+            <div className="bg-white/40 backdrop-blur-xl rounded-3xl p-8 shadow-sm border border-white/60">
               <h2 className="text-xl font-bold text-[#1a1f2c] mb-6">Безопасность</h2>
               
               <div className="space-y-4">
-                <button className="w-full flex items-center justify-between p-2 hover:bg-gray-50 rounded-xl transition-colors group">
+                <button className="w-full flex items-center justify-between p-2 hover:bg-white/60 rounded-xl transition-colors group">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl border border-gray-100 flex items-center justify-center text-[#1a1f2c] group-hover:border-gray-200 transition-colors">
+                    <div className="w-10 h-10 rounded-xl border border-white/80 shadow-sm bg-white/50 flex items-center justify-center text-[#1e2d1f]/80 group-hover:bg-white/80 transition-colors">
                       <Lock size={18} />
                     </div>
                     <span className="text-[15px] font-medium text-[#1a1f2c]">Смена пароля</span>
@@ -273,9 +273,9 @@ export default function Settings({
                   <ChevronRight size={18} className="text-gray-400" />
                 </button>
 
-                <button className="w-full flex items-center justify-between p-2 hover:bg-gray-50 rounded-xl transition-colors group">
+                <button className="w-full flex items-center justify-between p-2 hover:bg-white/60 rounded-xl transition-colors group">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl border border-gray-100 flex items-center justify-center text-[#1a1f2c] group-hover:border-gray-200 transition-colors">
+                    <div className="w-10 h-10 rounded-xl border border-white/80 shadow-sm bg-white/50 flex items-center justify-center text-[#1e2d1f]/80 group-hover:bg-white/80 transition-colors">
                       <Shield size={18} />
                     </div>
                     <span className="text-[15px] font-medium text-[#1a1f2c]">Двухфакторная аутентификация</span>
@@ -290,7 +290,7 @@ export default function Settings({
         {/* Data & Export section */}
         <div className="mb-12">
           <h2 className="text-xl font-bold text-[#1a1f2c] mb-4">Ваши данные</h2>
-          <div className="bg-white rounded-3xl p-8 shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-gray-100">
+          <div className="bg-white/40 backdrop-blur-xl rounded-3xl p-8 shadow-sm border border-white/60">
             <div className="flex items-start gap-4 mb-6">
               <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
                 <Shield size={20} />
@@ -330,7 +330,7 @@ export default function Settings({
                 }
               }}
               disabled={isDownloadingAll}
-              className="flex items-center gap-2.5 px-5 py-3 bg-[#f1f5f9] hover:bg-[#e2e8f0] disabled:opacity-50 rounded-xl font-medium text-[#1a1f2c] text-sm transition-colors"
+              className="flex items-center gap-2.5 px-5 py-3 bg-white/60 hover:bg-white/90 shadow-sm border border-white/80 disabled:opacity-50 rounded-xl font-medium text-[#1e2d1f] text-sm transition-colors"
             >
               {isDownloadingAll
                 ? <Loader2 size={16} className="animate-spin" />

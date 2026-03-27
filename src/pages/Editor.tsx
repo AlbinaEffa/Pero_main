@@ -799,6 +799,11 @@ export default function Editor() {
           onToggleCoauthor={handleToggleCoauthor}
           onCreateChapter={handleCreateChapter}
           onToggleChapterStatus={handleToggleChapterStatus}
+          wordCount={editor?.storage.characterCount.words() ?? 0}
+          showWordCount={showWordCount}
+          isSaving={isSaving}
+          lastSavedAt={lastSavedAt}
+          saveError={saveError}
         />
 
         <div className="flex-1 flex flex-col relative">
@@ -816,6 +821,7 @@ export default function Editor() {
             isDictating={isDictating}
             interimTranscript={interimTranscript}
             onOpenSettings={() => setIsSettingsOpen(true)}
+            onOpenSearch={() => setIsSearchOpen(true)}
             onOpenExport={() => setIsExportOpen(true)}
           />
 
@@ -1186,8 +1192,14 @@ export default function Editor() {
       )}
 
       {isSettingsOpen && (
-        <div className="fixed inset-0 z-[100] bg-[#1e2d1f]/20 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8">
-          <div className="bg-[#f8f9fa] rounded-3xl shadow-2xl w-full max-w-5xl max-h-full overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+        <div 
+          className="fixed inset-0 z-[100] bg-[#1e2d1f]/20 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8"
+          onClick={() => setIsSettingsOpen(false)}
+        >
+          <div 
+            className="bg-[#f5f0e8] rounded-3xl shadow-2xl w-full max-w-5xl max-h-full overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
             <Settings
               onClose={() => setIsSettingsOpen(false)}
               showWordCount={showWordCount}

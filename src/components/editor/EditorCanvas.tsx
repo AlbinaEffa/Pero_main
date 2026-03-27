@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Editor as TiptapEditor } from '@tiptap/react';
 import { EditorContent } from '@tiptap/react';
-import { createPortal } from 'react-dom';
 import {
   Bold, Italic, Underline, Strikethrough, List,
-  Undo2, Redo2, Sparkles, User, Download, AlertCircle, Settings2
+  Undo2, Redo2, User, Download, Settings2, Search
 } from 'lucide-react';
 
 interface Props {
@@ -21,6 +20,7 @@ interface Props {
   isDictating: boolean;
   interimTranscript: string;
   onOpenSettings: () => void;
+  onOpenSearch?: () => void;
   onOpenExport?: () => void;
 }
 
@@ -38,9 +38,23 @@ export function EditorCanvas({
   isDictating,
   interimTranscript,
   onOpenSettings,
+  onOpenSearch,
   onOpenExport,
 }: Props) {
   const [isFormatMenuOpen, setIsFormatMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isFormatMenuOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsFormatMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isFormatMenuOpen]);
+
   const [textWidth, setTextWidth] = useState<'narrow' | 'medium' | 'wide'>(() => {
     return (localStorage.getItem('pero_textWidth') as 'narrow' | 'medium' | 'wide') || 'medium';
   });
@@ -50,31 +64,12 @@ export function EditorCanvas({
     setTextWidth(w);
     localStorage.setItem('pero_textWidth', w);
   };
-  
+
   const widthClass = {
     narrow: 'max-w-xl',
     medium: 'max-w-2xl',
-    wide: 'max-w-4xl'
+    wide: 'max-w-4xl',
   }[textWidth];
-
-  // Decide what to show in the save indicator
-  const saveStatusEl = isSaving ? (
-    <div className="flex items-center gap-1.5 text-[#1e2d1f]/40 font-medium text-xs">
-      <Sparkles size={12} className="animate-pulse" /> Сохранение...
-    </div>
-  ) : saveError ? (
-    <div className="flex items-center gap-1.5 text-xs font-medium text-red-500/80" title="Нажмите Cmd+S / Ctrl+S чтобы попробовать снова">
-      <AlertCircle size={12} /> Не сохранено
-    </div>
-  ) : lastSavedAt ? (
-    <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-600/70">
-      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-      Сохранено
-    </div>
-  ) : null;
-
-  // Show badge when word count is on, OR when there's an error (always surface errors)
-  const showBadge = showWordCount || saveError;
 
   return (
     <main className="flex-1 flex flex-col relative bg-transparent shadow-[-10px_0_20px_rgba(0,0,0,0.02)] z-10 transition-all duration-300">
@@ -142,82 +137,72 @@ export function EditorCanvas({
             </button>
           </div>
 
-          <div className="flex items-center gap-2 relative">
+          <div ref={menuRef} className="flex items-center gap-2 relative">
             <button
               onClick={() => setIsFormatMenuOpen(!isFormatMenuOpen)}
               className={`p-2 rounded-lg transition-colors flex items-center justify-center ${isFormatMenuOpen ? 'bg-[#1e2d1f] text-white' : 'bg-[#f4f4f5] text-[#1e2d1f]'}`}
-              title="Настройки отображения"
+              title="Настройки редактора"
             >
               <Settings2 size={18} />
             </button>
 
             {isFormatMenuOpen && (
-              <>
-                {createPortal(
-                  <div className="fixed inset-0 z-[100]" onClick={(e) => { e.stopPropagation(); setIsFormatMenuOpen(false); }} />,
-                  document.body
-                )}
-                <div className="absolute top-full mt-2 left-0 w-64 bg-[#2d3748] rounded-xl shadow-xl border border-white/10 p-5 z-[101] flex flex-col gap-5">
-                  <div
-                    className="flex items-center gap-4 cursor-pointer"
-                    onClick={() => onShowWordCountChange(!showWordCount)}
-                  >
-                    <button
-                      className={`w-[52px] h-7 rounded-full transition-colors relative shrink-0 ${showWordCount ? 'bg-[#bca4ff]' : 'bg-[#4b5563] ring-2 ring-[#6b21a8]'}`}
-                    >
-                      <div className={`w-6 h-6 rounded-full bg-white absolute top-0.5 transition-transform ${showWordCount ? 'translate-x-[26px] left-0' : 'translate-x-0.5 left-0'}`} />
+              <div className="absolute top-full mt-2 left-0 w-60 bg-[#f5f0e8] rounded-2xl shadow-xl border border-[#1e2d1f]/10 p-4 z-[101] flex flex-col gap-4">
+
+                {/* Display toggles */}
+                <div className="flex flex-col gap-3">
+                  <p className="text-[#1e2d1f]/40 text-[10px] font-bold uppercase tracking-widest">Отображение</p>
+
+                  <div className="flex items-center justify-between cursor-pointer" onClick={() => onShowWordCountChange(!showWordCount)}>
+                    <span className="text-[#1e2d1f] text-[14px] font-medium">Счётчик слов</span>
+                    <button className={`w-10 h-6 rounded-full transition-colors relative shrink-0 ${showWordCount ? 'bg-[#1e2d1f]' : 'bg-[#1e2d1f]/20'}`}>
+                      <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${showWordCount ? 'left-5' : 'left-1'}`} />
                     </button>
-                    <span className="text-white text-[15px] font-medium tracking-wide">Количество слов</span>
                   </div>
 
-                  <div
-                    className="flex items-center gap-4 cursor-pointer"
-                    onClick={() => onIndentParagraphsChange(!indentParagraphs)}
-                  >
-                    <button
-                      className={`w-[52px] h-7 rounded-full transition-colors relative shrink-0 ${indentParagraphs ? 'bg-[#bca4ff]' : 'bg-[#4b5563] ring-2 ring-[#6b21a8]'}`}
-                    >
-                      <div className={`w-6 h-6 rounded-full bg-white absolute top-0.5 transition-transform ${indentParagraphs ? 'translate-x-[26px] left-0' : 'translate-x-0.5 left-0'}`} />
+                  <div className="flex items-center justify-between cursor-pointer" onClick={() => onIndentParagraphsChange(!indentParagraphs)}>
+                    <span className="text-[#1e2d1f] text-[14px] font-medium">Отступ абзацев</span>
+                    <button className={`w-10 h-6 rounded-full transition-colors relative shrink-0 ${indentParagraphs ? 'bg-[#1e2d1f]' : 'bg-[#1e2d1f]/20'}`}>
+                      <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${indentParagraphs ? 'left-5' : 'left-1'}`} />
                     </button>
-                    <span className="text-white text-[15px] font-medium tracking-wide">Отступ абзацев</span>
                   </div>
+                </div>
 
-                  {/* Text Width Toggle */}
-                  <div className="flex flex-col gap-2 mt-2">
-                    <span className="text-white/60 text-[13px] font-medium tracking-wide">Ширина страницы</span>
-                    <div className="flex bg-white/5 p-1 rounded-xl">
+                {/* Text width */}
+                <div className="flex flex-col gap-2">
+                  <p className="text-[#1e2d1f]/40 text-[10px] font-bold uppercase tracking-widest">Ширина страницы</p>
+                  <div className="flex bg-[#1e2d1f]/8 p-1 rounded-xl">
+                    {(['narrow', 'medium', 'wide'] as const).map((w, _, arr) => (
                       <button
-                        onClick={() => handleWidthChange('narrow')}
-                        className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors ${textWidth === 'narrow' ? 'bg-white/20 text-white shadow-sm' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}
+                        key={w}
+                        onClick={() => handleWidthChange(w)}
+                        className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors ${textWidth === w ? 'bg-[#1e2d1f] text-white shadow-sm' : 'text-[#1e2d1f]/50 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/10'}`}
                       >
-                        Узкая
+                        {w === 'narrow' ? 'Узкая' : w === 'medium' ? 'Средняя' : 'Широкая'}
                       </button>
-                      <button
-                        onClick={() => handleWidthChange('medium')}
-                        className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors ${textWidth === 'medium' ? 'bg-white/20 text-white shadow-sm' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}
-                      >
-                        Средняя
-                      </button>
-                      <button
-                        onClick={() => handleWidthChange('wide')}
-                        className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors ${textWidth === 'wide' ? 'bg-white/20 text-white shadow-sm' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}
-                      >
-                        Широкая
-                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Keyboard shortcuts */}
+                <div className="border-t border-[#1e2d1f]/10 pt-3">
+                  <p className="text-[#1e2d1f]/40 text-[10px] font-bold uppercase tracking-widest mb-2">Горячие клавиши</p>
+                  <div className="flex flex-col gap-1.5 text-[12px]">
+                    <div className="flex justify-between text-[#1e2d1f]/60">
+                      <span>Сохранить</span>
+                      <kbd className="font-mono bg-[#1e2d1f]/8 px-1.5 py-0.5 rounded text-[10px]">⌘S</kbd>
                     </div>
-                  </div>
-
-                  {/* Keyboard shortcuts hint */}
-                  <div className="border-t border-white/10 pt-4 mt-2">
-                    <p className="text-white/30 text-[11px] font-semibold uppercase tracking-widest mb-3">Горячие клавиши</p>
-                    <div className="flex flex-col gap-2 text-[12px] text-white/50">
-                      <div className="flex justify-between"><span>Сохранить</span><kbd className="font-mono bg-white/10 px-1.5 py-0.5 rounded text-[10px]">⌘S</kbd></div>
-                      <div className="flex justify-between"><span>Найти</span><kbd className="font-mono bg-white/10 px-1.5 py-0.5 rounded text-[10px]">⌘F</kbd></div>
-                      <div className="flex justify-between"><span>Закрыть панель</span><kbd className="font-mono bg-white/10 px-1.5 py-0.5 rounded text-[10px]">Esc</kbd></div>
+                    <div className="flex justify-between text-[#1e2d1f]/60">
+                      <span>Найти</span>
+                      <kbd className="font-mono bg-[#1e2d1f]/8 px-1.5 py-0.5 rounded text-[10px]">⌘F</kbd>
+                    </div>
+                    <div className="flex justify-between text-[#1e2d1f]/60">
+                      <span>Закрыть панель</span>
+                      <kbd className="font-mono bg-[#1e2d1f]/8 px-1.5 py-0.5 rounded text-[10px]">Esc</kbd>
                     </div>
                   </div>
                 </div>
-              </>
+              </div>
             )}
 
             <button
@@ -245,6 +230,15 @@ export function EditorCanvas({
         </div>
 
         <div className="flex items-center gap-2">
+          {onOpenSearch && (
+            <button
+              onClick={onOpenSearch}
+              title="Поиск по тексту (Cmd+F)"
+              className="w-8 h-8 rounded-full bg-black/5 hover:bg-black/10 border-none cursor-pointer flex items-center justify-center text-black/50 hover:text-black/80 transition-colors flex-shrink-0"
+            >
+              <Search size={15} />
+            </button>
+          )}
           {onOpenExport && (
             <button
               onClick={onOpenExport}
@@ -298,22 +292,6 @@ export function EditorCanvas({
               ))}
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Save status + word count badge */}
-      {showBadge && (
-        <div className="absolute bottom-6 right-6 bg-white/90 backdrop-blur-md shadow-sm border border-[#1e2d1f]/5 rounded-xl px-4 py-2 flex items-center gap-3 z-30">
-          {saveStatusEl}
-          {showWordCount && saveStatusEl && (
-            <div className="w-px h-3 bg-[#1e2d1f]/10 shrink-0" />
-          )}
-          {showWordCount && (
-            <div className="flex items-center gap-2">
-              <span className="text-[#1e2d1f]/60 font-medium text-sm">Слов:</span>
-              <span className="text-[#1e2d1f] font-bold text-sm">{wordCount}</span>
-            </div>
-          )}
         </div>
       )}
 

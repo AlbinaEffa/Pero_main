@@ -5,6 +5,8 @@ import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import UnderlineExtension from '@tiptap/extension-underline';
 import CharacterCount from '@tiptap/extension-character-count';
+import Link from '@tiptap/extension-link';
+import { TaskList, TaskItem } from '@tiptap/extension-list';
 
 import { api } from '../services/api';
 import { track } from '../services/analytics';
@@ -25,6 +27,11 @@ import { ProjectSyncPanel } from '../components/editor/ProjectSyncPanel';
 import { FindReplacePopup } from '../components/FindReplacePopup';
 import { SearchPanel } from '../components/editor/SearchPanel';
 import { SearchHighlightExtension, searchHighlightKey } from '../components/editor/searchHighlightExtension';
+import { ToolbarSelectionExtension } from '../components/editor/toolbarSelectionExtension';
+import { TextAlignExtension } from '../components/editor/TextAlignExtension';
+import { SuperscriptExtension } from '../components/editor/SuperscriptExtension';
+import { SubscriptExtension } from '../components/editor/SubscriptExtension';
+import { HighlightMarkExtension } from '../components/editor/HighlightMarkExtension';
 import { ExportPanel } from '../components/ExportPanel';
 import Settings from './Settings';
 
@@ -254,9 +261,23 @@ export default function Editor() {
     extensions: [
       StarterKit,
       UnderlineExtension,
+      Link.configure({
+        openOnClick: false,
+        autolink: true,
+        defaultProtocol: 'https',
+      }),
+      TaskList,
+      TaskItem.configure({
+        nested: true,
+      }),
+      TextAlignExtension,
+      SuperscriptExtension,
+      SubscriptExtension,
+      HighlightMarkExtension,
       CharacterCount,
       Placeholder.configure({ placeholder: 'Напишите свою историю...' }),
       SearchHighlightExtension,
+      ToolbarSelectionExtension,
     ],
     content: '',
     editorProps: {

@@ -79,7 +79,7 @@ export function EditorCanvas({
   return (
     <main className="flex-1 flex flex-col relative bg-transparent shadow-[-10px_0_20px_rgba(0,0,0,0.02)] z-10 transition-all duration-300">
       {/* Top Formatting Toolbar */}
-      <div className="h-14 border-b border-[#1e2d1f]/5 bg-transparent backdrop-blur-[2px] flex items-center justify-between px-6 sticky top-0 z-30 shrink-0">
+      <div className="h-14 border-b border-[#1e2d1f]/10 bg-[#f5f0e8]/90 backdrop-blur-md flex items-center justify-between px-6 sticky top-0 z-30 shrink-0">
         <div className="w-8" />
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-3">
@@ -222,21 +222,24 @@ export function EditorCanvas({
 
             <button
               onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
-              className={`px-2 py-1.5 font-serif font-bold transition-colors text-[16px] ${editor?.isActive('heading', { level: 1 }) ? 'text-[#1e2d1f]' : 'text-[#a1a1aa] hover:text-[#1e2d1f]'}`}
+              className={`px-1.5 py-1 transition-colors flex items-baseline gap-[1px] ${editor?.isActive('heading', { level: 1 }) ? 'text-[#1e2d1f]' : 'text-black/30 hover:text-[#1e2d1f]'}`}
             >
-              H1
+              <span className="font-serif text-[18px]">H</span>
+              <span className="font-serif text-[12px] opacity-70 border-b border-transparent">1</span>
             </button>
             <button
               onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
-              className={`px-2 py-1.5 font-serif font-bold transition-colors text-[16px] ${editor?.isActive('heading', { level: 2 }) ? 'text-[#1e2d1f]' : 'text-[#a1a1aa] hover:text-[#1e2d1f]'}`}
+              className={`px-1.5 py-1 transition-colors flex items-baseline gap-[1px] ${editor?.isActive('heading', { level: 2 }) ? 'text-[#1e2d1f]' : 'text-black/30 hover:text-[#1e2d1f]'}`}
             >
-              H2
+              <span className="font-serif text-[16px]">H</span>
+              <span className="font-serif text-[11px] opacity-70">2</span>
             </button>
             <button
               onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}
-              className={`px-2 py-1.5 font-serif font-bold transition-colors text-[16px] ${editor?.isActive('heading', { level: 3 }) ? 'text-[#1e2d1f]' : 'text-[#a1a1aa] hover:text-[#1e2d1f]'}`}
+              className={`px-1.5 py-1 transition-colors flex items-baseline gap-[1px] ${editor?.isActive('heading', { level: 3 }) ? 'text-[#1e2d1f]' : 'text-black/30 hover:text-[#1e2d1f]'}`}
             >
-              H3
+              <span className="font-serif text-[14px]">H</span>
+              <span className="font-serif text-[10px] opacity-70">3</span>
             </button>
           </div>
         </div>

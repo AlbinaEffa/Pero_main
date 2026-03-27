@@ -304,21 +304,31 @@ export default function Editor() {
 
   // Wrap rawHandleExtract to also optimistically mark the chapter as freshly extracted.
   const handleExtract = useCallback(async () => {
-    await rawHandleExtract();
+    const { chapterSummary } = await rawHandleExtract();
     if (chapterId) {
-      setChapters(prev => prev.map(c =>
-        c.id === chapterId ? { ...c, lastExtractedAt: new Date().toISOString() } : c
-      ));
+      setChapters(prev => prev.map(c => {
+        if (c.id !== chapterId) return c;
+        let title = c.title;
+        if (chapterSummary && /^Глава \d+$/.test(title.trim())) {
+          title = chapterSummary.substring(0, 100);
+        }
+        return { ...c, title, lastExtractedAt: new Date().toISOString() };
+      }));
     }
   }, [rawHandleExtract, chapterId]);
 
   // Server-side recheck wrapper — updates local freshness after the API responds.
   const handleRecheckChapter = useCallback(async () => {
-    await rawRecheckChapter();
+    const { chapterSummary } = await rawRecheckChapter();
     if (chapterId) {
-      setChapters(prev => prev.map(c =>
-        c.id === chapterId ? { ...c, lastExtractedAt: new Date().toISOString() } : c
-      ));
+      setChapters(prev => prev.map(c => {
+        if (c.id !== chapterId) return c;
+        let title = c.title;
+        if (chapterSummary && /^Глава \d+$/.test(title.trim())) {
+          title = chapterSummary.substring(0, 100);
+        }
+        return { ...c, title, lastExtractedAt: new Date().toISOString() };
+      }));
     }
   }, [rawRecheckChapter, chapterId]);
 
@@ -422,7 +432,29 @@ export default function Editor() {
     setIsLoadingContent(true);
     api.get<{ chapter: Chapter }>(`/chapters/${chapterId}`)
       .then(data => {
-        editor.commands.setContent(data.chapter?.content || '');
+        let rawContent = data.chapter?.content || '';
+        if (rawContent) {
+          // If content lacks standard block tags and relies on newlines (raw text import)
+          if (!rawContent.includes('<p>') && !rawContent.includes('<h')) {
+            rawContent = rawContent
+              .split(/\n+/)
+              .map(p => p.trim())
+              .filter(Boolean)
+              .map(p => `<p>${p}</p>`)
+              .join('');
+          }
+          // If content is one giant paragraph with soft breaks (e.g. pasted from PDF)
+          else if ((rawContent.match(/<p>/gi)?.length === 1) && rawContent.includes('<br')) {
+            rawContent = rawContent.replace(/<\/?p>/gi, '').replace(/<br\s*\/?>/gi, '\n');
+            rawContent = rawContent
+              .split(/\n+/)
+              .map(p => p.trim())
+              .filter(Boolean)
+              .map(p => `<p>${p}</p>`)
+              .join('');
+          }
+        }
+        editor.commands.setContent(rawContent);
         // Apply pending search highlight after content is in the editor.
         // rAF gives ProseMirror one paint cycle to update the DOM before we scroll.
         const hl = pendingHighlightRef.current;
@@ -766,9 +798,7 @@ export default function Editor() {
           isCoauthoring={isCoauthoring}
           onToggleCoauthor={handleToggleCoauthor}
           onCreateChapter={handleCreateChapter}
-          onRenameChapter={handleRenameChapter}
           onToggleChapterStatus={handleToggleChapterStatus}
-          onReorderChapters={handleReorderChapters}
         />
 
         <div className="flex-1 flex flex-col relative">
@@ -906,12 +936,13 @@ export default function Editor() {
         </div>
 
         <aside
-          className={`bg-[#f5f0e8] border-l border-[#1e2d1f]/10 flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out z-20 ${
+          className={`bg-[#f5f0e8] border-[#1e2d1f]/10 flex-shrink-0 transition-all duration-300 ease-in-out z-20 overflow-hidden relative ${
             (isBibleOpen || isCoauthoring || isReferenceOpen || isRevisionOpen || isSyncOpen)
-              ? 'w-[320px] translate-x-0'
-              : 'w-0 translate-x-full border-none'
+              ? 'w-[320px] border-l opacity-100'
+              : 'w-0 border-l-0 opacity-0'
           }`}
         >
+          <div className="w-[320px] h-full flex flex-col absolute top-0 left-0">
           {isBibleOpen && (
             <StoryBiblePanel
               activeBibleTab={activeBibleTab}
@@ -1112,6 +1143,7 @@ export default function Editor() {
               </div>
             </div>
           )}
+          </div>
         </aside>
       </div>
 

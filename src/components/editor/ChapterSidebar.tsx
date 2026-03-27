@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, BookOpen, Sparkles, Plus,
-  FileText, ChevronUp, ChevronDown, Check, Edit3,
+  FileText, FileCheck, ChevronUp, ChevronDown, Check, Edit3,
 } from 'lucide-react';
 import { Chapter } from './types';
 
@@ -14,9 +14,7 @@ interface Props {
   isCoauthoring: boolean;
   onToggleCoauthor: () => void;
   onCreateChapter: () => void;
-  onRenameChapter: (id: string, title: string) => Promise<void>;
   onToggleChapterStatus: (id: string, currentStatus: 'draft' | 'done') => Promise<void>;
-  onReorderChapters: (ids: string[]) => Promise<void>;
 }
 
 export function ChapterSidebar({
@@ -27,35 +25,10 @@ export function ChapterSidebar({
   isCoauthoring,
   onToggleCoauthor,
   onCreateChapter,
-  onRenameChapter,
   onToggleChapterStatus,
-  onReorderChapters,
 }: Props) {
   const navigate = useNavigate();
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingTitle, setEditingTitle] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  const startEdit = (chapter: Chapter) => {
-    setEditingId(chapter.id);
-    setEditingTitle(chapter.title);
-    setTimeout(() => inputRef.current?.select(), 0);
-  };
-
-  const commitEdit = async () => {
-    if (!editingId) return;
-    const trimmed = editingTitle.trim();
-    if (trimmed) await onRenameChapter(editingId, trimmed);
-    setEditingId(null);
-  };
-
-  const moveChapter = (index: number, direction: -1 | 1) => {
-    const newChapters = [...chapters];
-    const target = index + direction;
-    if (target < 0 || target >= newChapters.length) return;
-    [newChapters[index], newChapters[target]] = [newChapters[target], newChapters[index]];
-    onReorderChapters(newChapters.map(c => c.id));
-  };
 
   return (
     <aside className="w-[220px] bg-[#1e2d1f] text-white/80 flex flex-col flex-shrink-0 shadow-xl z-20">
@@ -122,74 +95,35 @@ export function ChapterSidebar({
                 isActive ? 'bg-white/8' : 'hover:bg-white/5'
               }`}
             >
-              {/* Status dot */}
-              <button
-                onClick={() => onToggleChapterStatus(chapter.id, chapter.status)}
-                title={isDone ? 'Готово — нажмите для сброса' : 'Черновик — нажмите для завершения'}
-                className="flex-shrink-0 w-4 h-4 flex items-center justify-center rounded-full transition-colors"
-                style={{
-                  background: isDone ? 'rgba(134,239,172,0.25)' : 'rgba(255,255,255,0.06)',
-                  border: `1.5px solid ${isDone ? 'rgba(134,239,172,0.6)' : 'rgba(255,255,255,0.15)'}`,
-                }}
-              >
-                {isDone && <Check size={9} className="text-green-300" strokeWidth={3} />}
-              </button>
-
-              {/* Title or inline edit */}
-              {editingId === chapter.id ? (
-                <input
-                  ref={inputRef}
-                  value={editingTitle}
-                  onChange={e => setEditingTitle(e.target.value)}
-                  onBlur={commitEdit}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') commitEdit();
-                    if (e.key === 'Escape') setEditingId(null);
-                  }}
-                  className="flex-1 min-w-0 bg-white/10 text-white text-sm rounded px-1.5 py-0.5 outline-none border border-white/30 font-medium"
-                  autoFocus
-                />
-              ) : (
+              <div className="flex items-center gap-2 mt-0.5 pl-1.5">
+                {/* Document Status Icon */}
                 <button
-                  onClick={() => navigate(`/editor/${projectId}/${chapter.id}`)}
-                  onDoubleClick={() => startEdit(chapter)}
-                  title="Нажмите для открытия, двойной клик — переименовать"
-                  className={`flex-1 min-w-0 text-left text-sm truncate transition-colors ${
-                    isActive ? 'text-white font-medium' : 'text-white/60 hover:text-white/80'
+                  onClick={() => onToggleChapterStatus(chapter.id, chapter.status)}
+                  title={isDone ? 'Готово — нажмите для сброса' : 'Черновик — нажмите для завершения'}
+                  className={`flex-shrink-0 flex items-center justify-center transition-all hover:scale-105 active:scale-95 ${
+                    isDone ? 'text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.3)]' : 'text-white/40 hover:text-white/70'
                   }`}
                 >
-                  {chapter.title}
+                  {isDone ? <FileCheck size={16} strokeWidth={1.75} /> : <FileText size={16} strokeWidth={1.75} />}
                 </button>
-              )}
+              </div>
 
-              {/* Hover controls */}
-              {editingId !== chapter.id && (
-                <div className="flex-shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => startEdit(chapter)}
-                    title="Переименовать"
-                    className="p-0.5 rounded hover:bg-white/15 text-white/40 hover:text-white/80 transition-colors"
-                  >
-                    <Edit3 size={11} />
-                  </button>
-                  <button
-                    onClick={() => moveChapter(index, -1)}
-                    disabled={index === 0}
-                    title="Переместить вверх"
-                    className="p-0.5 rounded hover:bg-white/15 text-white/40 hover:text-white/80 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
-                  >
-                    <ChevronUp size={11} />
-                  </button>
-                  <button
-                    onClick={() => moveChapter(index, 1)}
-                    disabled={index === chapters.length - 1}
-                    title="Переместить вниз"
-                    className="p-0.5 rounded hover:bg-white/15 text-white/40 hover:text-white/80 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
-                  >
-                    <ChevronDown size={11} />
-                  </button>
-                </div>
-              )}
+              {/* Title Block */}
+              <button
+                onClick={() => navigate(`/editor/${projectId}/${chapter.id}`)}
+                className={`flex-1 flex flex-col min-w-0 text-left transition-colors ${
+                  isActive ? 'text-white' : 'text-white/60 hover:text-white/80'
+                }`}
+              >
+                <span className={`text-[13px] font-semibold tracking-wide ${isActive ? 'text-white' : 'text-white/80'}`}>
+                  Глава {index + 1}
+                </span>
+                {!/^Глава \d+$/.test(chapter.title.trim()) && (
+                  <span className={`text-[11px] truncate leading-tight mt-0.5 ${isActive ? 'text-white/70' : 'text-white/40'}`}>
+                    {chapter.title}
+                  </span>
+                )}
+              </button>
             </div>
           );
         })}

@@ -98,13 +98,16 @@ const BASE_EXTRACTION_PROMPT = `Ты — литературный аналити
 - Не придумывай ничего от себя.
 - Верни ТОЛЬКО валидный JSON-массив без markdown-обёртки.
 
-Формат ответа (строго JSON-массив):
-[
-  {"type": "character", "name": "Имя", "description": "Краткое описание из текста"},
-  {"type": "location", "name": "Название", "description": "Краткое описание из текста"}
-]
+Формат ответа (строго JSON-объект):
+{
+  "entities": [
+    {"type": "character", "name": "Имя", "description": "Краткое описание из текста"},
+    {"type": "location", "name": "Название", "description": "Краткое описание из текста"}
+  ],
+  "chapterSummary": "Краткое рабочее название главы (2-3 слова)"
+}
 
-Если в тексте нет явных сущностей — верни пустой массив: []`;
+Если в тексте нет явных сущностей — верни пустой массив в поле "entities" и подходящий "chapterSummary".`;
 
 /** For recheck: tell the AI about already-approved entities so it can propose updated descriptions. */
 function buildRecheckPrompt(approvedEntities: { name: string; type: string; description: string | null }[]): string {
@@ -134,13 +137,16 @@ ${list}
 - Не придумывай ничего от себя.
 - Верни ТОЛЬКО валидный JSON-массив без markdown-обёртки.
 
-Формат ответа:
-[
-  {"type": "character", "name": "Имя", "description": "..."},
-  ...
-]
+Формат ответа (строго JSON-объект):
+{
+  "entities": [
+    {"type": "character", "name": "Имя", "description": "..."},
+    ...
+  ],
+  "chapterSummary": "Краткое рабочее название главы (2-3 слова)"
+}
 
-Если в тексте нет явных сущностей — верни пустой массив: []`;
+Если в тексте нет явных сущностей — верни пустой массив в поле "entities".`;
 }
 
 // ── shared: process AI extraction results ────────────────────────────────────
@@ -298,17 +304,18 @@ router.post('/extract',
         { userId: req.user.userId, projectId: projectId ?? null, route: 'bible:extract' }
       );
 
-      const raw = response.text || '[]';
+      const raw = response.text || '{"entities":[]}';
       const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
-      let entities: AiEntity[];
+      let parsed: { entities: AiEntity[]; chapterSummary?: string };
       try {
-        entities = JSON.parse(cleaned);
+        parsed = JSON.parse(cleaned);
       } catch {
         console.error('Failed to parse AI response:', cleaned);
         return res.status(500).json({ error: 'AI returned invalid JSON' });
       }
-      if (!Array.isArray(entities)) return res.status(500).json({ error: 'AI returned non-array response' });
+      
+      const entities = Array.isArray(parsed) ? parsed : (parsed.entities || []);
 
       if (projectId && isValidUUID(projectId)) {
         const isOwner = await assertProjectOwnership(projectId, req.user.userId);
@@ -332,14 +339,22 @@ router.post('/extract',
           entities, projectId, chapterId ?? null, chapterTitle, plainTextForExcerpt,
         );
 
-        // Stamp lastExtractedAt
+        // Update lastExtractedAt, and populate chapter summary if title is default
         if (chapterId && isValidUUID(chapterId)) {
           try {
+            const updatePayload: any = { lastExtractedAt: new Date() };
+            if (
+              parsed.chapterSummary && 
+              chapterTitle && 
+              /^Глава \d+$/.test(chapterTitle.trim())
+            ) {
+              updatePayload.title = parsed.chapterSummary.substring(0, 100);
+            }
             await db.update(schema.chapters)
-              .set({ lastExtractedAt: new Date() })
+              .set(updatePayload)
               .where(eq(schema.chapters.id, chapterId));
           } catch (e) {
-            console.warn('[bible:extract] Failed to update lastExtractedAt:', e);
+            console.warn('[bible:extract] Failed to update chapter:', e);
           }
         }
 
@@ -347,6 +362,7 @@ router.post('/extract',
           entities: newSuggestions,
           updates: updateSuggestions,
           total: newSuggestions.length + updateSuggestions.length,
+          chapterSummary: parsed.chapterSummary,
         });
       }
 
@@ -426,34 +442,43 @@ router.post('/recheck/chapter/:chapterId',
         { userId: req.user.userId, projectId, route: 'bible:extract' }
       );
 
-      const raw = response.text || '[]';
+      const raw = response.text || '{"entities":[]}';
       const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
-      let entities: AiEntity[];
+      let parsed: { entities: AiEntity[]; chapterSummary?: string };
       try {
-        entities = JSON.parse(cleaned);
+        parsed = JSON.parse(cleaned);
       } catch {
         return res.status(500).json({ error: 'AI returned invalid JSON' });
       }
-      if (!Array.isArray(entities)) return res.status(500).json({ error: 'AI returned non-array response' });
+      const entities = Array.isArray(parsed) ? parsed : (parsed.entities || []);
 
       const { newSuggestions, updateSuggestions } = await processExtractionResults(
         entities, projectId, chapterId, chapterTitle, plainText,
       );
 
-      // Stamp lastExtractedAt
+      // Update lastExtractedAt, and populate chapter summary if title is default
       try {
+        const updatePayload: any = { lastExtractedAt: new Date() };
+        if (
+          parsed.chapterSummary && 
+          chapterTitle && 
+          /^Глава \d+$/.test(chapterTitle.trim())
+        ) {
+          updatePayload.title = parsed.chapterSummary.substring(0, 100);
+        }
         await db.update(schema.chapters)
-          .set({ lastExtractedAt: new Date() })
+          .set(updatePayload)
           .where(eq(schema.chapters.id, chapterId));
       } catch (e) {
-        console.warn('[bible:recheck] Failed to update lastExtractedAt:', e);
+        console.warn('[bible:recheck] Failed to update chapter:', e);
       }
 
       res.json({
         entities: newSuggestions,
         updates: updateSuggestions,
         total: newSuggestions.length + updateSuggestions.length,
+        chapterSummary: parsed.chapterSummary,
       });
     } catch (error) {
       console.error('Error in POST /bible/recheck/chapter:', error);

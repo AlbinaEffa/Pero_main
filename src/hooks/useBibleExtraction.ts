@@ -38,7 +38,7 @@ export function useBibleExtraction(
     setIsExtracting(true);
     try {
       const chapterContent = getContent();
-      const data = await api.post<{ entities: Entity[]; updates: BibleUpdateSuggestion[] }>(
+      const data = await api.post<{ entities: Entity[]; updates: BibleUpdateSuggestion[]; chapterSummary?: string }>(
         '/bible/extract',
         { chapterContent, projectId, chapterId },
       );
@@ -46,8 +46,10 @@ export function useBibleExtraction(
       setSuggestions(entities);
       mergeUpdateSuggestions(data.updates ?? []);
       track('entities_extracted', { projectId, chapterId, count: entities.length });
+      return { chapterSummary: data.chapterSummary };
     } catch (e) {
       console.error('Extract failed:', e);
+      return {};
     } finally {
       setIsExtracting(false);
     }
@@ -57,11 +59,11 @@ export function useBibleExtraction(
    * Server-side re-extraction: reads saved chapter content from the DB.
    * Returns true if any new suggestions or update suggestions were produced.
    */
-  const recheckChapter = async (): Promise<boolean> => {
-    if (!chapterId) return false;
+  const recheckChapter = async (): Promise<{ hasNew: boolean; chapterSummary?: string }> => {
+    if (!chapterId) return { hasNew: false };
     setIsExtracting(true);
     try {
-      const data = await api.post<{ entities: Entity[]; updates: BibleUpdateSuggestion[] }>(
+      const data = await api.post<{ entities: Entity[]; updates: BibleUpdateSuggestion[]; chapterSummary?: string }>(
         `/bible/recheck/chapter/${chapterId}`,
         {},
       );
@@ -81,10 +83,10 @@ export function useBibleExtraction(
         count: entities.length + updates.length,
         source: 'recheck',
       });
-      return entities.length > 0 || updates.length > 0;
+      return { hasNew: entities.length > 0 || updates.length > 0, chapterSummary: data.chapterSummary };
     } catch (e) {
       console.error('Recheck failed:', e);
-      return false;
+      return { hasNew: false };
     } finally {
       setIsExtracting(false);
     }

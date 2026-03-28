@@ -1,6 +1,6 @@
 import {
   Mic, Sparkles, Headphones, Search, BookOpen, Bookmark,
-  SkipBack, Pause, SkipForward, X, GitBranch, Activity,
+  SkipBack, Pause, SkipForward, X, GitBranch, Activity, Maximize2, Minimize2,
 } from 'lucide-react';
 import { BIBLE_MENU_ITEMS } from './constants';
 
@@ -22,6 +22,8 @@ interface Props {
   onToggleRevision: () => void;
   isSyncOpen: boolean;
   onToggleSync: () => void;
+  isFocusMode: boolean;
+  onToggleFocusMode: () => void;
   /** Badge count for the sync panel button (stale + unknown chapters) */
   syncBadgeCount: number;
   onOpenSearch: () => void;
@@ -45,6 +47,8 @@ export function BottomToolbar({
   onToggleRevision,
   isSyncOpen,
   onToggleSync,
+  isFocusMode,
+  onToggleFocusMode,
   syncBadgeCount,
   onOpenSearch,
 }: Props) {
@@ -214,6 +218,18 @@ export function BottomToolbar({
                 {syncBadgeCount > 9 ? '9+' : syncBadgeCount}
               </span>
             )}
+          </button>
+
+          <button
+            onClick={onToggleFocusMode}
+            className={`p-2 transition-colors rounded-lg outline-none focus:outline-none focus:ring-0 flex items-center justify-center shrink-0 ${
+              isFocusMode
+                ? 'bg-[#1e2d1f] text-white'
+                : 'bg-transparent text-[#6b7280] hover:bg-[#f5f0e8] hover:text-[#1e2d1f]'
+            }`}
+            title={isFocusMode ? 'Выйти из режима фокусировки' : 'Режим фокусировки'}
+          >
+            {isFocusMode ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
           </button>
         </div>
       </div>

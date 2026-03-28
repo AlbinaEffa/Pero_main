@@ -14,7 +14,7 @@ export const TextAlignExtension = Extension.create({
 
   addOptions() {
     return {
-      types: ['paragraph', 'heading'],
+      types: ['paragraph', 'heading', 'blockquote'],
       alignments: ['left', 'center', 'right', 'justify'],
       defaultAlignment: null,
     };

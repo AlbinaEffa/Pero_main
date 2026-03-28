@@ -32,11 +32,14 @@ import { TextAlignExtension } from '../components/editor/TextAlignExtension';
 import { SuperscriptExtension } from '../components/editor/SuperscriptExtension';
 import { SubscriptExtension } from '../components/editor/SubscriptExtension';
 import { HighlightMarkExtension } from '../components/editor/HighlightMarkExtension';
+import { SceneBreakExtension } from '../components/editor/SceneBreakExtension';
 import { ExportPanel } from '../components/ExportPanel';
 import Settings from './Settings';
 
 import { Chapter, Entity } from '../components/editor/types';
 import { Users, MapPin, Box, Scale, Bookmark, X, AlertTriangle, ChevronUp, ChevronDown } from 'lucide-react';
+
+type EditorFontName = 'cormorant' | 'literata' | 'source-serif';
 
 /**
  * Stem-based matching for Russian morphology.
@@ -51,6 +54,41 @@ function russianStemMatch(entityName: string, text: string): boolean {
   const stem = name.slice(0, stemLen);
   const words = text.toLowerCase().split(/[^а-яёa-z0-9'-]+/i).filter(w => w.length > 0);
   return words.some(w => w.startsWith(stem));
+}
+
+function splitChapterTitle(title: string, fallbackOrder?: number): { prefix: string; suffix: string } {
+  const trimmed = title.trim();
+  const match = trimmed.match(/^(Глава\s+\d+)(?:[\s.:—-]+(.+))?$/i);
+  if (match) {
+    return {
+      prefix: match[1].trim(),
+      suffix: match[2]?.trim() ?? '',
+    };
+  }
+
+  const fallbackPrefix = fallbackOrder != null ? `Глава ${fallbackOrder + 1}` : 'Глава';
+  return {
+    prefix: fallbackPrefix,
+    suffix: trimmed,
+  };
+}
+
+function composeChapterTitle(prefix: string, suffix: string): string {
+  return suffix.trim() ? `${prefix} ${suffix.trim()}` : prefix;
+}
+
+function sanitizeChapterContent(html: string): string {
+  const trimmed = html
+    .replace(/<(h1|div)[^>]*data-node-type=["']chapter-title["'][^>]*>[\s\S]*?<\/\1>/gi, '')
+    .trim();
+
+  return trimmed || '<p></p>';
+}
+
+function fallbackNormalizeDictation(rawText: string): string {
+  const normalized = rawText.replace(/\s+/g, ' ').trim();
+  if (!normalized) return '';
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 }
 
 const ENTITY_SECTIONS = [
@@ -196,11 +234,60 @@ export default function Editor() {
   const routeHighlight = _locState?.searchHighlight;   // matchText fingerprint from backend
   const routeSearchQuery = _locState?.searchQuery;     // raw user query (for selection + highlight)
 
+  const [isDictationProcessing, setIsDictationProcessing] = useState(false);
+  const dictationQueueRef = useRef<string[]>([]);
+  const isProcessingDictationRef = useRef(false);
+  const editorRef = useRef<TiptapEditor | null>(null);
+
+  const insertDictationText = useCallback((text: string) => {
+    const targetEditor = editorRef.current;
+    const normalized = text.trim();
+    if (!targetEditor || targetEditor.isDestroyed || !normalized) return;
+    targetEditor.chain().focus().insertContent(`${normalized} `).run();
+  }, []);
+
+  const normalizeDictationChunk = useCallback(async (rawText: string) => {
+    const cleaned = rawText.trim();
+    if (!cleaned) return '';
+
+    try {
+      const data = await api.post<{ text: string }>('/ai/dictation/normalize', {
+        rawText: cleaned,
+        chapterContent: editorRef.current?.getText() ?? '',
+        projectId,
+        chapterId,
+      });
+      return (data.text ?? '').trim() || fallbackNormalizeDictation(cleaned);
+    } catch {
+      return fallbackNormalizeDictation(cleaned);
+    }
+  }, [projectId, chapterId]);
+
+  const processDictationQueue = useCallback(async () => {
+    if (isProcessingDictationRef.current) return;
+
+    isProcessingDictationRef.current = true;
+    setIsDictationProcessing(true);
+
+    try {
+      while (dictationQueueRef.current.length > 0) {
+        const nextChunk = dictationQueueRef.current.shift();
+        if (!nextChunk?.trim()) continue;
+        const normalized = await normalizeDictationChunk(nextChunk);
+        insertDictationText(normalized);
+      }
+    } finally {
+      isProcessingDictationRef.current = false;
+      setIsDictationProcessing(false);
+    }
+  }, [insertDictationText, normalizeDictationChunk]);
+
   const { isListening, isSupported, interimTranscript, toggleListening } = useDictation({
     language: 'ru-RU',
     onResult: (text: string, isFinal: boolean) => {
-      if (isFinal && editor) {
-        editor.chain().focus().insertContent(text + ' ').run();
+      if (isFinal) {
+        dictationQueueRef.current.push(text);
+        void processDictationQueue();
       }
     },
   });
@@ -220,6 +307,7 @@ export default function Editor() {
   const [isCoauthoring, setIsCoauthoring] = useState(false);
   const [isRevisionOpen, setIsRevisionOpen] = useState(false);
   const [isSyncOpen, setIsSyncOpen] = useState(false);
+  const [isFocusMode, setIsFocusMode] = useState(false);
   const [isRecheckingAll, setIsRecheckingAll] = useState(false);
   const [isReading, setIsReading] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -239,11 +327,19 @@ export default function Editor() {
     const stored = localStorage.getItem('pero_indentParagraphs');
     return stored !== null ? stored === 'true' : false;
   });
+  const [editorFont, setEditorFont] = useState<EditorFontName>(() => {
+    return (localStorage.getItem('pero_editorFont') as EditorFontName) || 'cormorant';
+  });
+  const [chapterTitleDraft, setChapterTitleDraft] = useState('');
+  const [chapterTitleDraftChapterId, setChapterTitleDraftChapterId] = useState<string | null>(null);
 
   const { isSaving, lastSavedAt, saveError, onUpdate: autosaveUpdate, forceSave } = useAutosave(chapterId);
   const [isLoadingContent, setIsLoadingContent] = useState(false);
   const { scheduleEmbed } = useEmbedding(projectId, chapterId);
   const [selectedText, setSelectedText] = useState('');
+  const currentChapterRef = useRef<Chapter | null>(null);
+  currentChapterRef.current = chapters.find(ch => ch.id === chapterId) ?? null;
+  const chapterTitleSaveTimerRef = useRef<number | null>(null);
 
   // Combined update handler: autosave (1s debounce) + background embedding (45s debounce)
   const onUpdate = useCallback(
@@ -260,6 +356,7 @@ export default function Editor() {
   const editor = useEditor({
     extensions: [
       StarterKit,
+      SceneBreakExtension,
       UnderlineExtension,
       Link.configure({
         openOnClick: false,
@@ -275,7 +372,22 @@ export default function Editor() {
       SubscriptExtension,
       HighlightMarkExtension,
       CharacterCount,
-      Placeholder.configure({ placeholder: 'Напишите свою историю...' }),
+      Placeholder.configure({
+        placeholder: ({ node }) => {
+          if (node.type.name === 'heading') {
+            const level = Number(node.attrs.level ?? 1);
+            if (level === 1) return 'Heading 1';
+            if (level === 2) return 'Heading 2';
+            if (level === 3) return 'Heading 3';
+          }
+          if (node.type.name === 'blockquote') {
+            return 'Quote';
+          }
+          return "Введите / для вызова команд";
+        },
+        emptyNodeClass: 'is-empty',
+        showOnlyCurrent: true,
+      }),
       SearchHighlightExtension,
       ToolbarSelectionExtension,
     ],
@@ -291,6 +403,16 @@ export default function Editor() {
       setSelectedText(from === to ? '' : ed.state.doc.textBetween(from, to, ' '));
     },
   });
+
+  useEffect(() => {
+    editorRef.current = editor ?? null;
+  }, [editor]);
+
+  useEffect(() => {
+    dictationQueueRef.current = [];
+    isProcessingDictationRef.current = false;
+    setIsDictationProcessing(false);
+  }, [chapterId]);
 
   const getContent = useCallback(() => editor?.getText() || '', [editor]);
 
@@ -475,6 +597,7 @@ export default function Editor() {
               .join('');
           }
         }
+        rawContent = sanitizeChapterContent(rawContent);
         editor.commands.setContent(rawContent);
         // Apply pending search highlight after content is in the editor.
         // rAF gives ProseMirror one paint cycle to update the DOM before we scroll.
@@ -712,6 +835,31 @@ export default function Editor() {
     setChapters(prev => prev.map(c => c.id === id ? { ...c, title } : c));
   };
 
+  const handleChapterTitleSuffixChange = useCallback((suffix: string) => {
+    const chapter = currentChapterRef.current;
+    if (!chapter) return;
+
+    setChapterTitleDraft(suffix);
+    setChapterTitleDraftChapterId(chapter.id);
+
+    const { prefix } = splitChapterTitle(chapter.title, chapter.order);
+    const nextTitle = composeChapterTitle(prefix, suffix);
+
+    setChapters(prev => prev.map(c => (
+      c.id === chapter.id ? { ...c, title: nextTitle } : c
+    )));
+
+    if (chapterTitleSaveTimerRef.current) {
+      window.clearTimeout(chapterTitleSaveTimerRef.current);
+    }
+
+    chapterTitleSaveTimerRef.current = window.setTimeout(() => {
+      handleRenameChapter(chapter.id, nextTitle).catch(error => {
+        console.error('Failed to rename chapter:', error);
+      });
+    }, 400);
+  }, []);
+
   const handleToggleChapterStatus = async (id: string, currentStatus: 'draft' | 'done') => {
     const newStatus = currentStatus === 'draft' ? 'done' : 'draft';
     await api.patch(`/chapters/${id}`, { status: newStatus });
@@ -795,6 +943,58 @@ export default function Editor() {
     }
   };
 
+  const handleToggleFocusMode = () => {
+    const next = !isFocusMode;
+    setIsFocusMode(next);
+
+    if (next) {
+      setIsBibleOpen(false);
+      setIsReferenceOpen(false);
+      setIsBibleMenuOpen(false);
+      setIsCoauthoring(false);
+      setIsRevisionOpen(false);
+      setIsSyncOpen(false);
+      setIsSettingsOpen(false);
+      setIsExportOpen(false);
+      setIsSearchOpen(false);
+      setIsGlobalSearchOpen(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (chapterTitleSaveTimerRef.current) {
+        window.clearTimeout(chapterTitleSaveTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const chapter = currentChapterRef.current;
+    if (!chapter || chapter.id === chapterTitleDraftChapterId) return;
+    setChapterTitleDraft(splitChapterTitle(chapter.title, chapter.order).suffix);
+    setChapterTitleDraftChapterId(chapter.id);
+  }, [chapterId, chapters, chapterTitleDraftChapterId]);
+
+  const currentChapterPrefix = (() => {
+    const chapter = currentChapterRef.current;
+    if (!chapter) return 'Глава';
+    return splitChapterTitle(chapter.title, chapter.order).prefix;
+  })();
+  const currentChapterTitleSuffix = (() => {
+    const chapter = currentChapterRef.current;
+    if (!chapter) return '';
+    if (chapter.id === chapterTitleDraftChapterId) {
+      return chapterTitleDraft;
+    }
+    return splitChapterTitle(chapter.title, chapter.order).suffix;
+  })();
+
+  const handleEditorFontChange = useCallback((font: EditorFontName) => {
+    setEditorFont(font);
+    localStorage.setItem('pero_editorFont', font);
+  }, []);
+
   return (
     <>
       <style>{`
@@ -811,21 +1011,25 @@ export default function Editor() {
       `}</style>
 
       <div className="flex h-screen w-full bg-[#f5f0e8] overflow-hidden font-sans text-[#1e2d1f]">
-        <ChapterSidebar
-          projectId={projectId!}
-          chapterId={chapterId}
-          chapters={chapters}
-          isLoadingChapters={isLoadingChapters}
-          isCoauthoring={isCoauthoring}
-          onToggleCoauthor={handleToggleCoauthor}
-          onCreateChapter={handleCreateChapter}
-          onToggleChapterStatus={handleToggleChapterStatus}
-          wordCount={editor?.storage.characterCount.words() ?? 0}
-          showWordCount={showWordCount}
-          isSaving={isSaving}
-          lastSavedAt={lastSavedAt}
-          saveError={saveError}
-        />
+        {!isFocusMode && (
+          <ChapterSidebar
+            projectId={projectId!}
+            chapterId={chapterId}
+            chapters={chapters}
+            isLoadingChapters={isLoadingChapters}
+            isCoauthoring={isCoauthoring}
+            onToggleCoauthor={handleToggleCoauthor}
+            onCreateChapter={handleCreateChapter}
+            onToggleChapterStatus={handleToggleChapterStatus}
+            wordCount={editor?.storage.characterCount.words() ?? 0}
+            showWordCount={showWordCount}
+            onShowWordCountChange={setShowWordCount}
+            isSaving={isSaving}
+            lastSavedAt={lastSavedAt}
+            saveError={saveError}
+            editorFont={editorFont}
+          />
+        )}
 
         <div className="flex-1 flex flex-col relative">
           <EditorCanvas
@@ -834,13 +1038,16 @@ export default function Editor() {
             lastSavedAt={lastSavedAt}
             saveError={saveError}
             isLoadingContent={isLoadingContent}
-            chapterTitle={chapters.find(c => c.id === chapterId)?.title}
-            showWordCount={showWordCount}
-            onShowWordCountChange={setShowWordCount}
+            chapterPrefix={currentChapterPrefix}
+            chapterTitleSuffix={currentChapterTitleSuffix}
+            onChapterTitleSuffixChange={handleChapterTitleSuffixChange}
             indentParagraphs={indentParagraphs}
             onIndentParagraphsChange={setIndentParagraphs}
-            isDictating={isDictating}
-            interimTranscript={interimTranscript}
+            editorFont={editorFont}
+            onEditorFontChange={handleEditorFontChange}
+            isFocusMode={isFocusMode}
+            isDictating={isDictating || isDictationProcessing}
+            interimTranscript={interimTranscript || (isDictationProcessing ? 'Обрабатываю диктовку…' : '')}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onOpenSearch={() => setIsSearchOpen(true)}
             onOpenExport={() => setIsExportOpen(true)}
@@ -868,6 +1075,8 @@ export default function Editor() {
             onToggleRevision={handleToggleRevision}
             isSyncOpen={isSyncOpen}
             onToggleSync={handleToggleSync}
+            isFocusMode={isFocusMode}
+            onToggleFocusMode={handleToggleFocusMode}
             syncBadgeCount={chapters.reduce((acc, ch) => {
               if (!ch.lastExtractedAt) return acc + 1;
               return new Date(ch.updatedAt).getTime() > new Date(ch.lastExtractedAt).getTime() ? acc + 1 : acc;
@@ -964,7 +1173,7 @@ export default function Editor() {
 
         <aside
           className={`bg-[#f5f0e8] border-[#1e2d1f]/10 flex-shrink-0 transition-all duration-300 ease-in-out z-20 overflow-hidden relative ${
-            (isBibleOpen || isCoauthoring || isReferenceOpen || isRevisionOpen || isSyncOpen)
+            (!isFocusMode && (isBibleOpen || isCoauthoring || isReferenceOpen || isRevisionOpen || isSyncOpen))
               ? 'w-[320px] border-l opacity-100'
               : 'w-0 border-l-0 opacity-0'
           }`}

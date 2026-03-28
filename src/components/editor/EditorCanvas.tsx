@@ -4,8 +4,8 @@ import { EditorContent } from '@tiptap/react';
 import {
   Bold, Italic, Underline, Strikethrough, List, ListOrdered, ListTodo,
   Undo2, Redo2, User, Download, Search, ChevronDown,
-  Link2, AlignLeft, AlignCenter, AlignRight, AlignJustify, Code, Pilcrow,
-  CornerDownLeft, ExternalLink, Trash2, Highlighter, CircleOff
+  Link2, AlignLeft, AlignCenter, AlignRight, AlignJustify, Code, ListIndentIncrease,
+  CornerDownLeft, ExternalLink, Trash2, Highlighter, CircleOff, Quote
 } from 'lucide-react';
 import type { HighlightColor } from './HighlightMarkExtension';
 import { toolbarSelectionKey } from './toolbarSelectionExtension';
@@ -16,11 +16,14 @@ interface Props {
   lastSavedAt?: Date | null;
   saveError?: boolean;
   isLoadingContent?: boolean;
-  chapterTitle?: string;
-  showWordCount: boolean;
-  onShowWordCountChange: (v: boolean) => void;
+  chapterPrefix?: string;
+  chapterTitleSuffix?: string;
+  onChapterTitleSuffixChange?: (value: string) => void;
   indentParagraphs: boolean;
   onIndentParagraphsChange: (v: boolean) => void;
+  editorFont: EditorFontName;
+  onEditorFontChange: (font: EditorFontName) => void;
+  isFocusMode?: boolean;
   isDictating: boolean;
   interimTranscript: string;
   onOpenSettings: () => void;
@@ -32,6 +35,15 @@ type InlineMarkName = 'bold' | 'italic' | 'underline' | 'strike' | 'code';
 type EditorFontName = 'cormorant' | 'literata' | 'source-serif';
 type BlockStyle = 'paragraph' | 'h1' | 'h2' | 'h3';
 type ListStyle = 'bulletList' | 'orderedList' | 'taskList';
+type SlashCommandId = 'chapterTitle' | 'sceneBreak' | 'h1' | 'h2' | 'h3' | 'blockquote';
+type SlashMenuState = {
+  query: string;
+  range: { from: number; to: number };
+  blockRange: { from: number; to: number };
+  blockType: string;
+  top: number;
+  left: number;
+};
 
 const HIGHLIGHT_COLORS: { color: HighlightColor; label: string }[] = [
   { color: '#dce8c8', label: 'Sage' },
@@ -39,6 +51,20 @@ const HIGHLIGHT_COLORS: { color: HighlightColor; label: string }[] = [
   { color: '#f2dcdd', label: 'Blush' },
   { color: '#e8def3', label: 'Lavender' },
   { color: '#f3e8b8', label: 'Butter' },
+];
+
+const SLASH_COMMANDS: {
+  id: SlashCommandId;
+  label: string;
+  hint: string;
+  search: string[];
+}[] = [
+  { id: 'chapterTitle', label: 'Название главы', hint: 'Связано с оглавлением', search: ['chapter', 'title', 'глава', 'название'] },
+  { id: 'sceneBreak', label: 'Разделитель сцены', hint: 'Вставить разрыв сцены', search: ['scene', 'break', 'divider', 'сцена', 'разделитель'] },
+  { id: 'h1', label: 'Heading 1', hint: 'Крупный заголовок внутри текста', search: ['h1', 'heading', 'заголовок'] },
+  { id: 'h2', label: 'Heading 2', hint: 'Средний заголовок внутри текста', search: ['h2', 'heading', 'подзаголовок'] },
+  { id: 'h3', label: 'Heading 3', hint: 'Небольшой заголовок внутри текста', search: ['h3', 'heading'] },
+  { id: 'blockquote', label: 'Цитата', hint: 'Цитата или эпиграф', search: ['quote', 'blockquote', 'цитата', 'эпиграф'] },
 ];
 
 function isWordChar(char: string | undefined): boolean {
@@ -171,17 +197,47 @@ function clearToolbarSelectionPreview(editor: TiptapEditor | null): void {
   editor.view.dispatch(editor.view.state.tr.setMeta(toolbarSelectionKey, 'clear'));
 }
 
+function getSlashMenuState(editor: TiptapEditor | null): SlashMenuState | null {
+  if (!editor || editor.isDestroyed) return null;
+  const { selection } = editor.state;
+  if (!selection.empty) return null;
+
+  const { $from } = selection;
+  const parent = $from.parent;
+  if (!parent.isTextblock) return null;
+
+  const supportedBlockTypes = new Set(['paragraph', 'heading', 'blockquote']);
+  if (!supportedBlockTypes.has(parent.type.name)) return null;
+
+  const text = parent.textContent ?? '';
+  if (!text.startsWith('/')) return null;
+  if (text.length > 40 || /\s{2,}/.test(text)) return null;
+
+  const coords = editor.view.coordsAtPos(selection.from);
+  return {
+    query: text.slice(1).trim().toLowerCase(),
+    range: { from: $from.start(), to: $from.start() + text.length },
+    blockRange: { from: $from.before(), to: $from.after() },
+    blockType: parent.type.name,
+    top: coords.bottom + 10,
+    left: coords.left,
+  };
+}
+
 export function EditorCanvas({
   editor,
   isSaving,
   lastSavedAt,
   saveError,
   isLoadingContent,
-  chapterTitle,
-  showWordCount,
-  onShowWordCountChange,
+  chapterPrefix = 'Глава',
+  chapterTitleSuffix = '',
+  onChapterTitleSuffixChange,
   indentParagraphs,
   onIndentParagraphsChange,
+  editorFont,
+  onEditorFontChange,
+  isFocusMode = false,
   isDictating,
   interimTranscript,
   onOpenSettings,
@@ -194,9 +250,12 @@ export function EditorCanvas({
   const [isLinkMenuOpen, setIsLinkMenuOpen] = useState(false);
   const [isHighlightMenuOpen, setIsHighlightMenuOpen] = useState(false);
   const [activeHighlightColor, setActiveHighlightColor] = useState<HighlightColor | null>(null);
+  const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
+  const [slashIndex, setSlashIndex] = useState(0);
   const [linkValue, setLinkValue] = useState('https://');
   const menuRef = useRef<HTMLDivElement>(null);
   const linkInputRef = useRef<HTMLInputElement>(null);
+  const chapterTitleInputRef = useRef<HTMLInputElement>(null);
   const linkSelectionRef = useRef<{ from: number; to: number } | null>(null);
   const isApplyingHighlightRef = useRef(false);
 
@@ -227,6 +286,23 @@ export function EditorCanvas({
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
 
+    if (isLinkMenuOpen && linkSelectionRef.current) {
+      showToolbarSelectionPreview(editor);
+      editor.view.dispatch(
+        editor.view.state.tr.setMeta(toolbarSelectionKey, {
+          from: linkSelectionRef.current.from,
+          to: linkSelectionRef.current.to,
+        })
+      );
+      return;
+    }
+
+    clearToolbarSelectionPreview(editor);
+  }, [editor, isLinkMenuOpen]);
+
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+
     const handleSelectionUpdate = ({ editor: ed }: { editor: TiptapEditor }) => {
       if (!activeHighlightColor || isApplyingHighlightRef.current) return;
       const { from, to, anchor, head } = ed.state.selection;
@@ -249,6 +325,31 @@ export function EditorCanvas({
       editor.off('selectionUpdate', handleSelectionUpdate);
     };
   }, [editor, activeHighlightColor]);
+
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+
+    const syncSlashMenu = ({ editor: ed }: { editor: TiptapEditor }) => {
+      if (isLinkMenuOpen) {
+        setSlashMenu(null);
+        return;
+      }
+      setSlashMenu(getSlashMenuState(ed));
+    };
+
+    syncSlashMenu({ editor });
+    editor.on('selectionUpdate', syncSlashMenu);
+    editor.on('update', syncSlashMenu);
+
+    return () => {
+      editor.off('selectionUpdate', syncSlashMenu);
+      editor.off('update', syncSlashMenu);
+    };
+  }, [editor, isLinkMenuOpen]);
+
+  useEffect(() => {
+    setSlashIndex(0);
+  }, [slashMenu?.query]);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
@@ -283,25 +384,15 @@ export function EditorCanvas({
   const [textWidth, setTextWidth] = useState<'narrow' | 'medium' | 'wide'>(() => {
     return (localStorage.getItem('pero_textWidth') as 'narrow' | 'medium' | 'wide') || 'medium';
   });
-  const [editorFont, setEditorFont] = useState<EditorFontName>(() => {
-    return (localStorage.getItem('pero_editorFont') as EditorFontName) || 'cormorant';
-  });
-  const wordCount = editor?.storage.characterCount.words() || 0;
-
   const handleWidthChange = (w: 'narrow' | 'medium' | 'wide') => {
     setTextWidth(w);
     localStorage.setItem('pero_textWidth', w);
   };
 
-  const handleFontChange = (font: EditorFontName) => {
-    setEditorFont(font);
-    localStorage.setItem('pero_editorFont', font);
-  };
-
   const widthClass = {
-    narrow: 'max-w-xl',
-    medium: 'max-w-2xl',
-    wide: 'max-w-4xl',
+    narrow: 'max-w-[44rem]',
+    medium: 'max-w-[56rem]',
+    wide: 'max-w-[68rem]',
   }[textWidth];
 
   const editorFontClass = {
@@ -319,7 +410,7 @@ export function EditorCanvas({
         : 'paragraph';
 
   const currentBlockLabel = {
-    paragraph: 'Text',
+    paragraph: 'Текст',
     h1: 'H1',
     h2: 'H2',
     h3: 'H3',
@@ -342,6 +433,73 @@ export function EditorCanvas({
     if (style === 'h3') chain.toggleHeading({ level: 3 }).run();
     setIsBlockMenuOpen(false);
   };
+
+  const filteredSlashCommands = slashMenu
+    ? SLASH_COMMANDS.filter(command => {
+        if (!slashMenu.query) return true;
+        return command.search.some(term => term.includes(slashMenu.query));
+      })
+    : [];
+
+  const runSlashCommand = (commandId: SlashCommandId) => {
+    if (!editor || !slashMenu) return;
+    const chain = editor.chain().focus().deleteRange(slashMenu.range);
+
+    if (commandId === 'chapterTitle') {
+      chain.setParagraph().run();
+      requestAnimationFrame(() => chapterTitleInputRef.current?.focus());
+      setSlashMenu(null);
+      return;
+    }
+    if (commandId === 'sceneBreak') {
+      editor
+        .chain()
+        .focus()
+        .deleteRange(slashMenu.blockRange)
+        .insertContent([{ type: 'sceneBreak' }, { type: 'paragraph' }])
+        .run();
+      setSlashMenu(null);
+      return;
+    }
+    if (commandId === 'h1') chain.setHeading({ level: 1 }).run();
+    if (commandId === 'h2') chain.setHeading({ level: 2 }).run();
+    if (commandId === 'h3') chain.setHeading({ level: 3 }).run();
+    if (commandId === 'blockquote') {
+      if (slashMenu.blockType !== 'blockquote') {
+        chain.setParagraph().toggleBlockquote().run();
+      } else {
+        chain.run();
+      }
+    }
+
+    setSlashMenu(null);
+  };
+
+  useEffect(() => {
+    if (!slashMenu || filteredSlashCommands.length === 0) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setSlashIndex(prev => (prev + 1) % filteredSlashCommands.length);
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setSlashIndex(prev => (prev - 1 + filteredSlashCommands.length) % filteredSlashCommands.length);
+      }
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        runSlashCommand(filteredSlashCommands[slashIndex]?.id ?? filteredSlashCommands[0].id);
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setSlashMenu(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [slashMenu, filteredSlashCommands, slashIndex]);
 
   const applyListStyle = (style: ListStyle) => {
     if (!editor) return;
@@ -397,6 +555,12 @@ export function EditorCanvas({
     if (!range) return;
 
     linkSelectionRef.current = range;
+    editor.view.dispatch(
+      editor.view.state.tr.setMeta(toolbarSelectionKey, {
+        from: range.from,
+        to: range.to,
+      })
+    );
     setLinkValue(editor.getAttributes('link').href ?? 'https://');
     setIsLinkMenuOpen(true);
     setIsBlockMenuOpen(false);
@@ -418,6 +582,7 @@ export function EditorCanvas({
       .run();
 
     setIsLinkMenuOpen(false);
+    linkSelectionRef.current = null;
   };
 
   const removeLink = () => {
@@ -429,6 +594,7 @@ export function EditorCanvas({
       .unsetLink()
       .run();
     setIsLinkMenuOpen(false);
+    linkSelectionRef.current = null;
   };
 
   const openLinkInNewTab = () => {
@@ -455,11 +621,27 @@ export function EditorCanvas({
 
   return (
     <main className="flex-1 flex flex-col relative bg-transparent shadow-[-10px_0_20px_rgba(0,0,0,0.02)] z-10 transition-all duration-300">
+      {!isFocusMode && (
+      <>
       {/* Top Formatting Toolbar */}
       <div
         className="h-14 border-b border-[#1e2d1f]/10 bg-[#f5f0e8]/90 backdrop-blur-md flex items-center justify-between px-6 sticky top-0 z-30 shrink-0"
-        onMouseEnter={() => showToolbarSelectionPreview(editor)}
-        onMouseLeave={() => clearToolbarSelectionPreview(editor)}
+        onMouseEnter={() => {
+          if (isLinkMenuOpen && linkSelectionRef.current && editor && !editor.isDestroyed) {
+            editor.view.dispatch(
+              editor.view.state.tr.setMeta(toolbarSelectionKey, {
+                from: linkSelectionRef.current.from,
+                to: linkSelectionRef.current.to,
+              })
+            );
+            return;
+          }
+          showToolbarSelectionPreview(editor);
+        }}
+        onMouseLeave={() => {
+          if (isLinkMenuOpen) return;
+          clearToolbarSelectionPreview(editor);
+        }}
       >
         <div className="w-8" />
         <div className="flex items-center gap-4">
@@ -507,7 +689,7 @@ export function EditorCanvas({
               {isBlockMenuOpen && (
                 <div className="absolute top-full mt-2 left-0 min-w-32 bg-[#f5f0e8] rounded-xl shadow-lg border border-[#1e2d1f]/10 p-1.5 z-[101]">
                   {([
-                    { key: 'paragraph', label: 'Text' },
+                    { key: 'paragraph', label: 'Текст' },
                     { key: 'h1', label: 'H1' },
                     { key: 'h2', label: 'H2' },
                     { key: 'h3', label: 'H3' },
@@ -560,7 +742,7 @@ export function EditorCanvas({
                     }`}
                   >
                     <List size={15} />
-                    <span>Bulleted list</span>
+                    <span>Маркированный список</span>
                   </button>
                   <button
                     onMouseDown={(e) => e.preventDefault()}
@@ -572,7 +754,7 @@ export function EditorCanvas({
                     }`}
                   >
                     <ListOrdered size={15} />
-                    <span>Ordered list</span>
+                    <span>Нумерованный список</span>
                   </button>
                   <button
                     onMouseDown={(e) => e.preventDefault()}
@@ -584,13 +766,26 @@ export function EditorCanvas({
                     }`}
                   >
                     <ListTodo size={15} />
-                    <span>Task list</span>
+                    <span>Список задач</span>
                   </button>
                 </div>
               )}
             </div>
 
             <div className="w-px h-6 bg-[#1e2d1f]/10" />
+
+            <button
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => editor?.chain().focus().toggleBlockquote().run()}
+              title="Цитата"
+              className={`p-1 rounded-md transition-colors ${
+                editor?.isActive('blockquote')
+                  ? 'text-[#1e2d1f] bg-[#1e2d1f]/6'
+                  : 'text-[#a1a1aa] hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'
+              }`}
+            >
+              <Quote size={19} strokeWidth={2.2} />
+            </button>
 
             <button
               onMouseDown={(e) => e.preventDefault()}
@@ -700,6 +895,7 @@ export function EditorCanvas({
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
                   if (isLinkMenuOpen) {
+                    linkSelectionRef.current = null;
                     setIsLinkMenuOpen(false);
                     return;
                   }
@@ -725,10 +921,11 @@ export function EditorCanvas({
                       }
                       if (e.key === 'Escape') {
                         e.preventDefault();
+                        linkSelectionRef.current = null;
                         setIsLinkMenuOpen(false);
                       }
                     }}
-                    placeholder="Paste a link..."
+                    placeholder="Вставьте ссылку..."
                     className="flex-1 bg-transparent outline-none text-[15px] text-[#1e2d1f] placeholder:text-[#1e2d1f]/35 px-2"
                   />
                   <div className="w-px self-stretch bg-[#1e2d1f]/10" />
@@ -842,7 +1039,7 @@ export function EditorCanvas({
                       key={font.key}
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => {
-                        handleFontChange(font.key);
+                        onEditorFontChange(font.key);
                         setIsFontMenuOpen(false);
                       }}
                       className={`w-full rounded-lg px-2.5 py-1.5 text-left transition-colors ${
@@ -860,44 +1057,51 @@ export function EditorCanvas({
               )}
             </div>
 
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 rounded-full border border-[#1e2d1f]/8 bg-[#f8f4ec]/92 px-2 py-1">
             <button
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => onIndentParagraphsChange(!indentParagraphs)}
-              title="Абзацные отступы"
-              className={`p-1 rounded-md transition-colors ${
+              title="Красная строка"
+              className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
                 indentParagraphs
-                  ? 'text-[#1e2d1f] bg-[#1e2d1f]/6'
+                  ? 'text-[#1e2d1f] bg-[#1e2d1f]/8'
                   : 'text-[#a1a1aa] hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'
               }`}
             >
-              <Pilcrow size={18} strokeWidth={2.2} />
+              <ListIndentIncrease size={18} strokeWidth={2.2} />
             </button>
 
-            <div className="flex items-center rounded-full bg-[#1e2d1f]/4 p-1 gap-1">
+            <div className="w-px h-5 bg-[#1e2d1f]/10" />
+
+            <div className="flex items-center rounded-full border border-[#1e2d1f]/8 bg-[#f8f4ec] p-1 gap-1">
               {([
-                { key: 'narrow', title: 'Узкая', bar: 'w-3' },
-                { key: 'medium', title: 'Средняя', bar: 'w-5' },
-                { key: 'wide', title: 'Широкая', bar: 'w-7' },
+                { key: 'narrow', title: 'Узкая', label: 'S' },
+                { key: 'medium', title: 'Средняя', label: 'M' },
+                { key: 'wide', title: 'Широкая', label: 'L' },
               ] as const).map((item) => (
                 <button
                   key={item.key}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleWidthChange(item.key)}
                   title={`Ширина страницы: ${item.title}`}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                  className={`min-w-9 h-8 px-2 rounded-full flex items-center justify-center transition-colors text-[12px] font-medium tracking-[0.08em] ${
                     textWidth === item.key
                       ? 'bg-[#1e2d1f] text-white shadow-sm'
-                      : 'text-[#1e2d1f]/55 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/8'
+                      : 'text-[#1e2d1f]/50 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/5'
                   }`}
                 >
-                  <span className={`block h-[2px] rounded-full ${item.bar} ${textWidth === item.key ? 'bg-white' : 'bg-current'}`} />
+                  {item.label}
                 </button>
               ))}
             </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2">
+          <div className="w-px h-6 bg-[#1e2d1f]/10" />
+
           {onOpenSearch && (
             <button
               onClick={onOpenSearch}
@@ -925,15 +1129,58 @@ export function EditorCanvas({
           </button>
         </div>
       </div>
+      </>
+      )}
+
+      {slashMenu && filteredSlashCommands.length > 0 && (
+        <div
+          className="fixed z-[120] w-[320px] rounded-2xl border border-[#1e2d1f]/8 bg-[#f5f0e8]/96 backdrop-blur-md shadow-[0_18px_50px_rgba(30,45,31,0.12)] p-2"
+          style={{ top: slashMenu.top, left: Math.max(20, slashMenu.left - 32) }}
+        >
+          <div className="px-2.5 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#1e2d1f]/38">
+            Вставить блок
+          </div>
+          <div className="space-y-1">
+            {filteredSlashCommands.map((command, index) => (
+              <button
+                key={command.id}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => runSlashCommand(command.id)}
+                className={`w-full rounded-xl px-3 py-2 text-left transition-colors ${
+                  slashIndex === index
+                    ? 'bg-[#1e2d1f] text-white'
+                    : 'hover:bg-[#1e2d1f]/5 text-[#1e2d1f]'
+                }`}
+              >
+                <div className="text-[14px] leading-none font-medium">{command.label}</div>
+                <div className={`mt-1 text-[12px] leading-snug ${
+                  slashIndex === index ? 'text-white/72' : 'text-[#1e2d1f]/48'
+                }`}>
+                  {command.hint}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Scrollable Writing Area */}
-      <div className="absolute inset-0 pt-28 px-8 md:px-16 overflow-y-auto hide-scrollbar scroll-smooth">
+      <div className={`absolute inset-0 px-8 md:px-16 overflow-y-auto hide-scrollbar scroll-smooth ${isFocusMode ? 'pt-8' : 'pt-28'}`}>
         <div className={`${widthClass} mx-auto relative h-full transition-all duration-500`}>
-          {chapterTitle && (
-            <h1 className={`${editorFontClass} italic font-normal text-[2.6rem] leading-tight text-[#1e2d1f]/90 mb-10 mt-4 tracking-tight`}>
-              {chapterTitle}
-            </h1>
-          )}
+          <div className={`${editorFontClass} mb-10 ${isFocusMode ? 'mt-2' : 'mt-4'} flex items-baseline gap-4 text-[#1e2d1f]/90`}>
+            <span className="text-[2.35rem] leading-tight tracking-[-0.02em] shrink-0 font-medium">
+              {chapterPrefix}
+            </span>
+            <span className="text-[2rem] leading-none text-[#1e2d1f]/16 shrink-0 translate-y-[-0.04em]">|</span>
+            <input
+              ref={chapterTitleInputRef}
+              value={chapterTitleSuffix}
+              onChange={(e) => onChapterTitleSuffixChange?.(e.target.value)}
+              placeholder="Введите название главы"
+              className="min-w-[18rem] flex-1 bg-transparent border-none outline-none text-[2.35rem] leading-tight tracking-[-0.02em] font-medium placeholder:text-[#1e2d1f]/25"
+              style={{ fontFamily: 'inherit' }}
+            />
+          </div>
           <div className={`${indentParagraphs ? 'tiptap-indent' : ''} ${editorFontClass}`}>
             <EditorContent editor={editor} />
             {(isDictating || interimTranscript) && (
@@ -962,28 +1209,6 @@ export function EditorCanvas({
           </div>
         </div>
       )}
-
-      <div className="absolute bottom-7 right-8 z-20">
-        <div className="rounded-full bg-[#f5f0e8]/92 backdrop-blur-md border border-[#1e2d1f]/8 shadow-[0_6px_20px_rgba(30,45,31,0.06)] px-3 py-1.5 flex items-center gap-3">
-          <div className="text-[12px] leading-none text-[#1e2d1f]/55">
-            {showWordCount ? `${wordCount.toLocaleString('ru-RU')} слов` : 'Счётчик слов'}
-          </div>
-          <button
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => onShowWordCountChange(!showWordCount)}
-            title={showWordCount ? 'Скрыть счётчик слов' : 'Показать счётчик слов'}
-            className={`w-9 h-5 rounded-full transition-colors relative shrink-0 ${
-              showWordCount ? 'bg-[#1e2d1f]' : 'bg-[#1e2d1f]/18'
-            }`}
-          >
-            <span
-              className={`w-3.5 h-3.5 rounded-full bg-white absolute top-[3px] transition-transform ${
-                showWordCount ? 'left-[19px]' : 'left-[3px]'
-              }`}
-            />
-          </button>
-        </div>
-      </div>
 
       <style>{`
         @keyframes bounce {

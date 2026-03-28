@@ -30,7 +30,9 @@
 
 /* ── Literary editor typography ── */
 .editor-body {
-  font-family: "Cormorant Garamond", Georgia, serif;
+  --editor-body-font: "Cormorant Garamond", Georgia, serif;
+  --editor-heading-font: "Cormorant Garamond", Georgia, serif;
+  font-family: var(--editor-body-font);
   font-size: 1.28rem;
   line-height: 2.05;
   color: #1a1a1a;
@@ -56,34 +58,29 @@
 .editor-font-cormorant,
 .editor-font-cormorant .editor-body,
 .editor-font-cormorant.editor-body {
+  --editor-body-font: "Cormorant Garamond", Georgia, serif;
+  --editor-heading-font: "Cormorant Garamond", Georgia, serif;
   font-family: "Cormorant Garamond", Georgia, serif;
 }
 
 .editor-font-literata,
 .editor-font-literata .editor-body,
 .editor-font-literata.editor-body {
+  --editor-body-font: "Literata", Georgia, serif;
+  --editor-heading-font: "Literata", Georgia, serif;
   font-family: "Literata", Georgia, serif;
 }
 
 .editor-font-source-serif,
 .editor-font-source-serif .editor-body,
 .editor-font-source-serif.editor-body {
+  --editor-body-font: "Source Serif 4", Georgia, serif;
+  --editor-heading-font: "Source Serif 4", Georgia, serif;
   font-family: "Source Serif 4", Georgia, serif;
 }
 
 .editor-body p {
   margin: 0 0 1em 0;
-  text-indent: 0;
-}
-
-/* First paragraph after heading — no indent */
-.editor-body h1 + p,
-.editor-body h2 + p,
-.editor-body h3 + p {
-  text-indent: 0;
-}
-
-.editor-body p:first-child {
   text-indent: 0;
 }
 
@@ -207,7 +204,7 @@
 .editor-body h1,
 .editor-body h2,
 .editor-body h3 {
-  font-family: "Cormorant Garamond", Georgia, serif;
+  font-family: var(--editor-heading-font);
   font-weight: 700;
   color: #1e2d1f;
   text-align: left;
@@ -216,40 +213,142 @@
   hyphens: none;
 }
 
+.editor-body .chapter-title-node,
+.editor-body [data-node-type="chapter-title"] {
+  font-size: 2.9rem;
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.06;
+  color: #334437;
+  margin: 0.35em 0 1.2em;
+  font-family: var(--editor-heading-font);
+  text-indent: 0;
+  text-align: left;
+  display: flex;
+  align-items: baseline;
+  gap: 0.35em;
+}
+
+.editor-body .chapter-title-prefix {
+  color: #334437;
+  flex: 0 0 auto;
+  user-select: none;
+}
+
+.editor-body .chapter-title-separator {
+  color: rgba(51, 68, 55, 0.38);
+  flex: 0 0 auto;
+  user-select: none;
+}
+
+.editor-body .chapter-title-content {
+  min-width: 8ch;
+  color: #334437;
+  outline: none;
+}
+
+.editor-body .chapter-title-node[data-empty="true"] .chapter-title-content::after {
+  content: "Введите название главы";
+  color: rgba(30, 45, 31, 0.28);
+  pointer-events: none;
+}
+
+.editor-body .chapter-title-node[data-empty="true"] .chapter-title-content {
+  min-width: 14ch;
+}
+
+.editor-body [data-node-type="scene-break"] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 2.4em 0 2em;
+  color: rgba(30, 45, 31, 0.52);
+  text-indent: 0;
+}
+
+.editor-body [data-node-type="scene-break"] > span {
+  display: inline-block;
+  letter-spacing: 0.4em;
+  font-size: 1.1rem;
+  line-height: 1;
+  user-select: none;
+}
+
 .editor-font-cormorant .editor-body h1,
 .editor-font-cormorant .editor-body h2,
 .editor-font-cormorant .editor-body h3,
 .editor-font-cormorant h1 {
-  font-family: "Cormorant Garamond", Georgia, serif;
+  font-family: var(--editor-heading-font);
 }
 
 .editor-font-literata .editor-body h1,
 .editor-font-literata .editor-body h2,
 .editor-font-literata .editor-body h3,
 .editor-font-literata h1 {
-  font-family: "Literata", Georgia, serif;
+  font-family: var(--editor-heading-font);
 }
 
 .editor-font-source-serif .editor-body h1,
 .editor-font-source-serif .editor-body h2,
 .editor-font-source-serif .editor-body h3,
 .editor-font-source-serif h1 {
-  font-family: "Source Serif 4", Georgia, serif;
+  font-family: var(--editor-heading-font);
 }
 
 .editor-body h1 { font-size: 2rem; }
 .editor-body h2 { font-size: 1.6rem; }
 .editor-body h3 { font-size: 1.3rem; }
 
+.editor-body blockquote {
+  margin: 1.7em 0 1.3em;
+  padding-left: 1.2em;
+  border-left: 2px solid rgba(30, 45, 31, 0.18);
+  color: rgba(30, 45, 31, 0.78);
+  font-style: italic;
+}
+
 /* Placeholder */
-.editor-body .is-editor-empty:first-child::before {
+.editor-body p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   color: #a0a0a0;
   font-style: italic;
   pointer-events: none;
-  float: left;
+  display: block;
+  width: 100%;
   height: 0;
   text-indent: 0;
+  text-align: inherit;
+}
+
+.editor-body h1.is-empty::before {
+  content: "Heading 1";
+}
+
+.editor-body h2.is-empty::before {
+  content: "Heading 2";
+}
+
+.editor-body h3.is-empty::before {
+  content: "Heading 3";
+}
+
+.editor-body blockquote.is-empty::before {
+  content: "Quote";
+}
+
+.editor-body h1.is-empty::before,
+.editor-body h2.is-empty::before,
+.editor-body h3.is-empty::before,
+.editor-body blockquote.is-empty::before {
+  color: rgba(30, 45, 31, 0.28);
+  font-style: italic;
+  pointer-events: none;
+  display: block;
+  width: 100%;
+  height: 0;
+  text-indent: 0;
+  text-align: inherit;
 }
 
 /* Indent mode (toggled per-user) */
@@ -259,12 +358,19 @@
   text-indent: 2em;
 }
 
-.tiptap-indent .editor-body p:first-child,
-.tiptap-indent.editor-body p:first-child,
-.tiptap-indent .editor-body h1 + p,
-.tiptap-indent .editor-body h2 + p,
-.tiptap-indent .editor-body h3 + p {
-  text-indent: 0;
+.tiptap-indent .editor-body > p:first-of-type,
+.tiptap-indent.editor-body > p:first-of-type {
+  text-indent: 2em;
+}
+
+.tiptap-indent .editor-body p.is-empty::before,
+.tiptap-indent.editor-body p.is-empty::before {
+  margin-left: 2em;
+}
+
+.tiptap-indent .editor-body > p.is-editor-empty:first-of-type::before,
+.tiptap-indent.editor-body > p.is-editor-empty:first-of-type::before {
+  margin-left: 2em;
 }
 
 .hide-scrollbar {

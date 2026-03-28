@@ -77,7 +77,16 @@ router.put('/:id', authenticateToken, async (req: any, res) => {
       normalizeChapterContent(row.chapter.content) !== normalizeChapterContent(content);
     const updated = await db
       .update(schema.chapters)
-      .set(contentChanged ? { content, updatedAt: new Date() } : { content })
+      .set(
+        contentChanged
+          ? {
+              content,
+              updatedAt: new Date(),
+            }
+          : {
+              content,
+            }
+      )
       .where(eq(schema.chapters.id, id))
       .returning();
 

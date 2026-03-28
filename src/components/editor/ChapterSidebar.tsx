@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+type EditorFontName = 'cormorant' | 'literata' | 'source-serif';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, BookOpen, Sparkles, Plus,
@@ -17,9 +17,26 @@ interface Props {
   onToggleChapterStatus: (id: string, currentStatus: 'draft' | 'done') => Promise<void>;
   wordCount: number;
   showWordCount: boolean;
+  onShowWordCountChange: (value: boolean) => void;
   isSaving: boolean;
   lastSavedAt?: Date | null;
   saveError?: boolean;
+  editorFont: EditorFontName;
+}
+
+function getChapterSubtitle(title: string, index: number): string | null {
+  const trimmed = title.trim();
+  if (!trimmed) return null;
+
+  const exactDefault = `Глава ${index + 1}`;
+  if (trimmed === exactDefault) return null;
+
+  const prefixedMatch = trimmed.match(/^Глава\s+\d+[\s.:—-]+(.+)$/i);
+  if (prefixedMatch?.[1]?.trim()) {
+    return prefixedMatch[1].trim();
+  }
+
+  return trimmed;
 }
 
 export function ChapterSidebar({
@@ -33,11 +50,18 @@ export function ChapterSidebar({
   onToggleChapterStatus,
   wordCount,
   showWordCount,
+  onShowWordCountChange,
   isSaving,
   lastSavedAt,
   saveError,
+  editorFont,
 }: Props) {
   const navigate = useNavigate();
+  const editorFontClass = {
+    cormorant: 'editor-font-cormorant',
+    literata: 'editor-font-literata',
+    'source-serif': 'editor-font-source-serif',
+  }[editorFont];
 
 
   return (
@@ -77,6 +101,7 @@ export function ChapterSidebar({
         {chapters.map((chapter, index) => {
           const isActive = chapter.id === chapterId;
           const isDone = chapter.status === 'done';
+          const subtitle = getChapterSubtitle(chapter.title, index);
 
           return (
             <div
@@ -101,14 +126,14 @@ export function ChapterSidebar({
                 onClick={() => navigate(`/editor/${projectId}/${chapter.id}`)}
                 className={`flex-1 flex flex-col min-w-0 text-left transition-colors ${
                   isActive ? 'text-white' : 'text-white/60 hover:text-white/80'
-                }`}
+                } ${editorFontClass}`}
               >
-                <span className={`text-[13px] font-semibold tracking-wide ${isActive ? 'text-white' : 'text-white/80'}`}>
+                <span className={`text-[14px] font-semibold leading-tight ${isActive ? 'text-white' : 'text-white/82'}`}>
                   Глава {index + 1}
                 </span>
-                {!/^Глава \d+$/.test(chapter.title.trim()) && (
-                  <span className={`text-[11px] truncate leading-tight mt-0.5 ${isActive ? 'text-white/70' : 'text-white/40'}`}>
-                    {chapter.title}
+                {subtitle && (
+                  <span className={`text-[12px] truncate leading-tight mt-0.5 ${isActive ? 'text-white/72' : 'text-white/45'}`}>
+                    {subtitle}
                   </span>
                 )}
               </button>
@@ -137,14 +162,28 @@ export function ChapterSidebar({
         </button>
 
         {/* Word count + save status */}
-        {(showWordCount || isSaving || saveError || lastSavedAt) && (
-          <div className="flex flex-col gap-2 px-3 pt-2">
-            {showWordCount && (
-              <div className="flex items-center justify-between">
-                <span className="text-white/40 text-[11px] uppercase tracking-widest font-bold">Слов</span>
-                <span className="text-white/70 font-semibold text-sm">{wordCount.toLocaleString('ru-RU')}</span>
+        <div className="flex flex-col gap-2 px-3 pt-2">
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/4 px-3 py-2">
+              <div className="min-w-0">
+                <div className="text-white/40 text-[10px] uppercase tracking-widest font-bold">Слова</div>
+                <div className="text-white/78 font-semibold text-sm mt-0.5">
+                  {showWordCount ? `${wordCount.toLocaleString('ru-RU')}` : 'Скрыто'}
+                </div>
               </div>
-            )}
+              <button
+                onClick={() => onShowWordCountChange(!showWordCount)}
+                title={showWordCount ? 'Скрыть счётчик слов' : 'Показать счётчик слов'}
+                className={`w-9 h-5 rounded-full transition-colors relative shrink-0 ${
+                  showWordCount ? 'bg-white/80' : 'bg-white/18'
+                }`}
+              >
+                <span
+                  className={`w-3.5 h-3.5 rounded-full absolute top-[3px] transition-transform ${
+                    showWordCount ? 'left-[19px] bg-[#1e2d1f]' : 'left-[3px] bg-white'
+                  }`}
+                />
+              </button>
+            </div>
             {isSaving ? (
               <div className="flex items-center gap-1.5 text-white/50 text-[11px] font-medium">
                 <span className="w-1.5 h-1.5 rounded-full bg-white/30 inline-block animate-pulse" />
@@ -165,8 +204,7 @@ export function ChapterSidebar({
                 Ожидание...
               </div>
             )}
-          </div>
-        )}
+        </div>
       </div>
     </aside>
   );

@@ -27,6 +27,18 @@ const SYSTEM_INSTRUCTION = `Вы — профессиональный редак
 У вас есть доступ к Библии истории — одобренным фактам о мире, персонажах и локациях.
 Используйте их для точных, консистентных ответов. Никогда не противоречьте установленным фактам.`;
 
+const DICTATION_SYSTEM_INSTRUCTION = `Вы — невидимый слой постобработки диктовки для писателя.
+Ваша задача: превратить сырой фрагмент голосового ввода в чистый литературный текст.
+
+Правила:
+- Верните ТОЛЬКО итоговый текст без пояснений, кавычек, markdown и комментариев.
+- Исправляйте пунктуацию, регистр, очевидные огрехи распознавания речи и повторы.
+- Сохраняйте исходный смысл, не переписывайте содержание заново.
+- Если в контексте Библии истории или текущей рукописи есть каноническое имя/термин, используйте именно его.
+- Не выдумывайте новых фактов.
+- Если фрагмент уже выглядит нормально, верните его почти без изменений.
+- Не добавляйте вводных фраз вроде "Вот исправленный текст".`;
+
 const isValidUUID = (s: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 
@@ -158,6 +170,14 @@ async function retrieveSemanticChunks(
     }
     return [];
   }
+}
+
+function cleanAiPlainText(text: string): string {
+  return (text ?? '')
+    .replace(/```(?:json)?\n?/g, '')
+    .replace(/```\n?/g, '')
+    .replace(/^["'«»]+|["'«»]+$/g, '')
+    .trim();
 }
 
 // ─── POST /api/ai/chat ────────────────────────────────────────────────────────
@@ -401,5 +421,121 @@ ${chapterContent.trim()}
     res.status(500).json({ error: 'Failed to check consistency' });
   }
 });
+
+// ─── POST /api/ai/dictation/normalize ────────────────────────────────────────
+// Body: { rawText, chapterContent, projectId?, chapterId? }
+// Returns: { text }
+//
+// Converts raw speech-recognition output into punctuated text and normalizes
+// names/terms against the Story Bible and current manuscript context.
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/dictation/normalize',
+  authenticateToken,
+  rateLimit('ai:dictation', 120, 60 * 60 * 1000),
+  async (req: any, res) => {
+    try {
+      if (!aiClient) return res.status(503).json({ error: 'AI service is not configured' });
+
+      const { rawText, chapterContent, projectId, chapterId } = req.body as {
+        rawText?: string;
+        chapterContent?: string;
+        projectId?: string;
+        chapterId?: string;
+      };
+
+      const input = rawText?.trim();
+      if (!input) {
+        return res.status(400).json({ error: 'rawText is required' });
+      }
+
+      const validProjectId = projectId && isValidUUID(projectId) ? projectId : null;
+      const validChapterId = chapterId && isValidUUID(chapterId) ? chapterId : null;
+
+      let entities: (typeof schema.storyEntities.$inferSelect)[] = [];
+      let semanticBlock = '';
+
+      if (validProjectId) {
+        const projectRows = await db
+          .select({ id: schema.projects.id })
+          .from(schema.projects)
+          .where(and(eq(schema.projects.id, validProjectId), eq(schema.projects.userId, req.user.userId)));
+
+        if (projectRows.length === 0) {
+          return res.status(403).json({ error: 'Access denied' });
+        }
+
+        entities = await db
+          .select()
+          .from(schema.storyEntities)
+          .where(
+            and(
+              eq(schema.storyEntities.projectId, validProjectId),
+              eq(schema.storyEntities.status, 'approved')
+            )
+          );
+
+        const queryVec = await embedQuery(input);
+        if (queryVec) {
+          const chunks = await retrieveSemanticChunks(req.user.userId, validProjectId, queryVec, 3);
+          if (chunks.length > 0) {
+            semanticBlock = `=== РЕЛЕВАНТНЫЕ ФРАГМЕНТЫ РУКОПИСИ ===\n${chunks.map((c, i) => `[${i + 1}] ${c}`).join('\n\n')}`;
+          }
+        }
+      }
+
+      const recentHistory = validProjectId
+        ? await loadHistory(req.user.userId, validProjectId, validChapterId, 6)
+        : [];
+
+      const historyBlock = recentHistory.length
+        ? `=== НЕДАВНИЙ КОНТЕКСТ РАБОТЫ ===\n${recentHistory.map(m => `${m.role === 'user' ? 'Автор' : 'ИИ'}: ${m.content}`).join('\n')}`
+        : '';
+
+      const bibleBlock = buildStoryBibleContext(entities);
+      const chapterBlock = chapterContent?.trim()
+        ? `=== ТЕКУЩАЯ ГЛАВА ===\n${chapterContent.trim()}`
+        : '';
+
+      const prompt = [
+        bibleBlock,
+        semanticBlock,
+        historyBlock,
+        chapterBlock,
+        `=== СЫРОЙ ФРАГМЕНТ ДИКТОВКИ ===\n${input}`,
+        `=== ЗАДАЧА ===
+Преобразуйте сырой фрагмент диктовки в чистый текст для вставки в рукопись.
+Расставьте уместные знаки препинания, нормализуйте регистр и исправьте очевидные ошибки распознавания речи.
+Если в контексте уже есть каноническое имя, термин, локация или предмет, используйте именно это написание.
+Верните только итоговый текст без пояснений.`
+      ]
+        .filter(Boolean)
+        .join('\n\n');
+
+      const response = await guardChat(
+        () => aiClient!.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+          config: {
+            systemInstruction: DICTATION_SYSTEM_INSTRUCTION,
+            temperature: 0.15,
+          },
+        }),
+        { userId: req.user.userId, projectId: validProjectId, route: 'ai:dictation' }
+      );
+
+      const text = cleanAiPlainText(response.text ?? '') || input;
+      res.json({ text });
+    } catch (error: any) {
+      console.error('Error in POST /ai/dictation/normalize:', error);
+      if (error?.isCircuitOpen) {
+        return res.status(503).json({ error: 'AI сервис временно недоступен. Попробуйте через минуту.' });
+      }
+      if (error?.message?.includes('Timeout')) {
+        return res.status(504).json({ error: 'AI сервис не ответил вовремя. Попробуйте ещё раз.' });
+      }
+      res.status(500).json({ error: 'Failed to normalize dictation' });
+    }
+  }
+);
 
 export default router;

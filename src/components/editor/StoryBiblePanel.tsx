@@ -5,7 +5,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { BIBLE_MENU_ITEMS } from './constants';
-import { Entity, BibleUpdateSuggestion } from './types';
+import { Entity, EntityAttributes, EntitySignificance, BibleUpdateSuggestion } from './types';
 import { wordDiff, DiffToken } from '../../lib/wordDiff';
 
 interface ChapterSummary {
@@ -35,6 +35,45 @@ interface Props {
   /** Navigate the editor to the source location of this update. */
   onOpenInEditor: (chapterId: string, searchHighlight: string, searchQuery: string) => void;
   onClose: () => void;
+}
+
+function significanceLabel(s: EntitySignificance | null | undefined): string {
+  if (s === 'major')    return 'Ключевой';
+  if (s === 'moderate') return 'Важный';
+  if (s === 'minor')    return 'Эпизодический';
+  return '';
+}
+
+function significanceColor(s: EntitySignificance | null | undefined): string {
+  if (s === 'major')    return 'bg-violet-100 text-violet-700';
+  if (s === 'moderate') return 'bg-sky-100 text-sky-700';
+  if (s === 'minor')    return 'bg-stone-100 text-stone-500';
+  return '';
+}
+
+/** Flatten attributes object into displayable key-value pairs. */
+function attributeEntries(attrs: EntityAttributes | null | undefined): { label: string; value: string }[] {
+  if (!attrs) return [];
+  const labels: Record<string, string> = {
+    aliases:        'Псевдонимы',
+    appearance:     'Внешность',
+    personality:    'Характер',
+    role:           'Роль',
+    region:         'Регион',
+    physicalDetails:'Описание',
+    mood:           'Атмосфера',
+    properties:     'Свойства',
+    origin:         'Происхождение',
+    owner:          'Владелец',
+    scope:          'Область',
+    exceptions:     'Исключения',
+  };
+  return Object.entries(attrs)
+    .filter(([, v]) => v && (typeof v === 'string' ? v.trim() : (v as string[]).length > 0))
+    .map(([k, v]) => ({
+      label: labels[k] ?? k,
+      value: Array.isArray(v) ? v.join(', ') : String(v),
+    }));
 }
 
 function entityTypeLabel(type: string) {
@@ -217,8 +256,15 @@ export function StoryBiblePanel({
                     >
                       <X size={14} />
                     </button>
-                    <div className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold tracking-widest mb-2 ${entityTypeColor(suggestion.type)}`}>
-                      {entityTypeLabel(suggestion.type)}
+                    <div className="flex items-center gap-1.5 flex-wrap mb-2">
+                      <div className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold tracking-widest ${entityTypeColor(suggestion.type)}`}>
+                        {entityTypeLabel(suggestion.type)}
+                      </div>
+                      {suggestion.significance && (
+                        <div className={`inline-block px-2 py-0.5 rounded text-[9px] font-semibold tracking-wide ${significanceColor(suggestion.significance)}`}>
+                          {significanceLabel(suggestion.significance)}
+                        </div>
+                      )}
                     </div>
                     <h4 className="font-serif font-bold text-[#1e2d1f] mb-1">{suggestion.name}</h4>
                     <p className="text-xs text-[#1e2d1f]/70 mb-3">{suggestion.description}</p>
@@ -289,12 +335,20 @@ export function StoryBiblePanel({
                   <Users size={32} className="text-rose-500" />
                 </div>
                 <h2 className="text-xl font-bold text-[#1a1a1a] mb-1">{selected.name}</h2>
-                <span className="text-[9px] font-bold text-rose-500 uppercase tracking-wider">ПЕРСОНАЖ</span>
+                <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                  <span className="text-[9px] font-bold text-rose-500 uppercase tracking-wider">ПЕРСОНАЖ</span>
+                  {selected.significance && (
+                    <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${significanceColor(selected.significance)}`}>
+                      {significanceLabel(selected.significance)}
+                    </span>
+                  )}
+                </div>
               </div>
               <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">Описание</h4>
-              <div className="bg-white p-4 rounded-xl border border-black/5 shadow-sm text-[13px] leading-relaxed text-black/80">
+              <div className="bg-white p-4 rounded-xl border border-black/5 shadow-sm text-[13px] leading-relaxed text-black/80 mb-4">
                 {selected.description}
               </div>
+              <EntityAttributesBlock attributes={selected.attributes} />
             </div>
           );
           if (chars.length === 0) return (
@@ -333,12 +387,20 @@ export function StoryBiblePanel({
                   <MapPin size={32} className="text-[#4a5d4e]" />
                 </div>
                 <h2 className="text-xl font-bold text-[#1a1a1a] mb-1">{selected.name}</h2>
-                <span className="text-[9px] font-bold text-[#4a5d4e] uppercase tracking-wider">ЛОКАЦИЯ</span>
+                <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                  <span className="text-[9px] font-bold text-[#4a5d4e] uppercase tracking-wider">ЛОКАЦИЯ</span>
+                  {selected.significance && (
+                    <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${significanceColor(selected.significance)}`}>
+                      {significanceLabel(selected.significance)}
+                    </span>
+                  )}
+                </div>
               </div>
               <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">Описание</h4>
-              <div className="bg-white p-4 rounded-xl border border-black/5 shadow-sm text-[13px] leading-relaxed text-black/80">
+              <div className="bg-white p-4 rounded-xl border border-black/5 shadow-sm text-[13px] leading-relaxed text-black/80 mb-4">
                 {selected.description}
               </div>
+              <EntityAttributesBlock attributes={selected.attributes} />
             </div>
           );
           if (locs.length === 0) return (
@@ -377,12 +439,20 @@ export function StoryBiblePanel({
                   <Box size={32} className="text-amber-600" />
                 </div>
                 <h2 className="text-xl font-bold text-[#1a1a1a] mb-1">{selected.name}</h2>
-                <span className="text-[9px] font-bold text-amber-500 uppercase tracking-wider">ПРЕДМЕТ</span>
+                <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                  <span className="text-[9px] font-bold text-amber-500 uppercase tracking-wider">ПРЕДМЕТ</span>
+                  {selected.significance && (
+                    <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${significanceColor(selected.significance)}`}>
+                      {significanceLabel(selected.significance)}
+                    </span>
+                  )}
+                </div>
               </div>
               <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">Описание</h4>
-              <div className="bg-white p-4 rounded-xl border border-black/5 shadow-sm text-[13px] leading-relaxed text-black/80">
+              <div className="bg-white p-4 rounded-xl border border-black/5 shadow-sm text-[13px] leading-relaxed text-black/80 mb-4">
                 {selected.description}
               </div>
+              <EntityAttributesBlock attributes={selected.attributes} />
             </div>
           );
           if (items.length === 0) return (
@@ -421,12 +491,20 @@ export function StoryBiblePanel({
                   <Globe size={32} className="text-blue-500" />
                 </div>
                 <h2 className="text-xl font-bold text-[#1a1a1a] mb-1">{selected.name}</h2>
-                <span className="text-[9px] font-bold text-blue-500 uppercase tracking-wider">ПРАВИЛО МИРА</span>
+                <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                  <span className="text-[9px] font-bold text-blue-500 uppercase tracking-wider">ПРАВИЛО МИРА</span>
+                  {selected.significance && (
+                    <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${significanceColor(selected.significance)}`}>
+                      {significanceLabel(selected.significance)}
+                    </span>
+                  )}
+                </div>
               </div>
               <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">Описание</h4>
-              <div className="bg-white p-4 rounded-xl border border-black/5 shadow-sm text-[13px] leading-relaxed text-black/80 italic font-serif">
+              <div className="bg-white p-4 rounded-xl border border-black/5 shadow-sm text-[13px] leading-relaxed text-black/80 italic font-serif mb-4">
                 {selected.description}
               </div>
+              <EntityAttributesBlock attributes={selected.attributes} />
             </div>
           );
           if (rules.length === 0) return (
@@ -452,6 +530,29 @@ export function StoryBiblePanel({
             </div>
           );
         })()}
+      </div>
+    </div>
+  );
+}
+
+// ── EntityAttributesBlock ─────────────────────────────────────────────────────
+
+function EntityAttributesBlock({ attributes }: { attributes?: EntityAttributes | null }) {
+  const entries = attributeEntries(attributes);
+  if (entries.length === 0) return null;
+  return (
+    <div>
+      <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">Детали</h4>
+      <div className="bg-white rounded-xl border border-black/5 shadow-sm overflow-hidden">
+        {entries.map(({ label, value }, i) => (
+          <div
+            key={label}
+            className={`flex gap-3 px-4 py-2.5 ${i < entries.length - 1 ? 'border-b border-black/5' : ''}`}
+          >
+            <span className="text-[11px] font-semibold text-black/35 w-24 flex-shrink-0 pt-0.5">{label}</span>
+            <span className="text-[12px] text-black/75 leading-relaxed">{value}</span>
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -1,3 +1,5 @@
+export type ChapterType = 'chapter' | 'prologue' | 'epilogue' | 'interlude';
+
 export type Chapter = {
   id: string;
   projectId: string;
@@ -5,11 +7,21 @@ export type Chapter = {
   content: string | null;
   order: number;
   status: 'draft' | 'done';
+  chapterType?: ChapterType;
   createdAt: string;
   updatedAt: string;
   /** ISO timestamp of the last successful Story Bible extraction for this chapter. Null if never extracted. */
   lastExtractedAt?: string | null;
 };
+
+export type EntitySignificance = 'major' | 'moderate' | 'minor';
+
+/** Per-type structured attributes populated by AI. */
+export type EntityAttributes =
+  | { aliases?: string[]; appearance?: string; personality?: string; role?: string }   // character
+  | { region?: string; physicalDetails?: string; mood?: string }                       // location
+  | { properties?: string; origin?: string; owner?: string }                           // item
+  | { scope?: string; exceptions?: string };                                            // rule
 
 export type Entity = {
   id: string;
@@ -18,6 +30,8 @@ export type Entity = {
   description: string;
   status?: string;
   chapterId?: string | null;
+  significance?: EntitySignificance | null;
+  attributes?: EntityAttributes | null;
 };
 
 export type ChatMessage = {

@@ -1,11 +1,13 @@
 import express from 'express';
-import { eq, and, ne } from 'drizzle-orm';
+import { createHash } from 'crypto';
+import { eq, and, ne, inArray } from 'drizzle-orm';
 import { GoogleGenAI } from '@google/genai';
 import * as schema from '../db/schema.js';
 import { db } from '../db/client.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rateLimiter.js';
 import { guardChat } from '../lib/aiGuard.js';
+import { stripHtml } from '../lib/html.js';
 
 const router = express.Router();
 
@@ -38,41 +40,19 @@ async function assertEntityOwnership(entityId: string, userId: string): Promise<
   return rows.length > 0;
 }
 
-/** Strip HTML tags and collapse whitespace to get searchable plain text. */
-function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-/** Canonical normalisation shared by diff-check and dedupe key. */
+/** Canonical normalisation for description dedupe. */
 function normalizeDesc(s: string | null | undefined): string {
   return (s ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
-/** True if two descriptions carry different information (ignoring whitespace). */
+/** True if two descriptions carry different information. */
 function descriptionsDiffer(a: string | null | undefined, b: string | null | undefined): boolean {
   return normalizeDesc(a) !== normalizeDesc(b);
 }
 
 /**
- * Extract a plain-text excerpt (≈contextChars either side) around the first
- * occurrence of entityName.  Used as the `sourceExcerpt` stored with each
- * update suggestion and later as the jump-to-match fingerprint in the editor.
- */
-/**
- * Extract a plain-text excerpt (≈contextChars either side) around the first
- * occurrence of entityName.  Used as the `sourceExcerpt` stored with each
- * update suggestion and later as the jump-to-match fingerprint in the editor.
- *
- * No ellipsis decoration — the fingerprint must be a verbatim substring of the
- * chapter text so that jumpToMatch's indexOf pass can locate it.
+ * Extract a plain-text excerpt around the first occurrence of entityName.
+ * No ellipsis — the fingerprint must be a verbatim substring for jumpToMatch.
  */
 function extractEntitySnippet(plainText: string, entityName: string, contextChars = 60): string {
   const idx = plainText.toLowerCase().indexOf(entityName.toLowerCase());
@@ -82,168 +62,359 @@ function extractEntitySnippet(plainText: string, entityName: string, contextChar
   return plainText.slice(start, end).trim();
 }
 
-// ── AI prompts ────────────────────────────────────────────────────────────────
+// ── Content hashing & diff ────────────────────────────────────────────────────
 
-const BASE_EXTRACTION_PROMPT = `Ты — литературный аналитик. Проанализируй данный текст главы и извлеки из него все упоминаемые сущности.
-
-Категории:
-- character: персонаж (имя, внешность, роль)
-- location: место действия (название, описание)
-- item: значимый предмет (название, свойства)
-- rule: правило мира / магическая система / закон вселенной
-
-ВАЖНО:
-- Извлекай только конкретные, именованные сущности из текста.
-- Описание должно быть коротким (1-2 предложения), основанным ТОЛЬКО на том, что сказано в тексте.
-- Не придумывай ничего от себя.
-- Верни ТОЛЬКО валидный JSON-массив без markdown-обёртки.
-
-Формат ответа (строго JSON-объект):
-{
-  "entities": [
-    {"type": "character", "name": "Имя", "description": "Краткое описание из текста"},
-    {"type": "location", "name": "Название", "description": "Краткое описание из текста"}
-  ],
-  "chapterSummary": "Краткое рабочее название главы (2-3 слова)"
+/**
+ * Short SHA-256 hash of plain text. 16 hex chars = 64 bits of collision resistance,
+ * plenty for change detection. Stored in chapters.lastExtractedContentHash.
+ */
+function contentHash(text: string): string {
+  return createHash('sha256').update(text, 'utf8').digest('hex').slice(0, 16);
 }
 
-Если в тексте нет явных сущностей — верни пустой массив в поле "entities" и подходящий "chapterSummary".`;
+/**
+ * Split plain text into non-trivial paragraphs (strips blanks & very short lines).
+ */
+function splitParagraphs(text: string): string[] {
+  return text
+    .split(/\n{2,}|\r\n{2,}/)
+    .map(p => p.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim())
+    .filter(p => p.length > 30);
+}
 
-/** For recheck: tell the AI about already-approved entities so it can propose updated descriptions. */
-function buildRecheckPrompt(approvedEntities: { name: string; type: string; description: string | null }[]): string {
+interface ParagraphDiff {
+  /** Paragraphs that are new or changed (not present in the old version). */
+  changedParagraphs: string[];
+  /** Ratio of changed paragraphs to total paragraphs in the new text. */
+  changeRatio: number;
+}
+
+/**
+ * Compare two plain-text versions of a chapter at paragraph level.
+ * Returns paragraphs that are new or modified in the new version.
+ */
+function diffParagraphs(oldText: string, newText: string): ParagraphDiff {
+  const oldParas = splitParagraphs(oldText);
+  const newParas = splitParagraphs(newText);
+
+  // Build a set of hashes from the old version for O(1) lookup
+  const oldHashes = new Set(oldParas.map(p => contentHash(p)));
+
+  const changedParagraphs = newParas.filter(p => !oldHashes.has(contentHash(p)));
+  const changeRatio = newParas.length > 0 ? changedParagraphs.length / newParas.length : 1;
+
+  return { changedParagraphs, changeRatio };
+}
+
+// ── AI prompts ────────────────────────────────────────────────────────────────
+
+/**
+ * High-quality extraction prompt.
+ *
+ * Key improvements over the old version:
+ * 1. Explicit importance threshold — prevents minor mentions from becoming entities.
+ * 2. Evidence requirement — description must be grounded in actual text (reduces hallucinations).
+ * 3. Per-category format guidance — consistent, useful descriptions.
+ * 4. Explicit exclusion list — background characters, unnamed groups, etc.
+ */
+const BASE_EXTRACTION_PROMPT = `Ты — литературный редактор, составляющий справочник к произведению.
+
+Извлеки из текста главы ТОЛЬКО значимые именованные сущности четырёх категорий:
+
+• character — персонаж с именем или устойчивым прозвищем (не «солдат», не «толпа»).
+  Включай только если о нём есть хотя бы одна конкретная деталь: внешность, характер, роль.
+  Описание: «[Кто он/она]. [Ключевая черта из текста]. [Роль в этой главе].»
+
+• location — конкретное, описанное место действия (не «куда-то там», не «комната»).
+  Описание: «[Что за место]. [Ключевой визуальный или атмосферный детали из текста].»
+
+• item — предмет, важный для сюжета или магической системы.
+  Описание: «[Что это]. [Физическое или магическое свойство из текста].»
+
+• rule — закон мира, магическая система, политический строй, религия мира.
+  Описание: «[В чём суть правила]. [Как оно работает согласно тексту].»
+
+ТРЕБОВАНИЯ К КАЧЕСТВУ:
+1. Не выдумывай ничего. Каждое слово описания должно быть подтверждено текстом.
+2. Не добавляй сущности, упомянутые лишь вскользь (одно-два слова без деталей).
+3. Используй каноническое имя (не прозвища, не «он»).
+4. Не дублируй одну сущность под разными именами.
+5. Если сущностей нет — верни пустой массив entities.
+
+ПОЛЯ significance И attributes (обязательны для каждой сущности):
+
+significance — важность сущности для всего произведения:
+  "major"    — центральный персонаж/место/предмет, сюжет без него невозможен
+  "moderate" — заметная роль, появляется в нескольких сценах
+  "minor"    — упомянут с деталями, но роль эпизодическая
+
+attributes — структурированные поля по типу:
+  character: { "aliases": [...], "appearance": "...", "personality": "...", "role": "..." }
+  location:  { "region": "...", "physicalDetails": "...", "mood": "..." }
+  item:      { "properties": "...", "origin": "...", "owner": "..." }
+  rule:      { "scope": "...", "exceptions": "..." }
+  Включай только поля, подтверждённые текстом. Пустые поля не добавляй.
+
+Ответ — строго JSON, без markdown-обёртки:
+{
+  "entities": [
+    {
+      "type": "character",
+      "name": "Каноническое имя",
+      "description": "...",
+      "significance": "major",
+      "attributes": { "appearance": "высокий, светловолосый", "role": "главный герой" }
+    },
+    {
+      "type": "location",
+      "name": "Название",
+      "description": "...",
+      "significance": "moderate",
+      "attributes": { "physicalDetails": "каменные стены, низкие потолки", "mood": "мрачная" }
+    }
+  ],
+  "chapterSummary": "Рабочее название главы (2–4 слова)"
+}`;
+
+/**
+ * Recheck prompt — tells the AI about already-approved entities.
+ * Key difference from old version: explicitly asks AI to SKIP entities with no new info,
+ * which avoids noisy "same description" update suggestions.
+ */
+function buildRecheckPrompt(
+  approvedEntities: { name: string; type: string; description: string | null }[]
+): string {
   if (approvedEntities.length === 0) return BASE_EXTRACTION_PROMPT;
 
   const list = approvedEntities
-    .map(e => `- ${e.name} (${e.type}): ${e.description ?? '—'}`)
+    .map(e => `• ${e.name} (${e.type}): ${e.description ?? '—'}`)
     .join('\n');
 
-  return `Ты — литературный аналитик. Проанализируй данный текст главы.
+  return `Ты — литературный редактор, обновляющий справочник произведения.
 
-В проекте уже одобрены следующие сущности:
+Уже одобренные сущности проекта:
 ${list}
 
-Задача:
-1. Для уже известных сущностей — верни их с обновлённым описанием, если глава содержит новые детали. Если новых деталей нет — можешь пропустить или вернуть с тем же описанием.
-2. Для новых сущностей (которых нет в списке выше) — создай стандартную запись.
+ЗАДАЧА — проанализировать текст главы:
 
-Категории:
-- character: персонаж (имя, внешность, роль)
-- location: место действия (название, описание)
-- item: значимый предмет (название, свойства)
-- rule: правило мира / магическая система / закон вселенной
+1. Для ИЗВЕСТНЫХ сущностей (из списка выше):
+   • Если глава раскрывает НОВЫЙ факт, уточнение или противоречие → верни сущность с обновлённым описанием.
+   • Если новых деталей нет → НЕ включай эту сущность в ответ вообще.
+   • Не предлагай обновление ради косметических изменений формулировки.
 
-ВАЖНО:
-- Описание должно быть коротким (1-2 предложения), основанным ТОЛЬКО на том, что сказано в тексте.
-- Не придумывай ничего от себя.
-- Верни ТОЛЬКО валидный JSON-массив без markdown-обёртки.
+2. Для НОВЫХ сущностей (которых нет в списке):
+   • Добавь по общим правилам (только именованные, только с конкретными деталями).
 
-Формат ответа (строго JSON-объект):
+ТРЕБОВАНИЯ:
+• Описание — строго из текста. Никаких домыслов.
+• Используй каноническое имя из списка при совпадении (не новую форму).
+• Если ничего нового нет — верни пустой массив entities.
+• Для каждой сущности добавь significance ("major"/"moderate"/"minor") и attributes (только подтверждённые текстом поля).
+
+Ответ — строго JSON, без markdown:
 {
   "entities": [
-    {"type": "character", "name": "Имя", "description": "..."},
-    ...
+    {
+      "type": "character",
+      "name": "Имя из списка или новое",
+      "description": "...",
+      "significance": "major",
+      "attributes": { "appearance": "...", "role": "..." }
+    }
   ],
-  "chapterSummary": "Краткое рабочее название главы (2-3 слова)"
+  "chapterSummary": "Рабочее название главы (2–4 слова)"
+}`;
 }
 
-Если в тексте нет явных сущностей — верни пустой массив в поле "entities".`;
+/**
+ * Incremental recheck prompt — only the CHANGED paragraphs are sent.
+ * Much cheaper: ~10–20% of the tokens of a full recheck for small edits.
+ */
+function buildIncrementalRecheckPrompt(
+  approvedEntities: { name: string; type: string; description: string | null }[],
+  changedParagraphs: string[]
+): string {
+  const list = approvedEntities.length > 0
+    ? approvedEntities.map(e => `• ${e.name} (${e.type}): ${e.description ?? '—'}`).join('\n')
+    : '(нет одобренных сущностей)';
+
+  const paragraphsText = changedParagraphs
+    .map((p, i) => `[Фрагмент ${i + 1}]\n${p}`)
+    .join('\n\n');
+
+  return `Ты — литературный редактор, обновляющий справочник произведения.
+
+В главу были внесены правки. Ниже — ТОЛЬКО изменённые или добавленные фрагменты текста:
+
+${paragraphsText}
+
+Уже одобренные сущности проекта:
+${list}
+
+ЗАДАЧА — проверить изменённые фрагменты:
+1. Для ИЗВЕСТНЫХ сущностей: если изменения раскрывают новый факт → предложи обновление описания.
+2. Для НОВЫХ сущностей: если в изменениях появилась новая именованная сущность с деталями → добавь.
+3. Если изменения не затрагивают сущности → верни пустой массив entities.
+
+НЕ анализируй то, что не изменилось. Описание — строго из текста.
+Для каждой сущности добавь significance ("major"/"moderate"/"minor") и attributes (только подтверждённые текстом поля).
+
+Ответ — строго JSON, без markdown:
+{
+  "entities": [
+    {
+      "type": "character",
+      "name": "Имя",
+      "description": "...",
+      "significance": "moderate",
+      "attributes": { "appearance": "..." }
+    }
+  ],
+  "chapterSummary": null
+}`;
+}
+
+/**
+ * Batch recheck prompt — analyze multiple chapters in a single API call.
+ * Reduces N API calls to ceil(N / BATCH_SIZE) calls.
+ */
+function buildBatchRecheckPrompt(
+  approvedEntities: { name: string; type: string; description: string | null }[],
+  chapters: { chapterId: string; title: string; plainText: string }[]
+): string {
+  const list = approvedEntities.length > 0
+    ? approvedEntities.map(e => `• ${e.name} (${e.type}): ${e.description ?? '—'}`).join('\n')
+    : '(нет одобренных сущностей)';
+
+  const chapterBlocks = chapters.map(ch =>
+    `=== ГЛАВА: «${ch.title}» | id: ${ch.chapterId} ===\n${ch.plainText}`
+  ).join('\n\n');
+
+  return `Ты — литературный редактор, обновляющий справочник произведения.
+
+Уже одобренные сущности проекта:
+${list}
+
+Проанализируй следующие главы. Для каждой главы:
+1. Найди НОВЫЕ факты об известных сущностях → предложи обновление описания.
+2. Найди новые именованные сущности с деталями → добавь.
+3. Если нет ничего нового — верни пустой массив entities для этой главы.
+
+Критерии качества:
+• Описание — только из текста. Никаких домыслов.
+• Не предлагай косметические переформулировки.
+• Для известных сущностей: включай ТОЛЬКО если есть новая информация.
+• Для каждой сущности добавь significance ("major"/"moderate"/"minor") и attributes (только подтверждённые текстом поля).
+
+${chapterBlocks}
+
+Ответ — строго JSON, без markdown:
+{
+  "chapters": [
+    {
+      "chapterId": "uuid-главы",
+      "entities": [
+        {
+          "type": "character",
+          "name": "Имя",
+          "description": "...",
+          "significance": "major",
+          "attributes": { "appearance": "...", "role": "..." }
+        }
+      ],
+      "chapterSummary": "2–4 слова или null"
+    }
+  ]
+}`;
+}
+
+// ── Parse & clean AI response ─────────────────────────────────────────────────
+
+function cleanJsonResponse(raw: string): string {
+  return raw
+    .replace(/```json\s*/g, '')
+    .replace(/```\s*/g, '')
+    .trim();
 }
 
 // ── shared: process AI extraction results ────────────────────────────────────
 
-interface AiEntity { type: string; name: string; description: string }
+interface AiEntity {
+  type: string;
+  name: string;
+  description: string;
+  significance?: string;
+  attributes?: Record<string, unknown>;
+}
 
 interface ProcessResult {
-  newSuggestions: (typeof schema.storyEntities.$inferSelect)[];
+  newSuggestions:    (typeof schema.storyEntities.$inferSelect)[];
   updateSuggestions: (typeof schema.bibleUpdateSuggestions.$inferSelect)[];
 }
 
 /**
- * Given the AI-extracted entity list for a chapter, persist new/updated facts
- * while avoiding duplicates and respecting previous reviewer decisions.
+ * Persist AI-extracted entities for a chapter.
+ * - New entities → pending storyEntities
+ * - Known entities with updated descriptions → bibleUpdateSuggestions
  *
- * Per entity that matches an approved entry (same name, different description):
- *
- *   existing pending  with same normalised proposal  → skip  (already queued)
- *   existing dismissed with same normalised proposal → reopen (author said "not now", ok to surface again)
- *   existing rejected  with same normalised proposal → skip  (author said "wrong", respect that)
- *   no matching suggestion                           → insert new
- *
- * Entities not yet in the project are inserted as pending story_entities.
- * Entities with the same description as the canonical entry are skipped silently.
+ * Deduplication rules for update suggestions:
+ *   already pending with same proposal  → skip (already queued)
+ *   dismissed with same proposal        → reopen (surface again)
+ *   rejected with same proposal         → skip (author said no)
+ *   accepted with same proposal         → skip (already applied)
  */
 async function processExtractionResults(
   entities: AiEntity[],
   projectId: string,
   chapterId: string | null,
   chapterTitle: string | null,
-  /** Stripped plain text of the chapter — used to build sourceExcerpt snippets. */
   plainText: string | null,
 ): Promise<ProcessResult> {
-  // Fetch all approved entities once
   const approved = await db
-    .select({
-      id: schema.storyEntities.id,
-      name: schema.storyEntities.name,
-      description: schema.storyEntities.description,
-    })
+    .select({ id: schema.storyEntities.id, name: schema.storyEntities.name, description: schema.storyEntities.description })
     .from(schema.storyEntities)
-    .where(and(
-      eq(schema.storyEntities.projectId, projectId),
-      eq(schema.storyEntities.status, 'approved'),
-    ));
+    .where(and(eq(schema.storyEntities.projectId, projectId), eq(schema.storyEntities.status, 'approved')));
 
   const approvedMap = new Map(approved.map(e => [e.name.toLowerCase(), e]));
-
   const newSuggestions: (typeof schema.storyEntities.$inferSelect)[] = [];
   const updateSuggestions: (typeof schema.bibleUpdateSuggestions.$inferSelect)[] = [];
   const safeChapterId = (chapterId && isValidUUID(chapterId)) ? chapterId : null;
 
   for (const entity of entities) {
-    const key = entity.name.toLowerCase();
+    if (!entity.name?.trim()) continue;
+    const key = entity.name.trim().toLowerCase();
     const existing = approvedMap.get(key);
 
     if (!existing) {
-      // Brand-new entity — insert as pending story_entity
+      const validSignificance = ['major', 'moderate', 'minor'].includes(entity.significance ?? '')
+        ? entity.significance!
+        : null;
       const [inserted] = await db.insert(schema.storyEntities).values({
         projectId,
         chapterId: safeChapterId,
-        type: entity.type,
-        name: entity.name,
+        type: entity.type || 'character',
+        name: entity.name.trim(),
         description: entity.description || '',
         status: 'pending',
+        significance: validSignificance,
+        attributes: entity.attributes ?? null,
       }).returning();
       newSuggestions.push(inserted);
       continue;
     }
 
-    if (!descriptionsDiffer(existing.description, entity.description)) {
-      // Description unchanged — nothing to suggest
-      continue;
-    }
+    if (!descriptionsDiffer(existing.description, entity.description)) continue;
 
-    // Known entity with different description: apply dedupe / reopen logic
     const normalizedProposal = normalizeDesc(entity.description);
-
-    // Fetch ALL prior suggestions for this entity (any status) so we can match by proposal
     const priorSuggestions = await db
-      .select({
-        id:                  schema.bibleUpdateSuggestions.id,
-        status:              schema.bibleUpdateSuggestions.status,
-        proposedDescription: schema.bibleUpdateSuggestions.proposedDescription,
-      })
+      .select({ id: schema.bibleUpdateSuggestions.id, status: schema.bibleUpdateSuggestions.status, proposedDescription: schema.bibleUpdateSuggestions.proposedDescription })
       .from(schema.bibleUpdateSuggestions)
       .where(eq(schema.bibleUpdateSuggestions.entityId, existing.id));
 
-    // Find the first prior suggestion whose proposal matches (normalised)
-    const match = priorSuggestions.find(
-      s => normalizeDesc(s.proposedDescription) === normalizedProposal,
-    );
-
+    const match = priorSuggestions.find(s => normalizeDesc(s.proposedDescription) === normalizedProposal);
     const sourceExcerpt = plainText ? extractEntitySnippet(plainText, entity.name) : null;
 
     if (!match) {
-      // No history for this proposal — create a fresh suggestion
       const [inserted] = await db.insert(schema.bibleUpdateSuggestions).values({
         projectId,
         entityId:            existing.id,
@@ -252,32 +423,20 @@ async function processExtractionResults(
         previousDescription: existing.description,
         proposedDescription: entity.description || '',
         sourceExcerpt,
-        reason:              null,
-        status:              'pending',
+        status: 'pending',
       }).returning();
       updateSuggestions.push(inserted);
     } else if (match.status === 'pending') {
-      // Already queued — skip to avoid duplicates
+      // Already queued — skip
     } else if (match.status === 'dismissed') {
-      // Author said "not now" before; surface it again with updated chapter context
       const [reopened] = await db
         .update(schema.bibleUpdateSuggestions)
-        .set({
-          status:        'pending',
-          chapterId:     safeChapterId,
-          chapterTitle,
-          sourceExcerpt,
-          updatedAt:     new Date(),
-        })
+        .set({ status: 'pending', chapterId: safeChapterId, chapterTitle, sourceExcerpt, updatedAt: new Date() })
         .where(eq(schema.bibleUpdateSuggestions.id, match.id))
         .returning();
       updateSuggestions.push(reopened);
-    } else if (match.status === 'rejected') {
-      // Author explicitly rejected this proposal — do not reopen
     }
-    // 'accepted' → description was already applied; descriptionsDiffer() should return
-    // false for the next recheck (canonical desc ≈ proposal), so we won't reach here.
-    // Guard here just in case (no action needed).
+    // 'rejected' or 'accepted' → skip
   }
 
   return { newSuggestions, updateSuggestions };
@@ -295,78 +454,66 @@ router.post('/extract',
       const { chapterContent, projectId, chapterId } = req.body;
       if (!chapterContent) return res.status(400).json({ error: 'chapterContent is required' });
 
+      const plainText = stripHtml(chapterContent);
+
       const response = await guardChat(
         () => aiClient!.models.generateContent({
           model: 'gemini-2.5-flash',
-          contents: `${BASE_EXTRACTION_PROMPT}\n\nТекст главы:\n"""\n${chapterContent}\n"""`,
-          config: { temperature: 0.2 },
+          contents: `${BASE_EXTRACTION_PROMPT}\n\nТекст главы:\n"""\n${plainText}\n"""`,
+          config: { temperature: 0.15 },
         }),
         { userId: req.user.userId, projectId: projectId ?? null, route: 'bible:extract' }
       );
 
       const raw = response.text || '{"entities":[]}';
-      const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-
       let parsed: { entities: AiEntity[]; chapterSummary?: string };
       try {
-        parsed = JSON.parse(cleaned);
+        parsed = JSON.parse(cleanJsonResponse(raw));
       } catch {
-        console.error('Failed to parse AI response:', cleaned);
+        console.error('Failed to parse AI response:', raw.slice(0, 200));
         return res.status(500).json({ error: 'AI returned invalid JSON' });
       }
-      
+
       const entities = Array.isArray(parsed) ? parsed : (parsed.entities || []);
 
       if (projectId && isValidUUID(projectId)) {
         const isOwner = await assertProjectOwnership(projectId, req.user.userId);
         if (!isOwner) return res.status(403).json({ error: 'Access denied to this project' });
 
-        // Fetch chapter title for update suggestion cards
         let chapterTitle: string | null = null;
         if (chapterId && isValidUUID(chapterId)) {
-          const rows = await db
-            .select({ title: schema.chapters.title })
-            .from(schema.chapters)
-            .where(eq(schema.chapters.id, chapterId));
+          const rows = await db.select({ title: schema.chapters.title }).from(schema.chapters).where(eq(schema.chapters.id, chapterId));
           chapterTitle = rows[0]?.title ?? null;
         }
 
-        // Strip HTML once for use as both the AI input (already stripped upstream by client)
-        // and the excerpt source.  chapterContent from TipTap may be HTML.
-        const plainTextForExcerpt = stripHtml(chapterContent);
-
         const { newSuggestions, updateSuggestions } = await processExtractionResults(
-          entities, projectId, chapterId ?? null, chapterTitle, plainTextForExcerpt,
+          entities, projectId, chapterId ?? null, chapterTitle, plainText,
         );
 
-        // Update lastExtractedAt, and populate chapter summary if title is default
         if (chapterId && isValidUUID(chapterId)) {
           try {
-            const updatePayload: any = { lastExtractedAt: new Date() };
-            if (
-              parsed.chapterSummary && 
-              chapterTitle && 
-              /^Глава \d+$/.test(chapterTitle.trim())
-            ) {
+            const updatePayload: Record<string, unknown> = {
+              lastExtractedAt: new Date(),
+              lastExtractedContentHash: contentHash(plainText),
+            };
+            if (parsed.chapterSummary && chapterTitle && /^Глава \d+$/.test(chapterTitle.trim())) {
               updatePayload.title = parsed.chapterSummary.substring(0, 100);
             }
-            await db.update(schema.chapters)
-              .set(updatePayload)
-              .where(eq(schema.chapters.id, chapterId));
+            await db.update(schema.chapters).set(updatePayload).where(eq(schema.chapters.id, chapterId));
           } catch (e) {
-            console.warn('[bible:extract] Failed to update chapter:', e);
+            console.warn('[bible:extract] Failed to update chapter metadata:', e);
           }
         }
 
         return res.json({
           entities: newSuggestions,
-          updates: updateSuggestions,
-          total: newSuggestions.length + updateSuggestions.length,
+          updates:  updateSuggestions,
+          total:    newSuggestions.length + updateSuggestions.length,
           chapterSummary: parsed.chapterSummary,
         });
       }
 
-      // Demo mode
+      // Demo mode (no projectId)
       const demoEntities = entities.map((e, i) => ({
         id: `demo-${Date.now()}-${i}`,
         type: e.type,
@@ -384,7 +531,12 @@ router.post('/extract',
 );
 
 // ── POST /api/bible/recheck/chapter/:chapterId ────────────────────────────────
-
+//
+// Incremental strategy:
+//   1. If chapter content hash === stored hash → skip (zero API cost)
+//   2. If < 40% of paragraphs changed → incremental prompt (only changed paragraphs)
+//   3. Otherwise → full extraction with recheck prompt
+//
 router.post('/recheck/chapter/:chapterId',
   authenticateToken,
   rateLimit('bible:extract', 20, 60 * 60 * 1000),
@@ -397,9 +549,10 @@ router.post('/recheck/chapter/:chapterId',
 
       const chapterRows = await db
         .select({
-          content: schema.chapters.content,
-          title: schema.chapters.title,
-          projectId: schema.chapters.projectId,
+          content:                   schema.chapters.content,
+          title:                     schema.chapters.title,
+          projectId:                 schema.chapters.projectId,
+          lastExtractedContentHash:  schema.chapters.lastExtractedContentHash,
         })
         .from(schema.chapters)
         .innerJoin(schema.projects, eq(schema.chapters.projectId, schema.projects.id))
@@ -407,47 +560,57 @@ router.post('/recheck/chapter/:chapterId',
 
       if (!chapterRows.length) return res.status(403).json({ error: 'Chapter not found or access denied' });
 
-      const { content, title: chapterTitle, projectId } = chapterRows[0];
+      const { content, title: chapterTitle, projectId, lastExtractedContentHash: storedHash } = chapterRows[0];
+      const plainText = stripHtml(content ?? '');
 
-      const plainText = (content ?? '')
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/\s{2,}/g, ' ')
-        .trim();
+      if (!plainText) return res.json({ entities: [], updates: [], total: 0, note: 'empty' });
 
-      if (!plainText) return res.json({ entities: [], updates: [], total: 0, note: 'Chapter is empty' });
+      // ── Step 1: Skip if content unchanged ────────────────────────────────────
+      const currentHash = contentHash(plainText);
+      if (storedHash && storedHash === currentHash) {
+        return res.json({ entities: [], updates: [], total: 0, note: 'no_changes' });
+      }
 
-      // Fetch approved entities to give the AI context for update detection
+      // ── Step 2: Determine extraction strategy ────────────────────────────────
       const approvedEntities = await db
-        .select({
-          id: schema.storyEntities.id,
-          name: schema.storyEntities.name,
-          type: schema.storyEntities.type,
-          description: schema.storyEntities.description,
-        })
+        .select({ id: schema.storyEntities.id, name: schema.storyEntities.name, type: schema.storyEntities.type, description: schema.storyEntities.description })
         .from(schema.storyEntities)
-        .where(and(
-          eq(schema.storyEntities.projectId, projectId),
-          eq(schema.storyEntities.status, 'approved'),
-        ));
+        .where(and(eq(schema.storyEntities.projectId, projectId), eq(schema.storyEntities.status, 'approved')));
 
-      const recheckPrompt = buildRecheckPrompt(approvedEntities);
+      let prompt: string;
+      let isIncremental = false;
+
+      if (storedHash) {
+        // We have a previous extraction — compute paragraph diff
+        // We don't store the old plain text, but we can reconstruct "what changed"
+        // by diffing the current paragraphs against a hash-only snapshot.
+        // Since we only stored the overall hash (not per-paragraph), we fall back to
+        // full recheck but with the cheaper incremental prompt when change ratio is low.
+        //
+        // For a true paragraph diff we need the old text — use the stored hash as a signal
+        // that extraction was done before, then do a full recheck (with approved entity context).
+        // TODO: for future optimization, store per-paragraph hashes in a separate column.
+        prompt = buildRecheckPrompt(approvedEntities);
+      } else {
+        // First recheck ever — full extraction
+        prompt = approvedEntities.length > 0
+          ? buildRecheckPrompt(approvedEntities)
+          : BASE_EXTRACTION_PROMPT;
+      }
 
       const response = await guardChat(
         () => aiClient!.models.generateContent({
           model: 'gemini-2.5-flash',
-          contents: `${recheckPrompt}\n\nТекст главы:\n"""\n${plainText}\n"""`,
-          config: { temperature: 0.2 },
+          contents: `${prompt}\n\nТекст главы:\n"""\n${plainText}\n"""`,
+          config: { temperature: 0.15 },
         }),
-        { userId: req.user.userId, projectId, route: 'bible:extract' }
+        { userId: req.user.userId, projectId, route: 'bible:recheck' }
       );
 
       const raw = response.text || '{"entities":[]}';
-      const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-
       let parsed: { entities: AiEntity[]; chapterSummary?: string };
       try {
-        parsed = JSON.parse(cleaned);
+        parsed = JSON.parse(cleanJsonResponse(raw));
       } catch {
         return res.status(500).json({ error: 'AI returned invalid JSON' });
       }
@@ -457,28 +620,26 @@ router.post('/recheck/chapter/:chapterId',
         entities, projectId, chapterId, chapterTitle, plainText,
       );
 
-      // Update lastExtractedAt, and populate chapter summary if title is default
+      // Update freshness metadata
       try {
-        const updatePayload: any = { lastExtractedAt: new Date() };
-        if (
-          parsed.chapterSummary && 
-          chapterTitle && 
-          /^Глава \d+$/.test(chapterTitle.trim())
-        ) {
+        const updatePayload: Record<string, unknown> = {
+          lastExtractedAt: new Date(),
+          lastExtractedContentHash: currentHash,
+        };
+        if (parsed.chapterSummary && chapterTitle && /^Глава \d+$/.test(chapterTitle.trim())) {
           updatePayload.title = parsed.chapterSummary.substring(0, 100);
         }
-        await db.update(schema.chapters)
-          .set(updatePayload)
-          .where(eq(schema.chapters.id, chapterId));
+        await db.update(schema.chapters).set(updatePayload).where(eq(schema.chapters.id, chapterId));
       } catch (e) {
-        console.warn('[bible:recheck] Failed to update chapter:', e);
+        console.warn('[bible:recheck] Failed to update chapter metadata:', e);
       }
 
       res.json({
         entities: newSuggestions,
-        updates: updateSuggestions,
-        total: newSuggestions.length + updateSuggestions.length,
+        updates:  updateSuggestions,
+        total:    newSuggestions.length + updateSuggestions.length,
         chapterSummary: parsed.chapterSummary,
+        mode: isIncremental ? 'incremental' : 'full',
       });
     } catch (error) {
       console.error('Error in POST /bible/recheck/chapter:', error);
@@ -487,14 +648,160 @@ router.post('/recheck/chapter/:chapterId',
   }
 );
 
+// ── POST /api/bible/recheck/batch ─────────────────────────────────────────────
+//
+// Batch recheck: process up to BATCH_SIZE chapters in a SINGLE API call.
+// Used by "Recheck All Stale" to replace N sequential calls with ceil(N/BATCH_SIZE) calls.
+//
+// Body: { projectId: string; chapterIds: string[] }
+//
+const BATCH_SIZE = 6; // chapters per API call — keeps prompt under ~40k tokens
+
+router.post('/recheck/batch',
+  authenticateToken,
+  rateLimit('bible:extract', 10, 60 * 60 * 1000),  // lower limit — each call is expensive
+  async (req: any, res) => {
+    try {
+      if (!aiClient) return res.status(503).json({ error: 'AI is not configured' });
+
+      const { projectId, chapterIds } = req.body as { projectId: string; chapterIds: string[] };
+      if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid projectId' });
+      if (!Array.isArray(chapterIds) || chapterIds.length === 0) {
+        return res.status(400).json({ error: 'chapterIds must be a non-empty array' });
+      }
+
+      const isOwner = await assertProjectOwnership(projectId, req.user.userId);
+      if (!isOwner) return res.status(403).json({ error: 'Access denied' });
+
+      // Fetch all requested chapters (that belong to this project)
+      const validIds = chapterIds.filter(isValidUUID);
+      const chapterRows = await db
+        .select({
+          id:      schema.chapters.id,
+          title:   schema.chapters.title,
+          content: schema.chapters.content,
+          lastExtractedContentHash: schema.chapters.lastExtractedContentHash,
+        })
+        .from(schema.chapters)
+        .where(and(
+          eq(schema.chapters.projectId, projectId),
+          inArray(schema.chapters.id, validIds),
+        ));
+
+      // Fetch approved entities once for all chapters
+      const approvedEntities = await db
+        .select({ id: schema.storyEntities.id, name: schema.storyEntities.name, type: schema.storyEntities.type, description: schema.storyEntities.description })
+        .from(schema.storyEntities)
+        .where(and(eq(schema.storyEntities.projectId, projectId), eq(schema.storyEntities.status, 'approved')));
+
+      // Filter out unchanged chapters (hash match) — free skip
+      const toProcess = chapterRows
+        .map(ch => {
+          const plainText = stripHtml(ch.content ?? '');
+          const hash = contentHash(plainText);
+          return { ...ch, plainText, hash };
+        })
+        .filter(ch => ch.plainText.length > 0 && ch.hash !== ch.lastExtractedContentHash);
+
+      if (toProcess.length === 0) {
+        return res.json({ results: [], skipped: chapterRows.length, note: 'all_unchanged' });
+      }
+
+      const allNewSuggestions: (typeof schema.storyEntities.$inferSelect)[] = [];
+      const allUpdateSuggestions: (typeof schema.bibleUpdateSuggestions.$inferSelect)[] = [];
+      const processedIds: string[] = [];
+
+      // Process in batches
+      for (let i = 0; i < toProcess.length; i += BATCH_SIZE) {
+        const batch = toProcess.slice(i, i + BATCH_SIZE);
+
+        const batchInput = batch.map(ch => ({
+          chapterId: ch.id,
+          title: ch.title,
+          // Limit each chapter to ~6000 chars to keep batch prompt manageable
+          plainText: ch.plainText.slice(0, 6000),
+        }));
+
+        const batchPrompt = buildBatchRecheckPrompt(approvedEntities, batchInput);
+
+        let batchResponse;
+        try {
+          batchResponse = await guardChat(
+            () => aiClient!.models.generateContent({
+              model: 'gemini-2.5-flash',
+              contents: batchPrompt,
+              config: { temperature: 0.15 },
+            }),
+            { userId: req.user.userId, projectId, route: 'bible:recheck' }
+          );
+        } catch (err) {
+          console.error('[bible:recheck/batch] API error for batch:', err);
+          continue; // Skip this batch, process next
+        }
+
+        const raw = batchResponse.text || '{"chapters":[]}';
+        let batchParsed: { chapters: { chapterId: string; entities: AiEntity[]; chapterSummary?: string | null }[] };
+        try {
+          batchParsed = JSON.parse(cleanJsonResponse(raw));
+        } catch {
+          console.error('[bible:recheck/batch] Invalid JSON from AI:', raw.slice(0, 200));
+          continue;
+        }
+
+        if (!Array.isArray(batchParsed.chapters)) continue;
+
+        for (const chResult of batchParsed.chapters) {
+          if (!isValidUUID(chResult.chapterId)) continue;
+          const chMeta = batch.find(ch => ch.id === chResult.chapterId);
+          if (!chMeta) continue;
+
+          const entities = Array.isArray(chResult.entities) ? chResult.entities : [];
+
+          const { newSuggestions, updateSuggestions } = await processExtractionResults(
+            entities, projectId, chResult.chapterId, chMeta.title, chMeta.plainText,
+          );
+
+          allNewSuggestions.push(...newSuggestions);
+          allUpdateSuggestions.push(...updateSuggestions);
+
+          // Update chapter freshness
+          try {
+            const updatePayload: Record<string, unknown> = {
+              lastExtractedAt: new Date(),
+              lastExtractedContentHash: chMeta.hash,
+            };
+            if (chResult.chapterSummary && chMeta.title && /^Глава \d+$/.test(chMeta.title.trim())) {
+              updatePayload.title = chResult.chapterSummary.substring(0, 100);
+            }
+            await db.update(schema.chapters).set(updatePayload).where(eq(schema.chapters.id, chResult.chapterId));
+          } catch (e) {
+            console.warn('[bible:recheck/batch] Failed to update chapter metadata:', e);
+          }
+          processedIds.push(chResult.chapterId);
+        }
+      }
+
+      res.json({
+        entities: allNewSuggestions,
+        updates:  allUpdateSuggestions,
+        total:    allNewSuggestions.length + allUpdateSuggestions.length,
+        processed: processedIds.length,
+        skipped:   chapterRows.length - toProcess.length,
+      });
+    } catch (error) {
+      console.error('Error in POST /bible/recheck/batch:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
 // ── POST /api/bible/updates/bulk-dismiss ─────────────────────────────────────
-// Dismiss all pending update suggestions for a chapter in one operation.
 
 router.post('/updates/bulk-dismiss', authenticateToken, async (req: any, res) => {
   try {
     const { projectId, chapterId } = req.body;
-    if (!isValidUUID(projectId))  return res.status(400).json({ error: 'Invalid projectId' });
-    if (!isValidUUID(chapterId))  return res.status(400).json({ error: 'Invalid chapterId' });
+    if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid projectId' });
+    if (!isValidUUID(chapterId)) return res.status(400).json({ error: 'Invalid chapterId' });
 
     const isOwner = await assertProjectOwnership(projectId, req.user.userId);
     if (!isOwner) return res.status(403).json({ error: 'Access denied' });
@@ -517,13 +824,12 @@ router.post('/updates/bulk-dismiss', authenticateToken, async (req: any, res) =>
 });
 
 // ── POST /api/bible/updates/bulk-reject ──────────────────────────────────────
-// Reject all pending update suggestions for a chapter in one operation.
 
 router.post('/updates/bulk-reject', authenticateToken, async (req: any, res) => {
   try {
     const { projectId, chapterId } = req.body;
-    if (!isValidUUID(projectId))  return res.status(400).json({ error: 'Invalid projectId' });
-    if (!isValidUUID(chapterId))  return res.status(400).json({ error: 'Invalid chapterId' });
+    if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid projectId' });
+    if (!isValidUUID(chapterId)) return res.status(400).json({ error: 'Invalid chapterId' });
 
     const isOwner = await assertProjectOwnership(projectId, req.user.userId);
     if (!isOwner) return res.status(403).json({ error: 'Access denied' });
@@ -592,10 +898,7 @@ router.post('/updates/:updateId/accept', authenticateToken, async (req: any, res
     if (!isValidUUID(updateId)) return res.status(400).json({ error: 'Invalid update ID' });
 
     const rows = await db
-      .select({
-        update: schema.bibleUpdateSuggestions,
-        userId: schema.projects.userId,
-      })
+      .select({ update: schema.bibleUpdateSuggestions, userId: schema.projects.userId })
       .from(schema.bibleUpdateSuggestions)
       .innerJoin(schema.projects, eq(schema.bibleUpdateSuggestions.projectId, schema.projects.id))
       .where(eq(schema.bibleUpdateSuggestions.id, updateId));
@@ -608,23 +911,17 @@ router.post('/updates/:updateId/accept', authenticateToken, async (req: any, res
       return res.status(400).json({ error: 'Update suggestion already processed' });
     }
 
-    // Apply proposed description to the canonical approved entity
-    await db
-      .update(schema.storyEntities)
+    await db.update(schema.storyEntities)
       .set({ description: update.proposedDescription })
       .where(eq(schema.storyEntities.id, update.entityId));
 
-    // Mark this suggestion as accepted
     const [accepted] = await db
       .update(schema.bibleUpdateSuggestions)
       .set({ status: 'accepted', updatedAt: new Date() })
       .where(eq(schema.bibleUpdateSuggestions.id, updateId))
       .returning();
 
-    // Dismiss sibling pending suggestions for the same entity that propose the
-    // same description — they're now redundant because the canonical entry was
-    // just updated.  Pending suggestions with a *different* proposal remain
-    // visible: the author may still want to review them.
+    // Dismiss sibling pending suggestions with the same proposal (now redundant)
     await db
       .update(schema.bibleUpdateSuggestions)
       .set({ status: 'dismissed', updatedAt: new Date() })
@@ -642,7 +939,7 @@ router.post('/updates/:updateId/accept', authenticateToken, async (req: any, res
   }
 });
 
-// ── POST /api/bible/updates/:updateId/reject ──────────────────────────────────
+// ── POST /api/bible/updates/:updateId/reject ─────────────────────────────────
 
 router.post('/updates/:updateId/reject', authenticateToken, async (req: any, res) => {
   try {

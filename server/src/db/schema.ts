@@ -45,10 +45,18 @@ export const chapters = pgTable('chapters', {
   content: text('content'),
   order: integer('order').default(0).notNull(),
   status: text('status').default('draft').notNull(), // 'draft' | 'done'
+  /** Cached word count — updated on every content save, avoids per-request regex scans. */
+  wordCount: integer('word_count').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
   /** Set to NOW() every time /bible/extract successfully analyzes this chapter. */
   lastExtractedAt: timestamp('last_extracted_at'),
+  /**
+   * Short SHA-256 prefix of the plain-text content at the time of the last extraction.
+   * Used to skip recheck when nothing has changed (zero AI cost) and to compute a
+   * paragraph-level diff for incremental re-extraction.
+   */
+  lastExtractedContentHash: text('last_extracted_content_hash'),
 });
 
 // Permanent Memory Tables
@@ -85,6 +93,16 @@ export const storyEntities = pgTable('story_entities', {
   name: text('name').notNull(),
   description: text('description'),
   status: text('status').notNull().default('pending'), // 'pending' | 'approved' | 'rejected'
+  /** Importance tier assigned by AI: 'major' | 'moderate' | 'minor'. Null if not yet classified. */
+  significance: text('significance'),
+  /**
+   * Structured per-type attributes populated by AI during extraction.
+   * character: { aliases?, appearance?, personality?, role? }
+   * location:  { mood?, physicalDetails?, region? }
+   * item:      { properties?, origin?, owner? }
+   * rule:      { scope?, exceptions? }
+   */
+  attributes: jsonb('attributes'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 

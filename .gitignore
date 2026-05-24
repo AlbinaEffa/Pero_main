@@ -6,3 +6,12 @@ coverage/
 *.log
 .env*
 !.env.example
+!server/.env.example
+
+# Dev tools (not part of the project)
+agents-tools/
+
+# Stray files
+*.xlsx
+build_salary_model.py
+firestore.rules

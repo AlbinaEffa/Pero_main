@@ -86,7 +86,9 @@ export function EditorFirstRunHints({ isNewChapter }: Props) {
         width: 'min(360px, calc(100vw - 2rem))',
       }}
     >
-      <div className="bg-[#1e2d1f] text-white rounded-2xl shadow-2xl overflow-hidden">
+      {/* font-sans принудительно: карточка живёт внутри обёртки шрифта рукописи,
+          но это UI-хром — ему положен Golos (DESIGN.md) */}
+      <div className="bg-[#1e2d1f] text-white rounded-2xl shadow-2xl overflow-hidden font-sans">
         {/* Progress bar */}
         <div className="h-0.5 bg-white/10">
           <div

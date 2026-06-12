@@ -123,7 +123,7 @@ export default function Settings({
         {/* Navigation back */}
         <button 
           onClick={() => onClose ? onClose() : navigate('/dashboard')}
-          className="flex items-center gap-1.5 text-[13px] font-medium text-[#6b7280] hover:text-[#1a1f2c] transition-colors mb-8"
+          className="flex items-center gap-1.5 text-[13px] font-medium text-[#6b7280] hover:text-[#1E2D1F] transition-colors mb-8"
         >
           <ChevronLeft size={16} /> {onClose ? 'Назад к редактору' : 'Назад к проектам'}
         </button>
@@ -131,7 +131,7 @@ export default function Settings({
         {/* Header */}
         <header className="flex justify-between items-start mb-12">
           <div>
-            <h1 className="text-3xl font-bold text-[#1a1f2c] mb-2">Настройки профиля</h1>
+            <h1 className="text-3xl font-bold text-[#1E2D1F] mb-2">Настройки профиля</h1>
             <p className="text-[#6b7280] text-sm">Управляйте своим творческим пространством</p>
           </div>
           <div className="flex flex-col items-end gap-1">
@@ -166,7 +166,7 @@ export default function Settings({
                 </button>
               </div>
               <div>
-                <h3 className="text-lg font-bold text-[#1a1f2c] mb-1">Фото профиля</h3>
+                <h3 className="text-lg font-bold text-[#1E2D1F] mb-1">Фото профиля</h3>
                 <p className="text-sm text-[#9ca3af]">PNG или JPG до 5MB</p>
               </div>
             </div>
@@ -174,7 +174,7 @@ export default function Settings({
             {/* Form Fields */}
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-[#1a1f2c] mb-2">Имя автора</label>
+                <label className="block text-sm font-medium text-[#1E2D1F] mb-2">Имя автора</label>
                 <input 
                   type="text" 
                   value={name}
@@ -184,7 +184,7 @@ export default function Settings({
               </div>
               
               <div className="opacity-50 pointer-events-none">
-                <label className="block text-sm font-medium text-[#1a1f2c] mb-2">
+                <label className="block text-sm font-medium text-[#1E2D1F] mb-2">
                   Биография <span className="text-[10px] font-normal text-[#9ca3af] ml-1">— в разработке</span>
                 </label>
                 <textarea
@@ -196,7 +196,7 @@ export default function Settings({
               </div>
 
               <div className="opacity-50 pointer-events-none">
-                <label className="block text-sm font-medium text-[#1a1f2c] mb-2">
+                <label className="block text-sm font-medium text-[#1E2D1F] mb-2">
                   Литературный стиль <span className="text-[10px] font-normal text-[#9ca3af] ml-1">— в разработке</span>
                 </label>
                 <input
@@ -213,7 +213,7 @@ export default function Settings({
           <div className="space-y-8">
             {/* Тариф */}
             <div className="bg-white/40 backdrop-blur-xl rounded-3xl p-8 shadow-sm border border-white/60">
-              <h2 className="text-xl font-bold text-[#1a1f2c] mb-6">Тариф</h2>
+              <h2 className="text-xl font-bold text-[#1E2D1F] mb-6">Тариф</h2>
 
               <div className="flex items-start gap-4 mb-6">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
@@ -222,7 +222,7 @@ export default function Settings({
                   <Crown size={20} />
                 </div>
                 <div>
-                  <h4 className="text-[15px] font-semibold text-[#1a1f2c] mb-1">
+                  <h4 className="text-[15px] font-semibold text-[#1E2D1F] mb-1">
                     {billing?.plan === 'pro' ? 'Pro' : 'Бесплатный'}
                   </h4>
                   <p className="text-sm text-[#6b7280] leading-relaxed">
@@ -256,7 +256,7 @@ export default function Settings({
 
             {/* Studio Settings */}
             <div className="bg-white/40 backdrop-blur-xl rounded-3xl p-8 shadow-sm border border-white/60">
-              <h2 className="text-xl font-bold text-[#1a1f2c] mb-6">Настройки студии</h2>
+              <h2 className="text-xl font-bold text-[#1E2D1F] mb-6">Настройки студии</h2>
               
               <div className="space-y-6">
                 {/* Dark Theme — coming soon */}
@@ -266,7 +266,7 @@ export default function Settings({
                       <Moon size={20} />
                     </div>
                     <div>
-                      <h4 className="text-[15px] font-medium text-[#1a1f2c]">Темная тема</h4>
+                      <h4 className="text-[15px] font-medium text-[#1E2D1F]">Темная тема</h4>
                       <p className="text-sm text-[#9ca3af]">В разработке</p>
                     </div>
                   </div>
@@ -282,7 +282,7 @@ export default function Settings({
                       <Volume2 size={20} />
                     </div>
                     <div>
-                      <h4 className="text-[15px] font-medium text-[#1a1f2c]">Фоновые звуки</h4>
+                      <h4 className="text-[15px] font-medium text-[#1E2D1F]">Фоновые звуки</h4>
                       <p className="text-sm text-[#9ca3af]">В разработке</p>
                     </div>
                   </div>
@@ -298,7 +298,7 @@ export default function Settings({
                       <Sparkles size={20} />
                     </div>
                     <div>
-                      <h4 className="text-[15px] font-medium text-[#1a1f2c]">Умные подсказки</h4>
+                      <h4 className="text-[15px] font-medium text-[#1E2D1F]">Умные подсказки</h4>
                       <p className="text-sm text-[#9ca3af]">В разработке</p>
                     </div>
                   </div>
@@ -314,7 +314,7 @@ export default function Settings({
                       <Type size={20} />
                     </div>
                     <div>
-                      <h4 className="text-[15px] font-medium text-[#1a1f2c]">Показывать количество слов</h4>
+                      <h4 className="text-[15px] font-medium text-[#1E2D1F]">Показывать количество слов</h4>
                       <p className="text-sm text-[#9ca3af]">Отображать счетчик слов в редакторе</p>
                     </div>
                   </div>
@@ -333,7 +333,7 @@ export default function Settings({
                       <AlignLeft size={20} />
                     </div>
                     <div>
-                      <h4 className="text-[15px] font-medium text-[#1a1f2c]">Отступ абзацев</h4>
+                      <h4 className="text-[15px] font-medium text-[#1E2D1F]">Отступ абзацев</h4>
                       <p className="text-sm text-[#9ca3af]">Добавлять красную строку для новых абзацев</p>
                     </div>
                   </div>
@@ -349,7 +349,7 @@ export default function Settings({
 
             {/* Security */}
             <div className="bg-white/40 backdrop-blur-xl rounded-3xl p-8 shadow-sm border border-white/60">
-              <h2 className="text-xl font-bold text-[#1a1f2c] mb-6">Безопасность</h2>
+              <h2 className="text-xl font-bold text-[#1E2D1F] mb-6">Безопасность</h2>
               
               <div className="space-y-4">
                 <button className="w-full flex items-center justify-between p-2 hover:bg-white/60 rounded-xl transition-colors group">
@@ -357,7 +357,7 @@ export default function Settings({
                     <div className="w-10 h-10 rounded-xl border border-white/80 shadow-sm bg-white/50 flex items-center justify-center text-[#1e2d1f]/80 group-hover:bg-white/80 transition-colors">
                       <Lock size={18} />
                     </div>
-                    <span className="text-[15px] font-medium text-[#1a1f2c]">Смена пароля</span>
+                    <span className="text-[15px] font-medium text-[#1E2D1F]">Смена пароля</span>
                   </div>
                   <ChevronRight size={18} className="text-ink/40" />
                 </button>
@@ -367,7 +367,7 @@ export default function Settings({
                     <div className="w-10 h-10 rounded-xl border border-white/80 shadow-sm bg-white/50 flex items-center justify-center text-[#1e2d1f]/80 group-hover:bg-white/80 transition-colors">
                       <Shield size={18} />
                     </div>
-                    <span className="text-[15px] font-medium text-[#1a1f2c]">Двухфакторная аутентификация</span>
+                    <span className="text-[15px] font-medium text-[#1E2D1F]">Двухфакторная аутентификация</span>
                   </div>
                   <ChevronRight size={18} className="text-ink/40" />
                 </button>
@@ -378,14 +378,14 @@ export default function Settings({
 
         {/* Data & Export section */}
         <div className="mb-12">
-          <h2 className="text-xl font-bold text-[#1a1f2c] mb-4">Ваши данные</h2>
+          <h2 className="text-xl font-bold text-[#1E2D1F] mb-4">Ваши данные</h2>
           <div className="bg-white/40 backdrop-blur-xl rounded-3xl p-8 shadow-sm border border-white/60">
             <div className="flex items-start gap-4 mb-6">
               <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
                 <Shield size={20} />
               </div>
               <div>
-                <h4 className="text-[15px] font-semibold text-[#1a1f2c] mb-1">Безопасное хранение</h4>
+                <h4 className="text-[15px] font-semibold text-[#1E2D1F] mb-1">Безопасное хранение</h4>
                 <p className="text-sm text-[#6b7280] leading-relaxed">
                   Все ваши тексты хранятся в защищённой базе данных. Вы можете в любой момент скачать полную копию своих произведений — в Markdown, Word или в виде архива со всеми данными.
                 </p>
@@ -433,7 +433,7 @@ export default function Settings({
         <div className="pt-8 border-t border-ink/10 flex items-center justify-between">
           <button 
             onClick={() => logout()}
-            className="flex items-center gap-2 text-[#6b7280] hover:text-[#1a1f2c] font-medium transition-colors"
+            className="flex items-center gap-2 text-[#6b7280] hover:text-[#1E2D1F] font-medium transition-colors"
           >
             <LogOut size={18} />
             Выйти из аккаунта

@@ -29,6 +29,7 @@
 - **Loading:** Google Fonts, `display=swap`:
   `https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400..700;1,400..700&family=Literata:ital,opsz,wght@0,7..72,400..600;1,7..72,400&family=Golos+Text:wght@400..700&family=JetBrains+Mono:wght@400;500&display=swap`
 - **Scale:** hero 76/1.05 · h1 42/1.15 · h2 34/1.2 · h3 26/1.3 (всё Cormorant) · рукопись 18/1.75 (Literata) · UI body 14/1.6 · UI small 12.5 · caption 11 caps +0.14em (Golos Text).
+- **Правило применения:** Cormorant — только контентные заголовки ≥20px и имена сущностей в детальных карточках; ВСЯ навигация, списки, подсказки, строки настроек и микрозаголовки-капсы — Golos. Шрифт рукописи (выбор автора) красит ТОЛЬКО полотно рукописи — не сайдбар и не панели. В CSS серифы по умолчанию получают только h1/h2; для h3+ ставить font-serif явно и осознанно.
 
 ## Color
 - **Approach:** restrained + semantic. Цвет в Перо — смысл, а не украшение. **Принцип пигментов:** любой смысловой цвет — приглушённый и согретый, «как краска на бумаге». Чистые веб-цвета (Tailwind rose-500, blue-500 и т.п.) запрещены.

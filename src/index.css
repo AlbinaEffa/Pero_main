@@ -58,7 +58,9 @@
     @apply bg-[var(--color-paper)] text-[var(--color-ink)] font-sans antialiased selection:bg-[var(--color-accent)] selection:text-white;
   }
   
-  h1, h2, h3, h4, h5, h6 {
+  /* Серифы по умолчанию — только крупные контентные заголовки.
+     h3–h6 — микрозаголовки UI → Golos; явный font-serif ставится точечно. */
+  h1, h2 {
     @apply font-serif tracking-tight;
   }
 }

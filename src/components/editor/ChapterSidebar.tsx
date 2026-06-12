@@ -171,11 +171,9 @@ export function ChapterSidebar({
     }
   };
 
-  const editorFontClass = {
-    cormorant:     'editor-font-cormorant',
-    literata:      'editor-font-literata',
-    'source-serif':'editor-font-source-serif',
-  }[editorFont];
+  // Шрифт рукописи (editorFont) сюда сознательно НЕ применяется:
+  // навигация — UI-хром, ей положен Golos (DESIGN.md, «Правило применения»).
+  void editorFont;
 
   return (
     <aside className="w-[220px] bg-[#1e2d1f] text-white/80 flex flex-col flex-shrink-0 shadow-xl z-20">
@@ -291,7 +289,7 @@ export function ChapterSidebar({
                 onClick={() => navigate(`/editor/${projectId}/${chapter.id}`)}
                 className={`flex-1 flex flex-col min-w-0 text-left transition-colors ${
                   isActive ? 'text-white' : 'text-white/60 hover:text-white/80'
-                } ${editorFontClass}`}
+                }`}
               >
                 <span className={`text-[14px] font-semibold leading-tight ${isActive ? 'text-white' : 'text-white/82'}`}>
                   {primary}

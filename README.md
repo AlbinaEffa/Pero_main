@@ -24,7 +24,7 @@
 | Frontend | React + Vite + TypeScript + Tiptap + Tailwind |
 | Backend | Node.js + Express + TypeScript |
 | База данных | PostgreSQL + Drizzle ORM + pgvector |
-| AI | Google Gemini (text-embedding-004 + генерация) |
+| AI | Переключаемый провайдер: Gemini (default) / OpenAI-совместимые (OpenAI, OpenRouter, DeepSeek, локальные) / Anthropic Claude — см. `server/src/lib/aiProvider.ts` |
 | Деплой | Docker + docker-compose |
 
 ---
@@ -60,8 +60,22 @@ VITE_API_BASE_URL=http://localhost:3001/api
 # server/.env
 DATABASE_URL=postgresql://user:password@localhost:5432/pero
 JWT_SECRET=your-secret-here
+
+# AI-провайдер: gemini (default) | openai | anthropic
+AI_PROVIDER=gemini
 GEMINI_API_KEY=your-gemini-key
+# Или, например, OpenRouter:
+# AI_PROVIDER=openai
+# AI_BASE_URL=https://openrouter.ai/api/v1
+# AI_API_KEY=sk-or-...
+# AI_MODEL=anthropic/claude-haiku-4.5
 ```
+
+Полный список AI-настроек (модель, эмбеддинги) — в `server/.env.example`.
+Эмбеддинги для семантического поиска фиксированы на 768 измерений (pgvector):
+Gemini `text-embedding-004` или OpenAI `text-embedding-3-small` (с `dimensions=768`).
+Anthropic эмбеддинги не предоставляет — при `AI_PROVIDER=anthropic` дополнительно
+задайте `GEMINI_API_KEY` или `OPENAI_API_KEY`, иначе семантический поиск отключится.
 
 ### 3. Запустить миграции
 

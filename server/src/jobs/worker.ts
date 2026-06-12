@@ -9,22 +9,23 @@
  *  • All job logic (handlers) lives here — import.ts just enqueues.
  *
  * Supported job types:
- *  • extract_entities  — run Gemini entity extraction on one chapter
- *  • embed_chapter     — chunk + embed one chapter via Gemini text-embedding-004
+ *  • extract_entities  — run AI entity extraction on one chapter
+ *  • embed_chapter     — chunk + embed one chapter via the embedding provider
  */
 
-import pkg from 'pg';
-import { GoogleGenAI } from '@google/genai';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { eq, and } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import type { ExtractEntitiesPayload, EmbedChapterPayload } from './queue.js';
-
-const { Pool } = pkg;
+import { stripHtml } from '../lib/html.js';
+import { guardChat, guardEmbed } from '../lib/aiGuard.js';
+import { pool as sharedPool } from '../db/client.js';
+import { getAIProvider, getEmbeddingProvider, type AIProvider } from '../lib/aiProvider.js';
 
 const POLL_INTERVAL_MS   = 5_000;  // check for new jobs every 5 seconds
 const STUCK_JOB_MINUTES  = 5;      // running jobs older than this are assumed crashed
 const BACKOFF_BASE_S     = 30;     // first retry delay (seconds)
+const BACKOFF_MAX_EXP    = 6;      // max exponent → 30 * 2^6 = 1920s (~32 min)
 
 /**
  * Explicit handler result type.
@@ -47,29 +48,10 @@ export class WorkerHandlerError extends Error {
   }
 }
 
-let _pool: InstanceType<typeof Pool> | null = null;
-let aiClient: GoogleGenAI | null = null;
-
-function getPool(connectionString: string): InstanceType<typeof Pool> {
-  if (!_pool) {
-    _pool = new Pool({ connectionString, max: 3 }); // small pool — worker is low-throughput
-  }
-  return _pool;
-}
+let aiClient: AIProvider | null = null;
 
 // ── Text helpers ─────────────────────────────────────────────────────────────
-
-function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
-}
+// stripHtml imported from ../lib/html.js
 
 function chunkText(text: string, chunkSize = 400, overlap = 60): string[] {
   const words = text.split(/\s+/).filter(Boolean);
@@ -87,51 +69,96 @@ function chunkText(text: string, chunkSize = 400, overlap = 60): string[] {
 
 // ── Job handlers ─────────────────────────────────────────────────────────────
 
-const EXTRACTION_PROMPT = `Ты — литературный аналитик. Извлеки из текста именованные сущности.
+/**
+ * Extraction prompt for the background worker.
+ * Kept in sync with the high-quality prompt in bible.ts so that
+ * imported chapters produce the same quality as manually extracted ones.
+ */
+const EXTRACTION_PROMPT = `Ты — литературный редактор, составляющий справочник к произведению.
 
-Категории: character (персонаж), location (место), item (предмет), rule (закон/магия мира).
-Описание — 1–2 предложения строго из текста.
-Верни ТОЛЬКО валидный JSON-массив без markdown-обёртки:
-[{"type":"character","name":"Имя","description":"Краткое описание"}]
-Если сущностей нет — верни [].`;
+Извлеки из текста главы ТОЛЬКО значимые именованные сущности четырёх категорий:
+
+• character — персонаж с именем или устойчивым прозвищем (не «солдат», не «толпа»).
+  Включай только если о нём есть хотя бы одна конкретная деталь: внешность, характер, роль.
+  Описание: «[Кто он/она]. [Ключевая черта из текста]. [Роль в этой главе].»
+
+• location — конкретное, описанное место действия.
+  Описание: «[Что за место]. [Ключевые детали из текста].»
+
+• item — предмет, важный для сюжета или магической системы.
+  Описание: «[Что это]. [Физическое или магическое свойство из текста].»
+
+• rule — закон мира, магическая система, политический строй, религия мира.
+  Описание: «[В чём суть правила]. [Как оно работает согласно тексту].»
+
+ТРЕБОВАНИЯ:
+1. Не выдумывай ничего. Каждое слово описания должно быть подтверждено текстом.
+2. Не добавляй сущности, упомянутые лишь вскользь (одно-два слова без деталей).
+3. Используй каноническое имя. Не дублируй одну сущность под разными именами.
+4. Если сущностей нет — верни пустой массив entities.
+
+Ответ — строго JSON, без markdown-обёртки:
+{
+  "entities": [
+    {"type": "character", "name": "Имя", "description": "..."},
+    {"type": "location",  "name": "Название", "description": "..."}
+  ],
+  "chapterSummary": "Рабочее название главы (2–4 слова)"
+}`;
 
 async function handleExtractEntities(
   payload: ExtractEntitiesPayload,
   projectId: string,
   userId: string,
-  connectionString: string
 ): Promise<void> {
-  if (!aiClient) throw new Error('AI client not configured (GEMINI_API_KEY missing)');
+  if (!aiClient) throw new Error('AI client not configured (no API key for AI provider)');
 
-  const db = drizzle(getPool(connectionString), { schema });
+  const db = drizzle(sharedPool, { schema });
 
   // Skip chapters with very little content
   const wordCount = payload.content.split(/\s+/).filter(Boolean).length;
   if (wordCount < 50) return;
 
+  // Use plain text from the payload (already stripped by importer) or strip HTML
+  const plainText = payload.content
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
   let response;
   try {
-    response = await aiClient.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: `${EXTRACTION_PROMPT}\n\nТекст:\n"""\n${payload.content.slice(0, 8000)}\n"""`,
-      config: { temperature: 0.2 },
-    });
+    response = await guardChat(
+      () => aiClient!.generate({
+        // No truncation — send full chapter content
+        contents: `${EXTRACTION_PROMPT}\n\n<chapter_content>\n${plainText}\n</chapter_content>`,
+        temperature: 0.15,
+      }),
+      { userId, projectId, route: 'worker:extract_entities', circuit: 'extract', timeoutMs: 60_000 }
+    );
   } catch (err: any) {
     // 429 = quota exceeded — soft-skip so spinner clears; retrying won't help on free tier
     const status = err?.status ?? err?.error?.code ?? err?.code;
     if (status === 429 || String(err?.message ?? '').includes('429')) {
-      console.warn('[worker] extract_entities: Gemini quota exceeded — skipping (soft-skip)');
+      console.warn('[worker] extract_entities: AI quota exceeded — skipping (soft-skip)');
       return;
+    }
+    // Circuit open = transient, retryable
+    if (err?.isCircuitOpen) {
+      throw new WorkerHandlerError('AI circuit open — will retry', true);
     }
     throw err;
   }
 
-  const raw = response.text ?? '[]';
-  const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  const raw = response.text ?? '{"entities":[]}';
+  const cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
 
+  let parsed: { entities?: { type: string; name: string; description: string }[] };
   let entities: { type: string; name: string; description: string }[] = [];
   try {
-    entities = JSON.parse(cleaned);
+    parsed = JSON.parse(cleaned);
+    // Handle both array format (legacy) and new object format
+    entities = Array.isArray(parsed) ? parsed : (parsed.entities ?? []);
   } catch {
     // Malformed JSON from model — permanent failure, retrying won't help
     throw new WorkerHandlerError(
@@ -140,7 +167,7 @@ async function handleExtractEntities(
     );
   }
   if (!Array.isArray(entities)) {
-    throw new WorkerHandlerError('Model response is not a JSON array', false);
+    throw new WorkerHandlerError('Model response entities is not a JSON array', false);
   }
   if (entities.length === 0) return; // Valid empty response — soft skip, mark succeeded
 
@@ -174,11 +201,14 @@ async function handleEmbedChapter(
   payload: EmbedChapterPayload,
   projectId: string,
   userId: string,
-  connectionString: string
 ): Promise<void> {
-  if (!aiClient) throw new Error('AI client not configured (GEMINI_API_KEY missing)');
+  const embedder = getEmbeddingProvider();
+  if (!embedder) {
+    console.info('[worker] embed_chapter: embedding provider not configured — skipping');
+    return;
+  }
 
-  const db = drizzle(getPool(connectionString), { schema });
+  const db = drizzle(sharedPool, { schema });
   const plainText = stripHtml(payload.content);
   const chunks = chunkText(plainText);
   if (chunks.length === 0) return;
@@ -187,14 +217,16 @@ async function handleEmbedChapter(
 
   for (let i = 0; i < chunks.length; i++) {
     try {
-      const result = await (aiClient.models as any).embedContent({
-        model: 'text-embedding-004',
-        content: chunks[i],
-        config: { taskType: 'RETRIEVAL_DOCUMENT' },
-      });
-      const vec: number[] | null = result.embedding?.values ?? null;
+      const vec = await guardEmbed(
+        () => embedder.embed(chunks[i], 'document'),
+        { userId, projectId, route: 'worker:embed_chapter', inputChars: chunks[i].length }
+      );
       if (vec) embedded.push({ text: chunks[i], vec, idx: i });
-    } catch (e) {
+    } catch (e: any) {
+      if (e?.isCircuitOpen) {
+        // Circuit open — abort entire embed, will retry job later
+        throw new WorkerHandlerError('Embed circuit open — will retry', true);
+      }
       console.warn(`[worker] embed chunk ${i} failed:`, e);
     }
   }
@@ -238,9 +270,8 @@ async function handleEmbedChapter(
 
 // ── Core worker loop ──────────────────────────────────────────────────────────
 
-async function pickAndRunJob(connectionString: string): Promise<boolean> {
-  const pool = getPool(connectionString);
-  const client = await pool.connect();
+async function pickAndRunJob(): Promise<boolean> {
+  const client = await sharedPool.connect();
 
   try {
     // Atomically pick the oldest queued job that's ready to run
@@ -273,7 +304,6 @@ async function pickAndRunJob(connectionString: string): Promise<boolean> {
             job.payload as ExtractEntitiesPayload,
             job.project_id,
             job.user_id,
-            connectionString
           );
           break;
         case 'embed_chapter':
@@ -281,7 +311,6 @@ async function pickAndRunJob(connectionString: string): Promise<boolean> {
             job.payload as EmbedChapterPayload,
             job.project_id,
             job.user_id,
-            connectionString
           );
           break;
         default:
@@ -309,8 +338,8 @@ async function pickAndRunJob(connectionString: string): Promise<boolean> {
         );
         console.error(`[worker] ✗ job ${job.id} (${job.type}) permanently failed: ${errMsg}`);
       } else {
-        // Exponential backoff: 30s, 60s, 120s, …
-        const delaySec = BACKOFF_BASE_S * Math.pow(2, job.attempts - 1);
+        // Exponential backoff with ceiling: 30s, 60s, 120s, …, max ~32 min
+        const delaySec = BACKOFF_BASE_S * Math.pow(2, Math.min(job.attempts - 1, BACKOFF_MAX_EXP));
         await client.query(
           `UPDATE jobs
            SET status = 'queued',
@@ -332,9 +361,8 @@ async function pickAndRunJob(connectionString: string): Promise<boolean> {
   }
 }
 
-async function recoverStuckJobs(connectionString: string): Promise<void> {
-  const pool = getPool(connectionString);
-  const { rowCount } = await pool.query(
+async function recoverStuckJobs(): Promise<void> {
+  const { rowCount } = await sharedPool.query(
     `UPDATE jobs
      SET status = 'queued', run_after = NOW(), updated_at = NOW()
      WHERE status = 'running'
@@ -349,33 +377,36 @@ async function recoverStuckJobs(connectionString: string): Promise<void> {
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export function startWorker(connectionString: string): void {
-  if (!process.env.GEMINI_API_KEY) {
-    console.warn('[worker] GEMINI_API_KEY not set — jobs will be processed but AI calls will fail gracefully');
-  } else {
-    aiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  // connectionString kept in signature for backward-compat but we now use the shared pool.
+  // It is still used below by recoverStuckJobs and pickAndRunJob via sharedPool.
+  void connectionString; // suppress unused-variable lint
+
+  aiClient = getAIProvider();
+  if (!aiClient) {
+    console.warn('[worker] AI provider not configured — jobs will be processed but AI calls will fail gracefully');
   }
 
   // Recover any stuck jobs from a previous crash before accepting new work
-  recoverStuckJobs(connectionString).catch(e =>
+  recoverStuckJobs().catch(e =>
     console.warn('[worker] recoverStuckJobs failed:', e)
   );
 
   // Drain the queue on startup in case there are pending jobs
-  setTimeout(() => drainQueue(connectionString), 3_000);
+  setTimeout(() => drainQueue(), 3_000);
 
   // Steady-state polling
-  setInterval(() => drainQueue(connectionString), POLL_INTERVAL_MS);
+  setInterval(() => drainQueue(), POLL_INTERVAL_MS);
 
   console.log('[worker] Started — polling every', POLL_INTERVAL_MS / 1000, 's');
 }
 
 /** Run jobs until the queue is empty, then return. */
-async function drainQueue(connectionString: string): Promise<void> {
+async function drainQueue(): Promise<void> {
   try {
     // Process jobs one by one until none are available
     let ran = true;
     while (ran) {
-      ran = await pickAndRunJob(connectionString);
+      ran = await pickAndRunJob();
     }
   } catch (e) {
     console.error('[worker] Unhandled error in drainQueue:', e);

@@ -118,10 +118,10 @@ export default function Login() {
             <div className="flex items-center justify-between mb-2">
               <label htmlFor="password" className="block text-xs font-bold uppercase tracking-widest text-black/60">Пароль</label>
             </div>
-            <input 
+            <input
               id="password"
               name="password"
-              type="password" 
+              type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
@@ -129,6 +129,11 @@ export default function Login() {
               className="w-full px-4 py-3 rounded-xl border border-black/10 focus:border-black focus:ring-1 focus:ring-black outline-none transition-all bg-[var(--color-paper-dark)] focus:bg-white"
               placeholder="••••••••"
             />
+            {!isLogin && (
+              <p className="mt-1.5 text-xs text-black/40">
+                Минимум 8 символов, латинские буквы и цифры
+              </p>
+            )}
           </div>
 
           <button 

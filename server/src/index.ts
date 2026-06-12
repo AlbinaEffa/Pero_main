@@ -1,6 +1,7 @@
 import { runMigrations } from './db/migrate.js';
 import { startWorker } from './jobs/worker.js';
 import { app } from './app.js';
+import { pool } from './db/client.js';
 
 const port = process.env.PORT || 3001;
 
@@ -56,6 +57,41 @@ if (process.env.DATABASE_URL) {
 }
 
 // ── Start listening ──────────────────────────────────────────────────────────
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`[server] Listening at http://localhost:${port}`);
+});
+
+// ── Graceful shutdown ────────────────────────────────────────────────────────
+// On SIGTERM / SIGINT: stop accepting new connections, wait for in-flight
+// requests to finish (up to 10s), then exit cleanly.
+function shutdown(signal: string) {
+  console.log(`[server] ${signal} received — shutting down gracefully`);
+  server.close(async err => {
+    if (err) {
+      console.error('[server] Error during shutdown:', err);
+    }
+    // Drain the DB connection pool cleanly
+    try {
+      await pool.end();
+      console.log('[server] DB pool closed.');
+    } catch (poolErr) {
+      console.warn('[server] pool.end() error:', poolErr);
+    }
+    console.log('[server] All connections closed. Exiting.');
+    process.exit(err ? 1 : 0);
+  });
+
+  // Force-kill if drain takes too long (e.g. SSE connections)
+  setTimeout(() => {
+    console.error('[server] Shutdown timeout — forcing exit');
+    process.exit(1);
+  }, 10_000).unref();
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT',  () => shutdown('SIGINT'));
+
+// Catch unhandled promise rejections — log and let process continue (don't crash on stray rejection)
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[process] Unhandled rejection at:', promise, 'reason:', reason);
 });

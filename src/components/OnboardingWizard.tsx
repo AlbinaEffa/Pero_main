@@ -8,7 +8,7 @@
  *   3. "Перо изучает ваш текст" — shown after demo/import completes
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Upload, BookOpen, Pen, ArrowRight, Loader2, CheckCircle2, X } from 'lucide-react';
 import { api } from '../services/api';
 import { track } from '../services/analytics';
@@ -40,6 +40,8 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
   const [readyProject, setReadyProject] = useState<{
     projectId: string; firstChapterId: string;
   } | null>(null);
+  // Which loading items are visibly checked (animated reveal)
+  const [checkedItems, setCheckedItems] = useState<number[]>([]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -48,9 +50,20 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
     setStep('start');
   };
 
+  // Animate loading items as they "complete"
+  useEffect(() => {
+    if (step !== 'loading') return;
+    setCheckedItems([]);
+    const timers = [800, 1800, 3000].map((delay, i) =>
+      setTimeout(() => setCheckedItems(prev => [...prev, i]), delay)
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [step]);
+
   const handleLoadDemo = async () => {
     setIsLoadingDemo(true);
     setDemoError('');
+    setStep('loading');
     track('demo_manuscript_loading');
     try {
       const data = await api.post<{
@@ -58,10 +71,13 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
         firstChapterId: string;
       }>('/demo/create', {});
       setReadyProject({ projectId: data.project.id, firstChapterId: data.firstChapterId });
+      // Wait at least 3.2s so all animated items have appeared
+      await new Promise(res => setTimeout(res, 3200));
       setStep('ready');
       track('demo_manuscript_loaded', { projectId: data.project.id });
     } catch (e: any) {
       setDemoError('Не удалось загрузить демо. Попробуйте ещё раз.');
+      setStep('start');
       console.error('[demo]', e);
     } finally {
       setIsLoadingDemo(false);
@@ -331,6 +347,62 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
           </>
         )}
 
+        {/* ── Step: Loading (demo being created) ──────────────────────── */}
+        {step === 'loading' && (
+          <>
+            <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+              <div style={{ fontSize: '40px', marginBottom: '12px' }}>✨</div>
+              <h2 style={{
+                fontFamily: '"Cormorant Garamond", serif',
+                fontSize: '26px', fontWeight: 700, fontStyle: 'italic',
+                color: '#1a1a1a', margin: '0 0 8px',
+              }}>
+                Перо изучает историю
+              </h2>
+              <p style={{ fontSize: '13px', color: 'rgba(0,0,0,0.5)', margin: 0, lineHeight: 1.6 }}>
+                Загружаем демо-рукопись и запускаем фоновые процессы…
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
+              {[
+                { icon: '🔍', label: 'Загружаем главы рукописи' },
+                { icon: '📚', label: 'Извлекаем персонажей, места и предметы' },
+                { icon: '🧠', label: 'Формируем семантическую память соавтора' },
+              ].map((item, i) => {
+                const done = checkedItems.includes(i);
+                return (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', gap: '12px',
+                    padding: '12px 16px', borderRadius: '14px',
+                    background: done ? 'rgba(58,79,65,0.08)' : 'rgba(0,0,0,0.03)',
+                    transition: 'background 0.4s ease',
+                  }}>
+                    <span style={{ fontSize: '18px' }}>{item.icon}</span>
+                    <span style={{
+                      fontSize: '13px', flex: 1,
+                      color: done ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.4)',
+                      transition: 'color 0.3s',
+                    }}>
+                      {item.label}
+                    </span>
+                    {done
+                      ? <CheckCircle2 size={16} color="#3A4F41" />
+                      : (
+                        <Loader2
+                          size={16}
+                          color="rgba(0,0,0,0.25)"
+                          style={{ animation: 'spin 1s linear infinite', flexShrink: 0 }}
+                        />
+                      )
+                    }
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
         {/* ── Step 3: Ready ────────────────────────────────────────────── */}
         {step === 'ready' && (
           <>
@@ -396,11 +468,12 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
           <div style={{
             display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '20px',
           }}>
-            {(['welcome', 'start'] as Step[]).map(s => (
+            {(['welcome', 'start', 'loading'] as Step[]).map(s => (
               <div key={s} style={{
-                width: '6px', height: '6px', borderRadius: '50%',
-                background: step === s ? '#3A4F41' : 'rgba(0,0,0,0.15)',
-                transition: 'background 0.2s',
+                width: s === step ? '16px' : '6px',
+                height: '6px', borderRadius: '99px',
+                background: s === step ? '#3A4F41' : 'rgba(0,0,0,0.15)',
+                transition: 'all 0.25s',
               }} />
             ))}
           </div>

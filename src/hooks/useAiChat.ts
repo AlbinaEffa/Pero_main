@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { api } from '../services/api';
+import { api, getApiBaseUrl, ApiError } from '../services/api';
 import { track } from '../services/analytics';
 import { ChatMessage } from '../components/editor/types';
 
@@ -53,31 +53,102 @@ export function useAiChat({ projectId, chapterId, getContent }: UseAiChatArgs) {
         setChatMessages(loaded.length > 0 ? loaded : [GREETING]);
       })
       .catch(() => {
-        // DB table not yet created or network error — fall back to greeting
         setChatMessages([GREETING]);
       })
       .finally(() => setIsHistoryLoaded(true));
   }, [projectId, chapterId]);
 
-  // ── Core: send any message (prompt) to the AI ───────────────────────────────
+  // ── Core: stream a message to the AI ────────────────────────────────────────
   const sendMessage = async (text: string, eventName = 'chat_message_sent') => {
     if (!text.trim() || isAiLoading || isCheckingConsistency) return;
-    setChatMessages(prev => [...prev, { role: 'user', text }]);
+
+    // Optimistically add user bubble + empty AI bubble
+    setChatMessages(prev => [
+      ...prev,
+      { role: 'user', text },
+      { role: 'ai',   text: '' },
+    ]);
     setIsAiLoading(true);
+
     try {
-      const data = await api.post<{ text: string }>('/ai/chat', {
-        message: text,
-        chapterContent: getContent(),
-        projectId,
-        chapterId,
+      const token   = localStorage.getItem('pero_token');
+      const baseUrl = getApiBaseUrl();
+
+      const response = await fetch(`${baseUrl}/ai/chat/stream`, {
+        method:  'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          message:        text,
+          chapterContent: getContent(),
+          projectId,
+          chapterId,
+        }),
       });
+
+      if (!response.ok || !response.body) {
+        // Сервер мог вернуть осмысленное сообщение (например, исчерпана квота AI)
+        let serverMsg = '';
+        try {
+          const data = await response.json();
+          serverMsg = typeof data?.error === 'string' ? data.error : '';
+        } catch { /* тело не JSON — игнорируем */ }
+        throw new Error(serverMsg || `HTTP ${response.status}`);
+      }
+
+      const reader  = response.body.getReader();
+      const decoder = new TextDecoder();
+      let   buffer  = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Process all complete SSE lines
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? ''; // keep incomplete last chunk
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const raw = line.slice(6).trim();
+          if (raw === '[DONE]') break;
+
+          try {
+            const parsed = JSON.parse(raw) as { text?: string; error?: string };
+            if (parsed.error) throw new Error(parsed.error);
+            if (parsed.text) {
+              // Append delta to the last (AI) message
+              setChatMessages(prev => {
+                const last = prev[prev.length - 1];
+                if (!last || last.role !== 'ai') return prev;
+                return [...prev.slice(0, -1), { ...last, text: last.text + parsed.text! }];
+              });
+            }
+          } catch {
+            // skip malformed chunks
+          }
+        }
+      }
+
       track(eventName, { projectId, chapterId, messageLength: text.length });
-      setChatMessages(prev => [...prev, { role: 'ai', text: data.text }]);
-    } catch {
-      setChatMessages(prev => [
-        ...prev,
-        { role: 'ai', text: 'Не удалось подключиться к серверу ИИ.' },
-      ]);
+    } catch (err) {
+      // Replace the empty AI bubble with an error message
+      const hasServerMessage =
+        err instanceof Error && err.message && !/^HTTP \d+$/.test(err.message);
+      const errMsg = hasServerMessage
+        ? (err as Error).message
+        : 'Не удалось подключиться к серверу ИИ.';
+      setChatMessages(prev => {
+        const last = prev[prev.length - 1];
+        if (last?.role === 'ai' && last.text === '') {
+          return [...prev.slice(0, -1), { role: 'ai', text: errMsg }];
+        }
+        return [...prev, { role: 'ai', text: errMsg }];
+      });
     } finally {
       setIsAiLoading(false);
     }
@@ -101,7 +172,6 @@ export function useAiChat({ projectId, chapterId, getContent }: UseAiChatArgs) {
     if (!projectId || isAiLoading || isCheckingConsistency) return;
 
     setIsCheckingConsistency(true);
-    // Optimistic status message
     setChatMessages(prev => [
       ...prev,
       { role: 'ai', text: '🔍 Проверяю главу на противоречия с Библией истории...' },
@@ -117,7 +187,6 @@ export function useAiChat({ projectId, chapterId, getContent }: UseAiChatArgs) {
       });
 
       let resultText: string;
-
       if (data.note) {
         resultText = data.note;
       } else if (!data.issues || data.issues.length === 0) {
@@ -133,12 +202,14 @@ export function useAiChat({ projectId, chapterId, getContent }: UseAiChatArgs) {
       }
 
       track('consistency_checked', { projectId, issueCount: data.issues?.length ?? 0 });
-      // Replace the "checking..." status with the real result
       setChatMessages(prev => [...prev.slice(0, -1), { role: 'ai', text: resultText }]);
-    } catch {
+    } catch (err) {
+      const errMsg = err instanceof ApiError && err.status === 429
+        ? err.message
+        : 'Не удалось выполнить проверку. Попробуйте позже.';
       setChatMessages(prev => [
         ...prev.slice(0, -1),
-        { role: 'ai', text: 'Не удалось выполнить проверку. Попробуйте позже.' },
+        { role: 'ai', text: errMsg },
       ]);
     } finally {
       setIsCheckingConsistency(false);
@@ -150,7 +221,6 @@ export function useAiChat({ projectId, chapterId, getContent }: UseAiChatArgs) {
     isHistoryLoaded,
     chatInput,
     setChatInput,
-    /** True when either a chat message or consistency check is in-flight */
     isAiLoading: isAiLoading || isCheckingConsistency,
     isCheckingConsistency,
     chatEndRef,

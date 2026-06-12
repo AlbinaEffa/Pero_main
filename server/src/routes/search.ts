@@ -4,6 +4,7 @@ import * as schema from '../db/schema.js';
 import { db } from '../db/client.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rateLimiter.js';
+import { stripHtml } from '../lib/html.js';
 
 const router = express.Router();
 
@@ -16,18 +17,6 @@ const isValidUUID = (s: string) =>
  */
 function escapeLike(s: string): string {
   return s.replace(/[\\%_]/g, '\\$&');
-}
-
-function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
 }
 
 /** Extract a short snippet around the first occurrence of query in HTML content */

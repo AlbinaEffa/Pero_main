@@ -1,10 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Save, Pencil, Moon, Volume2, Sparkles, Lock, Shield, LogOut, ChevronRight, ChevronLeft, Type, AlignLeft, Download, Loader2 } from 'lucide-react';
+import { Save, Pencil, Moon, Volume2, Sparkles, Lock, Shield, LogOut, ChevronRight, ChevronLeft, Type, AlignLeft, Download, Loader2, Crown } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { getApiBaseUrl } from '../services/api';
+import { getApiBaseUrl, api } from '../services/api';
 
 const API = getApiBaseUrl();
+
+interface BillingStatus {
+  plan: 'free' | 'pro';
+  planExpiresAt: string | null;
+  priceRub: number;
+  periodDays: number;
+}
 
 export default function Settings({ 
   onClose,
@@ -35,6 +42,45 @@ export default function Settings({
     const stored = localStorage.getItem('pero_indentParagraphs');
     return stored !== null ? stored === 'true' : false;
   });
+
+  // ── Тариф / биллинг ──────────────────────────────────────────────────────────
+  const [billing, setBilling] = useState<BillingStatus | null>(null);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [billingError, setBillingError] = useState('');
+  const pollCount = useRef(0);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const fetchStatus = () => {
+      api.get<BillingStatus>('/billing/status')
+        .then(status => {
+          setBilling(status);
+          // Вернулись с оплаты (?payment=pending) — опрашиваем, пока вебхук не подтвердит
+          const cameFromPayment = new URLSearchParams(window.location.search).get('payment') === 'pending';
+          if (cameFromPayment && status.plan !== 'pro' && pollCount.current < 10) {
+            pollCount.current += 1;
+            timer = setTimeout(fetchStatus, 3000);
+          }
+        })
+        .catch(() => { /* биллинг не настроен — карточка покажет только инфо */ });
+    };
+
+    fetchStatus();
+    return () => { if (timer) clearTimeout(timer); };
+  }, []);
+
+  const handleCheckout = async () => {
+    setIsCheckingOut(true);
+    setBillingError('');
+    try {
+      const { confirmationUrl } = await api.post<{ confirmationUrl: string }>('/billing/checkout', {});
+      window.location.href = confirmationUrl;
+    } catch (err: any) {
+      setBillingError(err?.message || 'Не удалось создать платёж. Попробуйте ещё раз.');
+      setIsCheckingOut(false);
+    }
+  };
 
   const showWordCount = externalShowWordCount !== undefined ? externalShowWordCount : localShowWordCount;
   const setShowWordCount = (val: boolean) => {
@@ -165,6 +211,49 @@ export default function Settings({
 
           {/* Right Column - Settings Cards */}
           <div className="space-y-8">
+            {/* Тариф */}
+            <div className="bg-white/40 backdrop-blur-xl rounded-3xl p-8 shadow-sm border border-white/60">
+              <h2 className="text-xl font-bold text-[#1a1f2c] mb-6">Тариф</h2>
+
+              <div className="flex items-start gap-4 mb-6">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                  billing?.plan === 'pro' ? 'bg-amber-50 text-amber-600' : 'bg-white/60 border border-white/80 text-[#1e2d1f]/60'
+                }`}>
+                  <Crown size={20} />
+                </div>
+                <div>
+                  <h4 className="text-[15px] font-semibold text-[#1a1f2c] mb-1">
+                    {billing?.plan === 'pro' ? 'Pro' : 'Бесплатный'}
+                  </h4>
+                  <p className="text-sm text-[#6b7280] leading-relaxed">
+                    {billing?.plan === 'pro' ? (
+                      <>Активен{billing.planExpiresAt
+                        ? ` до ${new Date(billing.planExpiresAt).toLocaleDateString('ru-RU')}`
+                        : ''}. Безлимит проектов, 300 AI-действий в день, экспорт в Word, диктовка.</>
+                    ) : (
+                      <>1 активный проект, 20 AI-действий в день. Pro снимает лимиты:
+                      безлимит проектов, 300 AI-действий в день, экспорт в Word, диктовка.</>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={handleCheckout}
+                disabled={isCheckingOut || !billing}
+                className="flex items-center gap-2.5 px-5 py-3 bg-[#2d3748] hover:bg-[#1a202c] disabled:opacity-50 text-white rounded-xl font-medium text-sm transition-colors shadow-sm"
+              >
+                {isCheckingOut ? <Loader2 size={16} className="animate-spin" /> : <Crown size={16} />}
+                {billing?.plan === 'pro'
+                  ? `Продлить на ${billing?.periodDays ?? 30} дней — ${billing?.priceRub ?? 599} ₽`
+                  : `Оформить Pro — ${billing?.priceRub ?? 599} ₽/мес`}
+              </button>
+              {billingError && <p className="text-xs text-red-500 mt-2">{billingError}</p>}
+              <p className="text-[11px] text-[#9ca3af] mt-3">
+                Оплата через ЮKassa. Подписка без автопродления — продлевается вручную.
+              </p>
+            </div>
+
             {/* Studio Settings */}
             <div className="bg-white/40 backdrop-blur-xl rounded-3xl p-8 shadow-sm border border-white/60">
               <h2 className="text-xl font-bold text-[#1a1f2c] mb-6">Настройки студии</h2>

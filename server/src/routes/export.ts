@@ -13,49 +13,12 @@ import JSZip from 'jszip';
 import { Document, Paragraph, TextRun, HeadingLevel, Packer, PageBreak, AlignmentType } from 'docx';
 import { pool } from '../db/client.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { htmlToText, htmlToMarkdown } from '../lib/html.js';
 
 const router = express.Router();
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-/** Strip HTML tags → plain text, preserving paragraph breaks */
-function htmlToText(html: string): string {
-  if (!html) return '';
-  return html
-    .replace(/<\/p>/gi, '\n\n')
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
-
-/** HTML → Markdown (minimal: bold, italic, headings, paragraphs) */
-function htmlToMarkdown(html: string): string {
-  if (!html) return '';
-  return html
-    .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n')
-    .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n')
-    .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n')
-    .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
-    .replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**')
-    .replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*')
-    .replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*')
-    .replace(/<u[^>]*>(.*?)<\/u>/gi, '_$1_')
-    .replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n')
-    .replace(/<\/p>/gi, '\n\n')
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
+// htmlToText, htmlToMarkdown imported from ../lib/html.js
 
 /** Filter chapters by export mode */
 function filterChapters(chapters: any[], filter: 'all' | 'draft' | 'done'): any[] {

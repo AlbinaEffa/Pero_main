@@ -35,21 +35,11 @@ router.get('/', authenticateToken, async (req: any, res) => {
     if (projects.length > 0) {
       const projectIds = projects.map(p => p.id);
 
-      // Word count: strip HTML, split on whitespace, sum per project
+      // Word count: use cached column (updated on every chapter save)
       const counts = await db
         .select({
           projectId: schema.chapters.projectId,
-          wordCount: sql<number>`
-            COALESCE(SUM(
-              CASE
-                WHEN trim(regexp_replace(COALESCE(${schema.chapters.content}, ''), '<[^>]*>', ' ', 'g')) = '' THEN 0
-                ELSE array_length(
-                  regexp_split_to_array(
-                    trim(regexp_replace(${schema.chapters.content}, '<[^>]*>', ' ', 'g')),
-                    '[[:space:]]+'
-                  ), 1)
-              END
-            ), 0)`.mapWith(Number),
+          wordCount: sql<number>`COALESCE(SUM(${schema.chapters.wordCount}), 0)`.mapWith(Number),
         })
         .from(schema.chapters)
         .where(inArray(schema.chapters.projectId, projectIds))
@@ -106,7 +96,26 @@ router.get('/:id', authenticateToken, async (req: any, res) => {
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Project not found or access denied' });
     }
-    res.json({ project: rows[0] });
+
+    // Compute total word count across all chapters (same SQL as the list endpoint)
+    const [wc] = await db
+      .select({
+        wordCount: sql<number>`
+          COALESCE(SUM(
+            CASE
+              WHEN trim(regexp_replace(COALESCE(${schema.chapters.content}, ''), '<[^>]*>', ' ', 'g')) = '' THEN 0
+              ELSE array_length(
+                regexp_split_to_array(
+                  trim(regexp_replace(${schema.chapters.content}, '<[^>]*>', ' ', 'g')),
+                  '[[:space:]]+'
+                ), 1)
+            END
+          ), 0)`.mapWith(Number),
+      })
+      .from(schema.chapters)
+      .where(eq(schema.chapters.projectId, id));
+
+    res.json({ project: { ...rows[0], wordCount: wc?.wordCount ?? 0 } });
   } catch (error) {
     console.error('Error fetching project:', error);
     res.status(500).json({ error: 'Internal server error' });

@@ -3,20 +3,9 @@ import { eq, and } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import { db } from '../db/client.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { stripHtml, wordCount } from '../lib/html.js';
 
 const router = express.Router();
-
-function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
 
 function normalizeChapterContent(content: string | null | undefined): string {
   if (!content) return '';
@@ -75,16 +64,22 @@ router.put('/:id', authenticateToken, async (req: any, res) => {
     // states when TipTap serializes equivalent markup slightly differently.
     const contentChanged =
       normalizeChapterContent(row.chapter.content) !== normalizeChapterContent(content);
+
+    // Recompute cached word count on every save (cheap compared to the regex-at-query-time approach)
+    const computedWordCount = wordCount(content);
+
     const updated = await db
       .update(schema.chapters)
       .set(
         contentChanged
           ? {
               content,
+              wordCount: computedWordCount,
               updatedAt: new Date(),
             }
           : {
               content,
+              wordCount: computedWordCount,
             }
       )
       .where(eq(schema.chapters.id, id))

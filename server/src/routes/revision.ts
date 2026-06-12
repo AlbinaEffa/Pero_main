@@ -3,19 +3,17 @@ dotenv.config();
 
 import express from 'express';
 import { eq, and } from 'drizzle-orm';
-import { GoogleGenAI } from '@google/genai';
 import * as schema from '../db/schema.js';
 import { pool, db } from '../db/client.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rateLimiter.js';
 import { guardChat } from '../lib/aiGuard.js';
+import { getAIProvider, getEmbeddingProvider } from '../lib/aiProvider.js';
+import { aiQuota } from '../lib/quota.js';
 
 const router = express.Router();
 
-let aiClient: GoogleGenAI | null = null;
-if (process.env.GEMINI_API_KEY) {
-  aiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-}
+const ai = getAIProvider();
 
 const isValidUUID = (s: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
@@ -23,18 +21,9 @@ const isValidUUID = (s: string) =>
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function embedQuery(text: string): Promise<number[] | null> {
-  if (!aiClient) return null;
-  try {
-    const result = await (aiClient.models as any).embedContent({
-      model: 'text-embedding-004',
-      content: text,
-      config: { taskType: 'RETRIEVAL_QUERY' },
-    });
-    return result.embedding?.values ?? null;
-  } catch (e) {
-    console.warn('embedQuery failed:', e);
-    return null;
-  }
+  const embedder = getEmbeddingProvider();
+  if (!embedder) return null;
+  return embedder.embed(text, 'query');
 }
 
 async function assertProjectOwnership(projectId: string, userId: string): Promise<boolean> {
@@ -176,9 +165,9 @@ router.post('/entity-trace', authenticateToken, revisionRateLimit, async (req: a
 // Body: { projectId, entityName }
 // Returns: { arc: string, mentions: number }
 
-router.post('/entity-arc', authenticateToken, revisionRateLimit, async (req: any, res) => {
+router.post('/entity-arc', authenticateToken, revisionRateLimit, aiQuota, async (req: any, res) => {
   try {
-    if (!aiClient) return res.status(503).json({ error: 'AI not configured' });
+    if (!ai) return res.status(503).json({ error: 'AI not configured' });
 
     const { projectId, entityName } = req.body;
 
@@ -256,11 +245,7 @@ ${formattedMentions}
 Будь конкретным, цитируй детали из текста. Ответ 3–5 коротких абзаца, без вводных слов.`;
 
     const response = await guardChat(
-      () => aiClient!.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: { temperature: 0.3 },
-      }),
+      () => ai!.generate({ contents: prompt, temperature: 0.3 }),
       { userId: req.user.userId, projectId, route: 'revision:entity-arc' }
     );
 
@@ -285,9 +270,9 @@ interface BibleUpdateSuggestion {
   reason: string;
 }
 
-router.post('/bible-update', authenticateToken, revisionRateLimit, async (req: any, res) => {
+router.post('/bible-update', authenticateToken, revisionRateLimit, aiQuota, async (req: any, res) => {
   try {
-    if (!aiClient) return res.status(503).json({ error: 'AI not configured' });
+    if (!ai) return res.status(503).json({ error: 'AI not configured' });
 
     const { projectId, chapterId, chapterContent } = req.body;
 
@@ -355,11 +340,7 @@ ${plainText}
 ]`;
 
     const response = await guardChat(
-      () => aiClient!.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: { temperature: 0.2 },
-      }),
+      () => ai!.generate({ contents: prompt, temperature: 0.2 }),
       { userId: req.user.userId, projectId, route: 'revision:bible-update' }
     );
 

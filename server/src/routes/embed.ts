@@ -3,10 +3,11 @@ dotenv.config();
 
 import express from 'express';
 import { eq, and, sql } from 'drizzle-orm';
-import { GoogleGenAI } from '@google/genai';
 import * as schema from '../db/schema.js';
 import { db } from '../db/client.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { stripHtml } from '../lib/html.js';
+import { getEmbeddingProvider, type EmbedTaskType } from '../lib/aiProvider.js';
 
 async function assertChapterOwnership(chapterId: string, projectId: string, userId: string): Promise<boolean> {
   const rows = await db
@@ -25,10 +26,7 @@ async function assertChapterOwnership(chapterId: string, projectId: string, user
 
 const router = express.Router();
 
-let aiClient: GoogleGenAI | null = null;
-if (process.env.GEMINI_API_KEY) {
-  aiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-}
+const embedder = getEmbeddingProvider();
 
 const isValidUUID = (s: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
@@ -54,33 +52,13 @@ function chunkText(text: string, chunkSize = 400, overlap = 60): string[] {
   return chunks;
 }
 
-function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
-}
+// stripHtml imported from lib/html.ts
 
 // ─── Embedding Helper ─────────────────────────────────────────────────────────
 
-async function embedText(text: string, taskType: 'RETRIEVAL_DOCUMENT' | 'RETRIEVAL_QUERY'): Promise<number[] | null> {
-  if (!aiClient) return null;
-  try {
-    const result = await (aiClient.models as any).embedContent({
-      model: 'text-embedding-004',
-      content: text,
-      config: { taskType },
-    });
-    return result.embedding?.values ?? null;
-  } catch (e) {
-    console.warn('embedText failed:', e);
-    return null;
-  }
+async function embedText(text: string, taskType: EmbedTaskType): Promise<number[] | null> {
+  if (!embedder) return null;
+  return embedder.embed(text, taskType);
 }
 
 // ─── POST /api/embed/chapter ─────────────────────────────────────────────────
@@ -103,7 +81,7 @@ router.post('/chapter', authenticateToken, async (req: any, res) => {
     if (!content?.trim())
       return res.json({ ok: true, chunks: 0, note: 'empty content — skipped' });
 
-    if (!aiClient)
+    if (!embedder)
       return res.json({ ok: true, chunks: 0, note: 'AI not configured — skipping embedding' });
 
     const plainText = stripHtml(content);
@@ -115,7 +93,7 @@ router.post('/chapter', authenticateToken, async (req: any, res) => {
     // Embed all chunks (sequentially to avoid rate limits)
     const embeddedChunks: { text: string; embedding: number[]; index: number }[] = [];
     for (let i = 0; i < chunks.length; i++) {
-      const vec = await embedText(chunks[i], 'RETRIEVAL_DOCUMENT');
+      const vec = await embedText(chunks[i], 'document');
       if (vec) embeddedChunks.push({ text: chunks[i], embedding: vec, index: i });
     }
 

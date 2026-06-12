@@ -4,23 +4,47 @@ dotenv.config();
 import express from 'express';
 import bcrypt from 'bcrypt';
 import pkg from 'jsonwebtoken';
-const { sign, verify } = pkg;
+const { sign } = pkg;
 import { eq } from 'drizzle-orm';
+import { z } from 'zod';
 import { users } from '../db/schema.js';
 import { db } from '../db/client.js';
+import { authRateLimit } from '../app.js';
+import { authenticateToken } from '../middleware/auth.js';
+
+// ── Input schemas ─────────────────────────────────────────────────────────────
+
+const RegisterSchema = z.object({
+  email: z.string()
+    .min(1, 'Email is required')
+    .email('Invalid email format')
+    .max(254, 'Email is too long')
+    .toLowerCase(),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(128, 'Password is too long'),
+  displayName: z.string().max(100).optional(),
+});
+
+const LoginSchema = z.object({
+  email: z.string().min(1, 'Email is required').toLowerCase(),
+  password: z.string().min(1, 'Password is required'),
+});
 
 const router = express.Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'pero_super_secret_key_change_me_in_prod';
+// JWT_SECRET is validated at startup (index.ts + middleware/auth.ts); safe to assert here.
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
 // REGISTRATION
-router.post('/register', async (req, res) => {
+router.post('/register', authRateLimit, async (req, res) => {
   try {
-    const { email, password, displayName } = req.body;
-    
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+    const parsed = RegisterSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const msg = parsed.error.errors[0]?.message ?? 'Invalid input';
+      return res.status(400).json({ error: msg });
     }
+    const { email, password, displayName } = parsed.data;
 
     // Check if user exists
     const existingUsers = await db.select().from(users).where(eq(users.email, email));
@@ -59,13 +83,14 @@ router.post('/register', async (req, res) => {
 });
 
 // LOGIN
-router.post('/login', async (req, res) => {
+router.post('/login', authRateLimit, async (req, res) => {
   try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+    const parsed = LoginSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const msg = parsed.error.errors[0]?.message ?? 'Invalid input';
+      return res.status(400).json({ error: msg });
     }
+    const { email, password } = parsed.data;
 
     const userRecords = await db.select().from(users).where(eq(users.email, email));
     
@@ -99,20 +124,6 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
-
-// GET CURRENT USER Middleware
-export const authenticateToken = (req: any, res: any, next: any) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (token == null) return res.sendStatus(401);
-
-  verify(token, JWT_SECRET, (err: any, user: any) => {
-    if (err) return res.sendStatus(403);
-    req.user = user;
-    next();
-  });
-};
 
 router.get('/me', authenticateToken, async (req: any, res) => {
   try {

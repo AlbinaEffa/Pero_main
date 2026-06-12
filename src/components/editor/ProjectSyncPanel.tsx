@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import {
   X, Activity, CheckCircle2, AlertTriangle, HelpCircle, RefreshCw,
-  ChevronRight, GitCompare, ArrowRight,
+  ChevronRight, GitCompare, ArrowRight, BookOpen,
 } from 'lucide-react';
 import { Chapter } from './types';
 
@@ -28,6 +28,7 @@ interface Props {
   onNavigateToChapter: (chapterId: string) => void;
   onRecheckAllStale: () => void;
   onOpenBibleUpdates: () => void;
+  onCreateBible?: () => void;
   onClose: () => void;
 }
 
@@ -39,6 +40,7 @@ export function ProjectSyncPanel({
   onNavigateToChapter,
   onRecheckAllStale,
   onOpenBibleUpdates,
+  onCreateBible,
   onClose,
 }: Props) {
   const statusCounts = useMemo(() => {
@@ -76,7 +78,10 @@ export function ProjectSyncPanel({
         {/* ── Summary tiles ── */}
         <div>
           <p className="text-[10px] font-bold uppercase tracking-widest text-[#1e2d1f]/35 mb-2">
-            Обзор проекта
+            Статус глав
+          </p>
+          <p className="text-[11px] text-[#1e2d1f]/40 mb-2 -mt-1">
+            Актуальность данных для Библии истории
           </p>
           <div className="grid grid-cols-2 gap-2">
             <SummaryTile
@@ -106,6 +111,18 @@ export function ProjectSyncPanel({
             />
           </div>
         </div>
+
+        {/* ── CTA: create/update Bible ── */}
+        <button
+          onClick={onCreateBible}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 bg-[#1e2d1f] rounded-xl text-sm font-semibold text-white hover:bg-[#2a3d2c] transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <BookOpen size={15} />
+            <span>Создать библию истории</span>
+          </div>
+          <ArrowRight size={14} className="flex-shrink-0 text-white/50" />
+        </button>
 
         {/* ── CTA: recheck all stale ── */}
         {staleCount > 0 && (

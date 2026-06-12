@@ -6,7 +6,12 @@
 import pkg from 'jsonwebtoken';
 const { verify } = pkg;
 
-const JWT_SECRET = process.env.JWT_SECRET || 'pero_super_secret_key_change_me_in_prod';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  // index.ts already calls process.exit(1) before this module loads in production,
+  // but guard here too so tests / standalone scripts also fail loudly.
+  throw new Error('[auth] JWT_SECRET env var is not set — refusing to continue');
+}
 
 export const authenticateToken = (req: any, res: any, next: any) => {
   const authHeader = req.headers['authorization'];

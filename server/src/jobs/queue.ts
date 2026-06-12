@@ -1,19 +1,9 @@
 /**
  * Lightweight job enqueue helper.
- * Uses a module-level pg Pool so all callers share a single connection pool.
+ * Reuses the shared pg Pool from db/client.ts — no extra connections.
  */
 
-import pkg from 'pg';
-const { Pool } = pkg;
-
-let _pool: InstanceType<typeof Pool> | null = null;
-
-function getPool(): InstanceType<typeof Pool> {
-  if (!_pool) {
-    _pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  }
-  return _pool;
-}
+import { pool } from '../db/client.js';
 
 // ── Job payload types ─────────────────────────────────────────────────────────
 
@@ -42,7 +32,6 @@ export async function enqueueJob(
     runAfterMs?: number;   // delay before first attempt (ms), default 0
   }
 ): Promise<string> {
-  const pool = getPool();
   const runAfter = opts.runAfterMs
     ? new Date(Date.now() + opts.runAfterMs).toISOString()
     : new Date().toISOString();
@@ -74,7 +63,6 @@ export async function enqueueJobs(
   }>
 ): Promise<string[]> {
   if (items.length === 0) return [];
-  const pool = getPool();
   const client = await pool.connect();
 
   try {

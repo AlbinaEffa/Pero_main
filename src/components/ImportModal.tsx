@@ -56,12 +56,19 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
 
   // Editable fields (preview step)
   const [title, setTitle] = useState('');
-  const [genre, setGenre] = useState('');
+  const [genres, setGenres] = useState<string[]>([]);
   const [color, setColor] = useState('#3A4F41');
   const [showAllChapters, setShowAllChapters] = useState(false);
+  const [customGenreInput, setCustomGenreInput] = useState('');
   const [customGenres, setCustomGenres] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem('pero_custom_genres') || '[]'); } catch { return []; }
   });
+
+  const toggleGenre = (value: string) => {
+    setGenres(prev =>
+      prev.includes(value) ? prev.filter(g => g !== value) : [...prev, value]
+    );
+  };
 
   const saveCustomGenre = (value: string) => {
     const trimmed = value.trim();
@@ -69,13 +76,14 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
     const updated = [...customGenres, trimmed];
     setCustomGenres(updated);
     localStorage.setItem('pero_custom_genres', JSON.stringify(updated));
+    return trimmed;
   };
 
   const removeCustomGenre = (value: string) => {
     const updated = customGenres.filter(g => g !== value);
     setCustomGenres(updated);
     localStorage.setItem('pero_custom_genres', JSON.stringify(updated));
-    if (genre === value) setGenre('');
+    setGenres(prev => prev.filter(g => g !== value));
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -114,7 +122,7 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
       }
 
       setParsed(data as ParseResult);
-      setTitle(data.title ?? '');
+      setTitle('');
       setStep('preview');
     } catch {
       setParseError('Не удалось подключиться к серверу');
@@ -151,7 +159,7 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           title: title.trim(),
-          genre: genre || null,
+          genre: genres.length > 0 ? genres.join(', ') : null,
           color,
           chapters: parsed.chapters.map(c => ({ title: c.title, content: c.content })),
         }),
@@ -307,24 +315,18 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
               {/* Genre */}
               <div>
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.4)', marginBottom: '6px' }}>
-                  Жанр
+                  Жанр <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(можно выбрать несколько)</span>
                 </label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {GENRE_PRESETS.map(g => (
+                  {GENRE_PRESETS.filter(g => g !== 'Другое').map(g => (
                     <button
                       key={g}
-                      onClick={() => {
-                        if (g === 'Другое') {
-                          setGenre(genre === 'Другое' || !GENRE_PRESETS.includes(genre) ? '' : 'Другое');
-                        } else {
-                          setGenre(genre === g ? '' : g);
-                        }
-                      }}
+                      onClick={() => toggleGenre(g)}
                       style={{
                         padding: '5px 12px', borderRadius: '50px', fontSize: '12px',
-                        border: `1.5px solid ${(g === 'Другое' ? (!GENRE_PRESETS.slice(0,-1).includes(genre) && genre !== '') || genre === 'Другое' : genre === g) ? '#3A4F41' : 'rgba(0,0,0,0.1)'}`,
-                        background: (g === 'Другое' ? (!GENRE_PRESETS.slice(0,-1).includes(genre) && genre !== '') || genre === 'Другое' : genre === g) ? 'rgba(58,79,65,0.08)' : 'transparent',
-                        color: (g === 'Другое' ? (!GENRE_PRESETS.slice(0,-1).includes(genre) && genre !== '') || genre === 'Другое' : genre === g) ? '#3A4F41' : 'rgba(0,0,0,0.5)',
+                        border: `1.5px solid ${genres.includes(g) ? '#3A4F41' : 'rgba(0,0,0,0.1)'}`,
+                        background: genres.includes(g) ? 'rgba(58,79,65,0.08)' : 'transparent',
+                        color: genres.includes(g) ? '#3A4F41' : 'rgba(0,0,0,0.5)',
                         cursor: 'pointer', fontWeight: 400, transition: 'all 0.15s',
                       }}
                     >
@@ -333,39 +335,41 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
                   ))}
                   {/* Saved custom genre chips */}
                   {customGenres.map(g => (
-                    <span key={g} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '5px 10px 5px 12px', borderRadius: '50px', fontSize: '12px', border: `1.5px solid ${genre === g ? '#3A4F41' : 'rgba(0,0,0,0.1)'}`, background: genre === g ? 'rgba(58,79,65,0.08)' : 'transparent', color: genre === g ? '#3A4F41' : 'rgba(0,0,0,0.5)' }}>
-                      <span style={{ cursor: 'pointer' }} onClick={() => setGenre(genre === g ? '' : g)}>{g}</span>
+                    <span key={g} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '5px 10px 5px 12px', borderRadius: '50px', fontSize: '12px', border: `1.5px solid ${genres.includes(g) ? '#3A4F41' : 'rgba(0,0,0,0.1)'}`, background: genres.includes(g) ? 'rgba(58,79,65,0.08)' : 'transparent', color: genres.includes(g) ? '#3A4F41' : 'rgba(0,0,0,0.5)' }}>
+                      <span style={{ cursor: 'pointer' }} onClick={() => toggleGenre(g)}>{g}</span>
                       <button onClick={() => removeCustomGenre(g)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1, color: 'inherit', opacity: 0.5, fontSize: '13px' }}>×</button>
                     </span>
                   ))}
                 </div>
-                {/* Custom genre input — shown when "Другое" is active */}
-                {(!GENRE_PRESETS.slice(0, -1).includes(genre) && !customGenres.includes(genre)) && (
-                  <input
-                    autoFocus
-                    type="text"
-                    placeholder="Введите жанр и нажмите Enter..."
-                    value={genre === 'Другое' ? '' : genre}
-                    onChange={e => setGenre(e.target.value || 'Другое')}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        const val = (e.target as HTMLInputElement).value.trim();
-                        if (val) { saveCustomGenre(val); setGenre(val); }
+                {/* Custom genre input */}
+                <input
+                  type="text"
+                  placeholder="Свой жанр — введите и нажмите Enter..."
+                  value={customGenreInput}
+                  onChange={e => setCustomGenreInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      const val = customGenreInput.trim();
+                      if (val) {
+                        const saved = saveCustomGenre(val);
+                        if (saved) setGenres(prev => [...prev, saved]);
+                        else if (customGenres.includes(val) || GENRE_PRESETS.includes(val)) {
+                          setGenres(prev => prev.includes(val) ? prev : [...prev, val]);
+                        }
+                        setCustomGenreInput('');
                       }
-                    }}
-                    style={{
-                      marginTop: '10px', width: '100%', padding: '8px 12px',
-                      borderRadius: '10px', border: '1.5px solid #3A4F41',
-                      background: '#fff', fontSize: '13px', outline: 'none',
-                      boxSizing: 'border-box', fontFamily: 'inherit', color: '#1a1a1a',
-                    }}
-                    onBlur={e => {
-                      const val = e.target.value.trim();
-                      if (val && val !== 'Другое') { saveCustomGenre(val); setGenre(val); }
-                      else if (!val) setGenre('');
-                    }}
-                  />
-                )}
+                    }
+                  }}
+                  style={{
+                    marginTop: '8px', width: '100%', padding: '7px 12px',
+                    borderRadius: '10px', border: '1.5px solid rgba(0,0,0,0.1)',
+                    background: '#fff', fontSize: '12px', outline: 'none',
+                    boxSizing: 'border-box', fontFamily: 'inherit', color: '#1a1a1a',
+                    transition: 'border-color 0.15s',
+                  }}
+                  onFocus={e => (e.target.style.borderColor = '#3A4F41')}
+                  onBlur={e => (e.target.style.borderColor = 'rgba(0,0,0,0.1)')}
+                />
               </div>
 
               {/* Color */}
@@ -404,7 +408,7 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
                     {title || 'Название книги'}
                   </p>
                   <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'rgba(0,0,0,0.4)' }}>
-                    {genre || 'Жанр'} · {formatWords(parsed.totalWords)} слов
+                    {genres.length > 0 ? genres.join(', ') : 'Жанр'} · {formatWords(parsed.totalWords)} слов
                   </p>
                 </div>
               </div>

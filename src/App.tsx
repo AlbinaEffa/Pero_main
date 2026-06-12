@@ -4,35 +4,57 @@
  */
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import Landing from './pages/Landing';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Editor from './pages/Editor';
-import StoryBible from './pages/StoryBible';
-import Settings from './pages/Settings';
-import AppLayout from './layouts/AppLayout';
 
-import IdeaLibrary from './pages/IdeaLibrary';
+// ── Eagerly loaded (small, always needed on any route) ────────────────────────
+import Landing  from './pages/Landing';
+import Login    from './pages/Login';
+
+// ── Lazily loaded (heavy pages — split into separate chunks) ──────────────────
+const Dashboard  = React.lazy(() => import('./pages/Dashboard'));
+const Editor     = React.lazy(() => import('./pages/Editor'));
+const StoryBible = React.lazy(() => import('./pages/StoryBible'));
+const Settings   = React.lazy(() => import('./pages/Settings'));
+const IdeaLibrary = React.lazy(() => import('./pages/IdeaLibrary'));
+
+// ── Page loading fallback ─────────────────────────────────────────────────────
+function PageLoader() {
+  return (
+    <div className="fixed inset-0 flex items-center justify-center bg-[#fdfbf7]">
+      <div className="flex gap-1.5">
+        {[0, 1, 2].map(i => (
+          <div
+            key={i}
+            className="w-2 h-2 rounded-full bg-[#1e2d1f]/25"
+            style={{ animation: `bounce 0.7s ease-in-out ${i * 0.15}s infinite alternate` }}
+          />
+        ))}
+      </div>
+      <style>{`
+        @keyframes bounce {
+          from { transform: translateY(0); opacity: 0.4; }
+          to   { transform: translateY(-6px); opacity: 1; }
+        }
+      `}</style>
+    </div>
+  );
+}
 
 function RoutePersister() {
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // При первой загрузке приложения (mount), если мы на главной, 
-    // проверяем, был ли сохранен предыдущий путь в sessionStorage
     if (location.pathname === '/') {
       const savedPath = sessionStorage.getItem('lastVisitedRoute');
       if (savedPath && savedPath !== '/') {
         navigate(savedPath, { replace: true });
       }
     }
-  }, []); // Выполняется только один раз при монтировании
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    // Сохраняем текущий путь при каждом его изменении
     sessionStorage.setItem('lastVisitedRoute', location.pathname + location.search + location.hash);
   }, [location]);
 
@@ -50,20 +72,20 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <RoutePersister />
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/login" element={<Login />} />
-          
-          {/* Dashboard is standalone now */}
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/ideas" element={<ProtectedRoute><IdeaLibrary /></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-          
-          {/* Editor: primary route includes chapterId. The /editor/:projectId shortcut is handled inside the Editor by loading the first chapter */}
-          <Route path="/editor/:projectId/:chapterId" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
-          <Route path="/editor/:projectId" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
-          <Route path="/bible/:id" element={<ProtectedRoute><StoryBible /></ProtectedRoute>} />
-        </Routes>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/"      element={<Landing />} />
+            <Route path="/login" element={<Login />} />
+
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/ideas"     element={<ProtectedRoute><IdeaLibrary /></ProtectedRoute>} />
+            <Route path="/settings"  element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+
+            <Route path="/editor/:projectId/:chapterId" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
+            <Route path="/editor/:projectId"            element={<ProtectedRoute><Editor /></ProtectedRoute>} />
+            <Route path="/bible/:id"                    element={<ProtectedRoute><StoryBible /></ProtectedRoute>} />
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </AuthProvider>
   );

@@ -1,4 +1,4 @@
-import { useState, useEffect, RefObject } from 'react';
+import { useState, useEffect, useRef, RefObject } from 'react';
 import {
   X, Sparkles, Send, ShieldCheck, FileText, TrendingUp, BookOpen,
   Minimize2, MessageSquare, Zap, Scissors, Copy, CornerDownLeft,
@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { ChatMessage } from './types';
+import { useAiQuota } from '../../hooks/useAiQuota';
 
 // ── Quick action definitions ──────────────────────────────────────────────────
 
@@ -17,21 +18,30 @@ interface QuickAction {
   id: QuickActionId;
   label: string;
   icon: React.ElementType;
-  /** Whether this action is selection-aware (appends selected text to prompt) */
   selectionAware?: boolean;
-  /** Special handler — if set, the action does not generate a prompt but calls this handler */
-  special?: 'consistency';
+  special?: 'consistency' | 'bible';
 }
 
 const QUICK_ACTIONS: QuickAction[] = [
-  { id: 'summarize',   label: 'Суммируй',       icon: FileText,      selectionAware: true  },
-  { id: 'consistency', label: 'Противоречия',   icon: ShieldCheck,   special: 'consistency' },
-  { id: 'changes',     label: 'Что изменилось', icon: TrendingUp,    selectionAware: false  },
-  { id: 'bible',       label: 'Факты для Библии', icon: BookOpen,    selectionAware: true  },
-  { id: 'denser',      label: 'Плотнее',         icon: Minimize2,    selectionAware: true  },
-  { id: 'dialogue',    label: 'Диалог живее',    icon: MessageSquare, selectionAware: true  },
-  { id: 'conflict',    label: 'Усиль конфликт',  icon: Zap,          selectionAware: true  },
-  { id: 'shorten',     label: 'Сократи',         icon: Scissors,     selectionAware: true  },
+  { id: 'summarize',   label: 'Суммируй',         icon: FileText,      selectionAware: true  },
+  { id: 'consistency', label: 'Противоречия',     icon: ShieldCheck,   special: 'consistency' },
+  { id: 'changes',     label: 'Что изменилось',   icon: TrendingUp,    selectionAware: false  },
+  { id: 'bible',       label: 'Извлечь в Библию', icon: BookOpen,      special: 'bible'       },
+  { id: 'denser',      label: 'Плотнее',          icon: Minimize2,     selectionAware: true   },
+  { id: 'dialogue',    label: 'Диалог живее',     icon: MessageSquare, selectionAware: true   },
+  { id: 'conflict',    label: 'Усиль конфликт',   icon: Zap,           selectionAware: true   },
+  { id: 'shorten',     label: 'Сократи',          icon: Scissors,      selectionAware: true   },
+];
+
+// ── Empty state suggestions ───────────────────────────────────────────────────
+
+const SUGGESTIONS = [
+  'Сделай краткое резюме этой главы',
+  'Что происходит с главным героем?',
+  'Как можно усилить конфликт?',
+  'Помоги придумать имя для персонажа',
+  'Какие детали стоит добавить в сцену?',
+  'Как звучит темп и ритм главы?',
 ];
 
 function buildPrompt(actionId: QuickActionId, selectedText: string): string {
@@ -68,16 +78,23 @@ function buildPrompt(actionId: QuickActionId, selectedText: string): string {
   }
 }
 
-/** Strip the most common Markdown to plain text for pasting into the editor. */
 function stripMarkdown(text: string): string {
   return text
-    .replace(/\*\*([^*]+)\*\*/g, '$1')      // **bold**
-    .replace(/\*([^*]+)\*/g, '$1')           // *italic*
-    .replace(/^#{1,6}\s+/gm, '')             // # headings
-    .replace(/^[-*+]\s+/gm, '• ')           // list items
-    .replace(/`([^`]+)`/g, '$1')             // `code`
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // [link](url)
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^[-*+]\s+/gm, '• ')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
     .trim();
+}
+
+// ── Streaming cursor ──────────────────────────────────────────────────────────
+
+function StreamingCursor() {
+  return (
+    <span className="inline-block w-[2px] h-[13px] bg-[#1e2d1f]/50 ml-0.5 align-middle animate-pulse" />
+  );
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -89,12 +106,13 @@ interface Props {
   onChatInputChange: (v: string) => void;
   isAiLoading: boolean;
   isCheckingConsistency: boolean;
+  isExtracting?: boolean;
   chatEndRef: RefObject<HTMLDivElement>;
   selectedText: string;
   onSendMessage: () => void;
   onSendPrompt: (prompt: string) => void;
   onCheckConsistency: () => void;
-  /** Insert text at the editor cursor position */
+  onExtractBible: () => void;
   onInsertText: (text: string) => void;
   onClose: () => void;
 }
@@ -106,17 +124,31 @@ export function CoauthorPanel({
   onChatInputChange,
   isAiLoading,
   isCheckingConsistency,
+  isExtracting,
   chatEndRef,
   selectedText,
   onSendMessage,
   onSendPrompt,
   onCheckConsistency,
+  onExtractBible,
   onInsertText,
   onClose,
 }: Props) {
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const hasSelection = selectedText.trim().length > 0;
+  // Перезапрашиваем квоту после каждого AI-вызова (isAiLoading: true → false)
+  const { quota } = useAiQuota(isAiLoading);
 
+  // Auto-resize textarea
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  }, [chatInput]);
+
+  // Scroll to bottom on new messages
   useEffect(() => {
     if (chatEndRef.current) {
       chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -125,12 +157,17 @@ export function CoauthorPanel({
 
   const handleQuickAction = (action: QuickAction) => {
     if (isAiLoading) return;
-    if (action.special === 'consistency') {
-      onCheckConsistency();
-      return;
-    }
+    if (action.special === 'consistency') { onCheckConsistency(); return; }
+    if (action.special === 'bible')       { onExtractBible();     return; }
     const prompt = buildPrompt(action.id, selectedText);
     if (prompt) onSendPrompt(prompt);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      onSendMessage();
+    }
   };
 
   const handleCopy = (text: string, idx: number) => {
@@ -144,13 +181,41 @@ export function CoauthorPanel({
     ? selectedText.slice(0, 60).trimEnd() + '…'
     : selectedText;
 
+  // The last AI message is still streaming if isAiLoading and its text is growing
+  const isStreaming = isAiLoading && !isCheckingConsistency;
+  const lastMsg     = chatMessages[chatMessages.length - 1];
+  const lastIsAi    = lastMsg?.role === 'ai';
+
+  // Show empty state when only the greeting is present
+  const isEmptyState = isHistoryLoaded &&
+    chatMessages.length === 1 &&
+    chatMessages[0].text === 'Привет! Я твой ИИ-соавтор. Чем могу помочь с этой главой?';
+
   return (
     <div className="flex flex-col h-full w-[320px]">
       {/* ── Header ── */}
       <div className="p-5 border-b border-[#1e2d1f]/5 flex justify-between items-center bg-white/40 flex-shrink-0">
         <div className="flex items-center gap-2">
           <Sparkles size={18} className="text-purple-500" />
-          <h2 className="font-serif font-bold text-lg text-[#1e2d1f]">ИИ-Соавтор</h2>
+          <div>
+            <h2 className="font-serif font-bold text-lg text-[#1e2d1f] leading-tight">ИИ-Соавтор</h2>
+            {quota && (
+              <p
+                className={`text-[11px] leading-tight ${
+                  quota.remaining === 0
+                    ? 'text-red-500'
+                    : quota.remaining <= Math.ceil(quota.limit * 0.15)
+                      ? 'text-amber-600'
+                      : 'text-[#1e2d1f]/40'
+                }`}
+                title={`Тариф: ${quota.plan === 'pro' ? 'Pro' : 'Бесплатный'}. Лимит обновится в полночь по UTC.`}
+              >
+                {quota.remaining === 0
+                  ? 'Дневной лимит AI исчерпан'
+                  : `AI-действий сегодня: ${quota.remaining} из ${quota.limit}`}
+              </p>
+            )}
+          </div>
         </div>
         <button
           onClick={onClose}
@@ -179,22 +244,33 @@ export function CoauthorPanel({
           {QUICK_ACTIONS.map(action => {
             const Icon = action.icon;
             const willUseSelection = hasSelection && action.selectionAware;
+            const isBibleAction    = action.special === 'bible';
+            const isBibleLoading   = isBibleAction && isExtracting;
+            const isDisabled       = isBibleAction ? (isAiLoading || isExtracting) : isAiLoading;
             return (
               <button
                 key={action.id}
                 onClick={() => handleQuickAction(action)}
-                disabled={isAiLoading}
-                title={willUseSelection ? 'По выделению' : undefined}
+                disabled={isDisabled}
+                title={
+                  willUseSelection ? 'По выделению' :
+                  isBibleAction ? 'Извлечь персонажей, локации и правила мира' : undefined
+                }
                 className={`flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-[11px] font-medium text-left transition-all
                   disabled:opacity-40 disabled:cursor-not-allowed
-                  ${willUseSelection
+                  ${isBibleAction
+                    ? 'bg-emerald-50 border border-emerald-100 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-200'
+                    : willUseSelection
                     ? 'bg-purple-50 border border-purple-100 text-purple-700 hover:bg-purple-100 hover:border-purple-200'
                     : 'bg-white/70 border border-[#1e2d1f]/8 text-[#1e2d1f]/70 hover:bg-white hover:border-[#1e2d1f]/20 hover:text-[#1e2d1f]'
                   }`}
               >
-                <Icon size={12} className="flex-shrink-0" />
-                <span className="truncate">{action.label}</span>
-                {willUseSelection && (
+                {isBibleLoading
+                  ? <div className="w-3 h-3 border border-emerald-400 border-t-emerald-700 rounded-full animate-spin flex-shrink-0" />
+                  : <Icon size={12} className="flex-shrink-0" />
+                }
+                <span className="truncate">{isBibleLoading ? 'Извлекаю...' : action.label}</span>
+                {willUseSelection && !isBibleAction && (
                   <span className="ml-auto text-[8px] text-purple-400 flex-shrink-0">↑</span>
                 )}
               </button>
@@ -213,54 +289,79 @@ export function CoauthorPanel({
           </div>
         )}
 
-        {isHistoryLoaded && chatMessages.map((msg, idx) => (
-          <div
-            key={idx}
-            className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
-          >
+        {isHistoryLoaded && chatMessages.map((msg, idx) => {
+          const isLastAiStreaming = isStreaming && lastIsAi && idx === chatMessages.length - 1 && msg.role === 'ai';
+          return (
             <div
-              className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
-                msg.role === 'user'
-                  ? 'bg-[#1e2d1f] text-white rounded-br-sm'
-                  : 'bg-white border border-[#1e2d1f]/10 text-[#1e2d1f] rounded-bl-sm shadow-sm ' +
-                    'prose prose-sm prose-p:my-1 prose-strong:text-[#1e2d1f] max-w-none'
-              }`}
+              key={idx}
+              className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
             >
-              {msg.role === 'user' ? msg.text : <ReactMarkdown>{msg.text}</ReactMarkdown>}
-            </div>
-
-            {/* Response actions for AI messages */}
-            {msg.role === 'ai' && (
-              <div className="flex items-center gap-0.5 mt-1 ml-1">
-                <button
-                  onClick={() => handleCopy(msg.text, idx)}
-                  className="flex items-center gap-1 text-[10px] text-[#1e2d1f]/35 hover:text-[#1e2d1f]/65 px-1.5 py-0.5 rounded-md hover:bg-[#1e2d1f]/5 transition-colors"
-                  title="Скопировать"
-                >
-                  <Copy size={10} />
-                  {copiedIdx === idx ? 'Скопировано' : 'Копировать'}
-                </button>
-                <button
-                  onClick={() => onInsertText(stripMarkdown(msg.text))}
-                  className="flex items-center gap-1 text-[10px] text-[#1e2d1f]/35 hover:text-[#1e2d1f]/65 px-1.5 py-0.5 rounded-md hover:bg-[#1e2d1f]/5 transition-colors"
-                  title="Вставить в текст на позиции курсора"
-                >
-                  <CornerDownLeft size={10} />
-                  Вставить
-                </button>
+              <div
+                className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
+                  msg.role === 'user'
+                    ? 'bg-[#1e2d1f] text-white rounded-br-sm'
+                    : 'bg-white border border-[#1e2d1f]/10 text-[#1e2d1f] rounded-bl-sm shadow-sm ' +
+                      'prose prose-sm prose-p:my-1 prose-strong:text-[#1e2d1f] max-w-none'
+                }`}
+              >
+                {msg.role === 'user'
+                  ? msg.text
+                  : (
+                    <>
+                      <ReactMarkdown>{msg.text}</ReactMarkdown>
+                      {isLastAiStreaming && msg.text === '' && (
+                        <span className="flex items-center gap-1 h-5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#1e2d1f]/30 animate-bounce [animation-delay:0ms]" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#1e2d1f]/30 animate-bounce [animation-delay:150ms]" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#1e2d1f]/30 animate-bounce [animation-delay:300ms]" />
+                        </span>
+                      )}
+                      {isLastAiStreaming && msg.text !== '' && <StreamingCursor />}
+                    </>
+                  )
+                }
               </div>
-            )}
-          </div>
-        ))}
 
-        {/* AI typing indicator */}
-        {isAiLoading && (
-          <div className="flex flex-col items-start">
-            <div className="max-w-[85%] rounded-2xl px-4 py-2.5 bg-white border border-[#1e2d1f]/10 rounded-bl-sm shadow-sm flex items-center gap-1.5 h-[40px]">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#1e2d1f]/30 animate-bounce [animation-delay:0ms]" />
-              <div className="w-1.5 h-1.5 rounded-full bg-[#1e2d1f]/30 animate-bounce [animation-delay:150ms]" />
-              <div className="w-1.5 h-1.5 rounded-full bg-[#1e2d1f]/30 animate-bounce [animation-delay:300ms]" />
+              {/* Response actions — only for completed AI messages */}
+              {msg.role === 'ai' && !isLastAiStreaming && msg.text && (
+                <div className="flex items-center gap-0.5 mt-1 ml-1">
+                  <button
+                    onClick={() => handleCopy(msg.text, idx)}
+                    className="flex items-center gap-1 text-[10px] text-[#1e2d1f]/35 hover:text-[#1e2d1f]/65 px-1.5 py-0.5 rounded-md hover:bg-[#1e2d1f]/5 transition-colors"
+                    title="Скопировать"
+                  >
+                    <Copy size={10} />
+                    {copiedIdx === idx ? 'Скопировано' : 'Копировать'}
+                  </button>
+                  <button
+                    onClick={() => onInsertText(stripMarkdown(msg.text))}
+                    className="flex items-center gap-1 text-[10px] text-[#1e2d1f]/35 hover:text-[#1e2d1f]/65 px-1.5 py-0.5 rounded-md hover:bg-[#1e2d1f]/5 transition-colors"
+                    title="Вставить в текст на позиции курсора"
+                  >
+                    <CornerDownLeft size={10} />
+                    Вставить
+                  </button>
+                </div>
+              )}
             </div>
+          );
+        })}
+
+        {/* Empty state: suggested questions */}
+        {isEmptyState && !isAiLoading && (
+          <div className="space-y-2 pt-1">
+            <p className="text-[10px] text-[#1e2d1f]/35 font-medium uppercase tracking-widest px-1">
+              С чего начать
+            </p>
+            {SUGGESTIONS.map((s, i) => (
+              <button
+                key={i}
+                onClick={() => onSendPrompt(s)}
+                className="w-full text-left text-[12px] text-[#1e2d1f]/65 bg-white/60 hover:bg-white border border-[#1e2d1f]/7 hover:border-[#1e2d1f]/15 rounded-xl px-3 py-2 transition-all leading-snug"
+              >
+                {s}
+              </button>
+            ))}
           </div>
         )}
 
@@ -279,24 +380,29 @@ export function CoauthorPanel({
           )}
         </div>
 
-        <div className="relative flex items-center">
-          <input
-            type="text"
+        <div className="relative flex items-end">
+          <textarea
+            ref={textareaRef}
+            rows={1}
             value={chatInput}
             onChange={e => onChatInputChange(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') onSendMessage(); }}
-            placeholder="Спросите соавтора..."
+            onKeyDown={handleKeyDown}
+            placeholder="Спросите соавтора… (Enter — отправить)"
             disabled={isAiLoading}
-            className="w-full bg-white border border-[#1e2d1f]/10 rounded-full pl-4 pr-10 py-2.5 text-sm outline-none focus:border-[#1e2d1f]/30 transition-colors shadow-sm disabled:opacity-50"
+            className="w-full bg-white border border-[#1e2d1f]/10 rounded-2xl pl-4 pr-10 py-2.5 text-sm outline-none focus:border-[#1e2d1f]/30 transition-colors shadow-sm disabled:opacity-50 resize-none overflow-hidden leading-relaxed"
+            style={{ minHeight: '42px' }}
           />
           <button
             onClick={onSendMessage}
             disabled={isAiLoading || !chatInput.trim()}
-            className="absolute right-1.5 p-1.5 bg-[#1e2d1f] text-white rounded-full hover:bg-[#2a3f2b] transition-colors disabled:opacity-50"
+            className="absolute right-1.5 bottom-1.5 p-1.5 bg-[#1e2d1f] text-white rounded-full hover:bg-[#2a3f2b] transition-colors disabled:opacity-50"
           >
             <Send size={14} />
           </button>
         </div>
+        <p className="text-[9px] text-[#1e2d1f]/25 mt-1.5 px-1">
+          Enter — отправить · Shift+Enter — новая строка
+        </p>
       </div>
     </div>
   );

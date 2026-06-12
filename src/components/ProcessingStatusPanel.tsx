@@ -33,7 +33,7 @@ function StateLabel({ state }: { state: ProcessingState }) {
     processing: { label: 'Выполняется…', color: '#5B7E5E' },
     done:       { label: 'Готово',       color: '#3A6B40' },
     partial:    { label: 'Частично',     color: '#8B6914' },
-    failed:     { label: 'Ошибка',       color: '#C0392B' },
+    failed:     { label: 'Ошибка',       color: '#9E4338' },
   };
   const { label, color } = map[state];
   return (
@@ -72,7 +72,7 @@ function ProgressBar({ counts }: { counts: TypeCounts }) {
       }}>
         <span>{counts.succeeded} из {counts.total} глав</span>
         {counts.failed > 0 && (
-          <span style={{ color: '#C0392B' }}>{counts.failed} ошибок</span>
+          <span style={{ color: '#9E4338' }}>{counts.failed} ошибок</span>
         )}
       </div>
     </div>
@@ -90,7 +90,7 @@ function ChapterRow({
     succeeded: <CheckCircle size={13} color="#3A6B40" />,
     running:   <Loader size={13} color="#5B7E5E" style={{ animation: 'spin 1s linear infinite' }} />,
     queued:    <Clock size={13} color="rgba(0,0,0,0.3)" />,
-    failed:    <AlertCircle size={13} color="#C0392B" />,
+    failed:    <AlertCircle size={13} color="#9E4338" />,
   };
 
   const title = job.chapterTitle
@@ -105,7 +105,7 @@ function ChapterRow({
       <span style={{ flexShrink: 0 }}>{icons[job.status] ?? icons.queued}</span>
       <span style={{
         flex: 1, fontSize: '12px',
-        color: job.status === 'failed' ? '#C0392B' : 'rgba(0,0,0,0.65)',
+        color: job.status === 'failed' ? '#9E4338' : 'rgba(0,0,0,0.65)',
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
         {title}
@@ -118,9 +118,9 @@ function ChapterRow({
           title={job.error ?? 'Повторить'}
           style={{
             display: 'flex', alignItems: 'center', gap: '3px',
-            background: 'none', border: '1px solid #C0392B',
+            background: 'none', border: '1px solid #9E4338',
             borderRadius: '50px', padding: '2px 8px', cursor: 'pointer',
-            fontSize: '11px', color: '#C0392B', opacity: retrying ? 0.5 : 1,
+            fontSize: '11px', color: '#9E4338', opacity: retrying ? 0.5 : 1,
             whiteSpace: 'nowrap',
           }}
         >
@@ -380,7 +380,7 @@ export function ProcessingStatusPanel({
                   style={{ animation: 'spin 1s linear infinite', flexShrink: 0 }} />
               )}
               {!detail.isProcessing && detail.summary.failed > 0 && (
-                <AlertCircle size={13} color="#C0392B" style={{ flexShrink: 0 }} />
+                <AlertCircle size={13} color="#9E4338" style={{ flexShrink: 0 }} />
               )}
               {!detail.isProcessing && detail.summary.failed === 0 && (
                 <CheckCircle size={13} color="#3A6B40" style={{ flexShrink: 0 }} />
@@ -413,7 +413,7 @@ export function ProcessingStatusPanel({
           {error && (
             <div style={{
               background: 'rgba(192,57,43,0.07)', borderRadius: '12px',
-              padding: '14px 16px', color: '#C0392B', fontSize: '13px',
+              padding: '14px 16px', color: '#9E4338', fontSize: '13px',
             }}>
               {error}
             </div>
@@ -485,7 +485,7 @@ export function ProcessingStatusPanel({
                 border: '1px solid rgba(192,57,43,0.3)',
                 borderRadius: '10px', cursor: retryingAll ? 'not-allowed' : 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                fontSize: '13px', fontWeight: 600, color: '#C0392B',
+                fontSize: '13px', fontWeight: 600, color: '#9E4338',
                 transition: 'all 0.15s',
               }}
             >

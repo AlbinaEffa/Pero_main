@@ -29,7 +29,7 @@ interface Props {
 
 function StateLabel({ state }: { state: ProcessingState }) {
   const map: Record<ProcessingState, { label: string; color: string }> = {
-    idle:       { label: 'Не запущено',  color: 'rgba(0,0,0,0.3)' },
+    idle:       { label: 'Не запущено',  color: 'rgba(30,45,31,0.3)' },
     processing: { label: 'Выполняется…', color: '#5B7E5E' },
     done:       { label: 'Готово',       color: '#3A6B40' },
     partial:    { label: 'Частично',     color: '#8B6914' },
@@ -53,7 +53,7 @@ function ProgressBar({ counts }: { counts: TypeCounts }) {
   return (
     <div style={{ marginTop: '6px' }}>
       <div style={{
-        height: '5px', background: 'rgba(0,0,0,0.07)', borderRadius: '9px',
+        height: '5px', background: 'rgba(30,45,31,0.07)', borderRadius: '9px',
         overflow: 'hidden',
       }}>
         <div style={{
@@ -68,7 +68,7 @@ function ProgressBar({ counts }: { counts: TypeCounts }) {
       </div>
       <div style={{
         display: 'flex', justifyContent: 'space-between',
-        marginTop: '3px', fontSize: '11px', color: 'rgba(0,0,0,0.4)',
+        marginTop: '3px', fontSize: '11px', color: 'rgba(30,45,31,0.4)',
       }}>
         <span>{counts.succeeded} из {counts.total} глав</span>
         {counts.failed > 0 && (
@@ -89,7 +89,7 @@ function ChapterRow({
   const icons: Record<string, ReactElement> = {
     succeeded: <CheckCircle size={13} color="#3A6B40" />,
     running:   <Loader size={13} color="#5B7E5E" style={{ animation: 'spin 1s linear infinite' }} />,
-    queued:    <Clock size={13} color="rgba(0,0,0,0.3)" />,
+    queued:    <Clock size={13} color="rgba(30,45,31,0.3)" />,
     failed:    <AlertCircle size={13} color="#9E4338" />,
   };
 
@@ -100,12 +100,12 @@ function ChapterRow({
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: '8px',
-      padding: '5px 0', borderBottom: '1px solid rgba(0,0,0,0.04)',
+      padding: '5px 0', borderBottom: '1px solid rgba(30,45,31,0.04)',
     }}>
       <span style={{ flexShrink: 0 }}>{icons[job.status] ?? icons.queued}</span>
       <span style={{
         flex: 1, fontSize: '12px',
-        color: job.status === 'failed' ? '#9E4338' : 'rgba(0,0,0,0.65)',
+        color: job.status === 'failed' ? '#9E4338' : 'rgba(30,45,31,0.65)',
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
         {title}
@@ -152,7 +152,7 @@ function JobSection({
       background: '#fff',
       borderRadius: '14px',
       padding: '14px 16px',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+      boxShadow: '0 1px 4px rgba(30,45,31,0.06)',
       marginBottom: '12px',
     }}>
       {/* Header */}
@@ -170,7 +170,7 @@ function JobSection({
             <StateLabel state={state} />
           </div>
           <p style={{
-            margin: '2px 0 0', fontSize: '11px', color: 'rgba(0,0,0,0.4)',
+            margin: '2px 0 0', fontSize: '11px', color: 'rgba(30,45,31,0.4)',
             lineHeight: 1.4,
           }}>
             {tooltip}
@@ -188,7 +188,7 @@ function JobSection({
             onClick={() => setExpanded(v => !v)}
             style={{
               background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-              fontSize: '11px', color: 'rgba(0,0,0,0.4)',
+              fontSize: '11px', color: 'rgba(30,45,31,0.4)',
               display: 'flex', alignItems: 'center', gap: '4px',
             }}
           >
@@ -218,7 +218,7 @@ function JobSection({
 
       {/* Idle state hint */}
       {counts.total === 0 && (
-        <p style={{ margin: '8px 0 0', fontSize: '12px', color: 'rgba(0,0,0,0.3)' }}>
+        <p style={{ margin: '8px 0 0', fontSize: '12px', color: 'rgba(30,45,31,0.3)' }}>
           Задания ещё не созданы
         </p>
       )}
@@ -307,7 +307,7 @@ export function ProcessingStatusPanel({
       <div
         onClick={onClose}
         style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.25)',
+          position: 'fixed', inset: 0, background: 'rgba(30,45,31,0.25)',
           backdropFilter: 'blur(2px)', zIndex: 500,
           animation: 'fadeIn 0.15s ease',
         }}
@@ -318,7 +318,7 @@ export function ProcessingStatusPanel({
         position: 'fixed', top: 0, right: 0, bottom: 0,
         width: '380px', maxWidth: '100vw',
         background: '#f5f0e8',
-        boxShadow: '-8px 0 40px rgba(0,0,0,0.15)',
+        boxShadow: '-8px 0 40px rgba(30,45,31,0.15)',
         zIndex: 501,
         display: 'flex', flexDirection: 'column',
         animation: 'slideInRight 0.2s cubic-bezier(0.25,0.46,0.45,0.94)',
@@ -327,7 +327,7 @@ export function ProcessingStatusPanel({
         {/* Header */}
         <div style={{
           padding: '20px 20px 16px',
-          borderBottom: '1px solid rgba(0,0,0,0.07)',
+          borderBottom: '1px solid rgba(30,45,31,0.07)',
           background: '#fff',
           flexShrink: 0,
         }}>
@@ -336,7 +336,7 @@ export function ProcessingStatusPanel({
               <p style={{
                 margin: 0, fontSize: '10px', fontWeight: 700,
                 letterSpacing: '0.14em', textTransform: 'uppercase',
-                color: 'rgba(0,0,0,0.35)',
+                color: 'rgba(30,45,31,0.35)',
               }}>
                 Обработка рукописи
               </p>
@@ -352,13 +352,13 @@ export function ProcessingStatusPanel({
             <button
               onClick={onClose}
               style={{
-                background: 'rgba(0,0,0,0.06)', border: 'none',
+                background: 'rgba(30,45,31,0.06)', border: 'none',
                 borderRadius: '50%', width: '30px', height: '30px',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: 'pointer', flexShrink: 0,
               }}
             >
-              <X size={14} color="rgba(0,0,0,0.5)" />
+              <X size={14} color="rgba(30,45,31,0.5)" />
             </button>
           </div>
 
@@ -403,7 +403,7 @@ export function ProcessingStatusPanel({
           {loading && (
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: '40px 0', gap: '10px', color: 'rgba(0,0,0,0.35)',
+              padding: '40px 0', gap: '10px', color: 'rgba(30,45,31,0.35)',
             }}>
               <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} />
               <span style={{ fontSize: '13px' }}>Загрузка…</span>
@@ -445,11 +445,11 @@ export function ProcessingStatusPanel({
 
               {/* What it means explanation */}
               <div style={{
-                background: 'rgba(0,0,0,0.04)', borderRadius: '12px',
-                padding: '12px 14px', fontSize: '11px', color: 'rgba(0,0,0,0.45)',
+                background: 'rgba(30,45,31,0.04)', borderRadius: '12px',
+                padding: '12px 14px', fontSize: '11px', color: 'rgba(30,45,31,0.45)',
                 lineHeight: 1.6,
               }}>
-                <strong style={{ display: 'block', marginBottom: '4px', color: 'rgba(0,0,0,0.5)' }}>
+                <strong style={{ display: 'block', marginBottom: '4px', color: 'rgba(30,45,31,0.5)' }}>
                   Что это значит для вас?
                 </strong>
                 {detail.bibleState === 'done'
@@ -472,7 +472,7 @@ export function ProcessingStatusPanel({
         {totalFailed > 0 && (
           <div style={{
             padding: '14px 16px',
-            borderTop: '1px solid rgba(0,0,0,0.07)',
+            borderTop: '1px solid rgba(30,45,31,0.07)',
             background: '#fff',
             flexShrink: 0,
           }}>

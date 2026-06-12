@@ -22,7 +22,7 @@ const Onboarding = React.lazy(() => import('./pages/Onboarding'));
 // ── Page loading fallback ─────────────────────────────────────────────────────
 function PageLoader() {
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-[#fdfbf7]">
+    <div className="fixed inset-0 flex items-center justify-center bg-[#F5F0E8]">
       <div className="flex gap-1.5">
         {[0, 1, 2].map(i => (
           <div

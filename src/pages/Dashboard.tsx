@@ -125,7 +125,7 @@ function BookContextMenu({ project, position, onClose, onEdit, onOpen, onBible, 
           opacity: adjustedPos.opacity,
           transition: 'opacity 0.15s ease-out'
         }}
-        className="absolute bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-hidden min-w-[180px]"
+        className="absolute bg-[#1E2D1F] border border-white/10 rounded-xl shadow-2xl overflow-hidden min-w-[180px]"
         onClick={e => e.stopPropagation()}
       >
         <button onClick={onEdit} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-white/80 hover:bg-white/10 transition-colors">
@@ -156,7 +156,7 @@ function BookContextMenu({ project, position, onClose, onEdit, onOpen, onBible, 
               style={{
                 backgroundColor: c,
                 border: project.color === c ? '2px solid white' : '1px solid rgba(255,255,255,0.2)',
-                boxShadow: project.color === c ? '0 0 0 1px #1a1a1a inset' : 'none'
+                boxShadow: project.color === c ? '0 0 0 1px #1E2D1F inset' : 'none'
               }}
               title="Изменить цвет обложки"
             />
@@ -212,8 +212,8 @@ function Book({ project, onOpen, onDelete, onEdit, onBible, onExport, onArchive,
           backgroundColor: project.color,
           borderRadius: '3px 6px 6px 3px',
           boxShadow: hovered
-            ? `4px 4px 20px ${project.color}55, -2px 0 0 rgba(0,0,0,0.2)`
-            : `-2px 0 0 rgba(0,0,0,0.15), 2px 2px 8px rgba(0,0,0,0.2)`,
+            ? `4px 4px 20px ${project.color}55, -2px 0 0 rgba(30,45,31,0.2)`
+            : `-2px 0 0 rgba(30,45,31,0.15), 2px 2px 8px rgba(30,45,31,0.2)`,
           transform: hovered ? 'translateY(-12px) rotate(-1deg)' : 'translateY(0) rotate(0deg)',
           transition: 'all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
           display: 'flex',
@@ -228,7 +228,7 @@ function Book({ project, onOpen, onDelete, onEdit, onBible, onExport, onArchive,
       >
         {/* Three dots button */}
         <button
-          className={`absolute top-2 right-1.5 p-1 rounded-full text-white/80 hover:bg-black/20 transition-opacity ${(hovered || menuPos) ? 'opacity-100' : 'opacity-0'} z-10`}
+          className={`absolute top-2 right-1.5 p-1 rounded-full text-white/80 hover:bg-ink/20 transition-opacity ${(hovered || menuPos) ? 'opacity-100' : 'opacity-0'} z-10`}
           onClick={openMenu}
         >
           <MoreVertical size={16} />
@@ -294,13 +294,13 @@ function Shelf({ projects, label, onOpen, onDelete, onEdit, onBible, onExport, o
       <div className="flex items-center gap-4 mb-0 px-1">
         <span style={{
           fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em',
-          textTransform: 'uppercase', color: 'rgba(0,0,0,0.3)',
+          textTransform: 'uppercase', color: 'rgba(30,45,31,0.3)',
           fontFamily: "'Golos Text', sans-serif"
         }}>
           {label}
         </span>
-        <div style={{ flex: 1, height: '1px', background: 'rgba(0,0,0,0.08)' }} />
-        <span style={{ fontSize: '11px', color: 'rgba(0,0,0,0.25)' }}>
+        <div style={{ flex: 1, height: '1px', background: 'rgba(30,45,31,0.08)' }} />
+        <span style={{ fontSize: '11px', color: 'rgba(30,45,31,0.25)' }}>
           {projects.length} {projects.length === 1 ? 'книга' : projects.length < 5 ? 'книги' : 'книг'}
         </span>
       </div>
@@ -315,9 +315,9 @@ function Shelf({ projects, label, onOpen, onDelete, onEdit, onBible, onExport, o
             <div style={{
               height: '120px',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              border: '2px dashed rgba(0,0,0,0.08)', borderRadius: '12px',
+              border: '2px dashed rgba(30,45,31,0.08)', borderRadius: '12px',
               margin: '16px 0 0',
-              color: 'rgba(0,0,0,0.3)', fontSize: '13px', gap: '8px',
+              color: 'rgba(30,45,31,0.3)', fontSize: '13px', gap: '8px',
             }}>
               <BookOpen size={16} style={{ opacity: 0.4 }} />
               {emptyLabel || 'Нет проектов'}
@@ -348,18 +348,18 @@ function Shelf({ projects, label, onOpen, onDelete, onEdit, onBible, onExport, o
               height: '14px',
               background: 'linear-gradient(to bottom, #9B7A3A 0%, #7A5E28 100%)',
               borderRadius: '0 0 3px 3px',
-              boxShadow: '0 3px 8px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.15)',
+              boxShadow: '0 3px 8px rgba(30,45,31,0.25), inset 0 1px 0 rgba(255,255,255,0.15)',
               position: 'relative',
             }}>
               {/* Wood grain lines */}
               <div style={{ position: 'absolute', top: '4px', left: 0, right: 0, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
-              <div style={{ position: 'absolute', top: '8px', left: 0, right: 0, height: '1px', background: 'rgba(0,0,0,0.1)' }} />
+              <div style={{ position: 'absolute', top: '8px', left: 0, right: 0, height: '1px', background: 'rgba(30,45,31,0.1)' }} />
             </div>
             <div style={{
               height: '6px',
               background: '#5C4220',
               borderRadius: '0 0 4px 4px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+              boxShadow: '0 4px 12px rgba(30,45,31,0.3)',
             }} />
           </>
         )}
@@ -377,19 +377,19 @@ function EmptyState({ onNew }: { onNew: () => void }) {
     }}>
       <div style={{
         width: '80px', height: '80px', borderRadius: '20px',
-        background: 'rgba(0,0,0,0.04)', display: 'flex',
+        background: 'rgba(30,45,31,0.04)', display: 'flex',
         alignItems: 'center', justifyContent: 'center', marginBottom: '24px',
       }}>
-        <BookOpen size={36} style={{ color: 'rgba(0,0,0,0.2)' }} />
+        <BookOpen size={36} style={{ color: 'rgba(30,45,31,0.2)' }} />
       </div>
       <h2 style={{
         fontFamily: '"Cormorant Garamond", serif',
-        fontSize: '28px', fontWeight: 600, color: 'rgba(0,0,0,0.7)',
+        fontSize: '28px', fontWeight: 600, color: 'rgba(30,45,31,0.7)',
         marginBottom: '10px',
       }}>
         Ваша полка пуста
       </h2>
-      <p style={{ color: 'rgba(0,0,0,0.4)', fontSize: '15px', maxWidth: '320px', lineHeight: 1.6, marginBottom: '28px' }}>
+      <p style={{ color: 'rgba(30,45,31,0.4)', fontSize: '15px', maxWidth: '320px', lineHeight: 1.6, marginBottom: '28px' }}>
         Каждая великая история начинается с первого слова. Создайте свой первый проект.
       </p>
       <button
@@ -446,7 +446,7 @@ function NewProjectModal({ onClose, onCreate }: { onClose: () => void; onCreate:
   return (
     <div
       style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+        position: 'fixed', inset: 0, background: 'rgba(30,45,31,0.5)',
         backdropFilter: 'blur(4px)', zIndex: 100,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '16px', animation: 'fadeIn 0.15s ease',
@@ -455,23 +455,23 @@ function NewProjectModal({ onClose, onCreate }: { onClose: () => void; onCreate:
     >
       <div
         style={{
-          background: '#F4F1E9', borderRadius: '24px', width: '100%',
-          maxWidth: '480px', boxShadow: '0 24px 60px rgba(0,0,0,0.3)',
+          background: '#F5F0E8', borderRadius: '24px', width: '100%',
+          maxWidth: '480px', boxShadow: '0 24px 60px rgba(30,45,31,0.3)',
           overflow: 'hidden', animation: 'slideUp 0.2s cubic-bezier(0.34,1.56,0.64,1)',
         }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={{ background: '#fff', padding: '20px 24px', borderBottom: '1px solid rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ background: '#fff', padding: '20px 24px', borderBottom: '1px solid rgba(30,45,31,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h2 style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: '22px', fontWeight: 700, margin: 0 }}>
               Новый проект
             </h2>
-            <p style={{ fontSize: '12px', color: 'rgba(0,0,0,0.4)', margin: '2px 0 0' }}>
+            <p style={{ fontSize: '12px', color: 'rgba(30,45,31,0.4)', margin: '2px 0 0' }}>
               Создайте новую книгу с нуля
             </p>
           </div>
-          <button onClick={onClose} style={{ background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(0,0,0,0.5)' }}>
+          <button onClick={onClose} style={{ background: 'rgba(30,45,31,0.05)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(30,45,31,0.5)' }}>
             <X size={16} />
           </button>
         </div>
@@ -479,7 +479,7 @@ function NewProjectModal({ onClose, onCreate }: { onClose: () => void; onCreate:
         <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Title */}
           <div>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.4)', marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.4)', marginBottom: '6px' }}>
               Название
             </label>
             <input
@@ -489,18 +489,18 @@ function NewProjectModal({ onClose, onCreate }: { onClose: () => void; onCreate:
               placeholder="Название вашей книги"
               style={{
                 width: '100%', padding: '10px 14px', borderRadius: '12px',
-                border: '1.5px solid rgba(0,0,0,0.1)', background: '#fff',
+                border: '1.5px solid rgba(30,45,31,0.1)', background: '#fff',
                 fontSize: '14px', outline: 'none', boxSizing: 'border-box',
                 fontFamily: 'inherit', transition: 'border-color 0.15s',
               }}
               onFocus={e => (e.target.style.borderColor = '#3A4F41')}
-              onBlur={e => (e.target.style.borderColor = 'rgba(0,0,0,0.1)')}
+              onBlur={e => (e.target.style.borderColor = 'rgba(30,45,31,0.1)')}
             />
           </div>
 
           {/* Genre */}
           <div>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.4)', marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.4)', marginBottom: '6px' }}>
               Жанр
             </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
@@ -516,9 +516,9 @@ function NewProjectModal({ onClose, onCreate }: { onClose: () => void; onCreate:
                   }}
                   style={{
                     padding: '5px 12px', borderRadius: '50px', fontSize: '12px',
-                    border: `1.5px solid ${(g === 'Другое' ? (!GENRE_PRESETS.slice(0,-1).includes(genre) && genre !== '') || genre === 'Другое' : genre === g) ? '#3A4F41' : 'rgba(0,0,0,0.1)'}`,
+                    border: `1.5px solid ${(g === 'Другое' ? (!GENRE_PRESETS.slice(0,-1).includes(genre) && genre !== '') || genre === 'Другое' : genre === g) ? '#3A4F41' : 'rgba(30,45,31,0.1)'}`,
                     background: (g === 'Другое' ? (!GENRE_PRESETS.slice(0,-1).includes(genre) && genre !== '') || genre === 'Другое' : genre === g) ? 'rgba(58,79,65,0.08)' : 'transparent',
-                    color: (g === 'Другое' ? (!GENRE_PRESETS.slice(0,-1).includes(genre) && genre !== '') || genre === 'Другое' : genre === g) ? '#3A4F41' : 'rgba(0,0,0,0.5)',
+                    color: (g === 'Другое' ? (!GENRE_PRESETS.slice(0,-1).includes(genre) && genre !== '') || genre === 'Другое' : genre === g) ? '#3A4F41' : 'rgba(30,45,31,0.5)',
                     cursor: 'pointer', fontWeight: 400, transition: 'all 0.15s',
                   }}
                 >
@@ -527,7 +527,7 @@ function NewProjectModal({ onClose, onCreate }: { onClose: () => void; onCreate:
               ))}
               {/* Saved custom genre chips */}
               {customGenres.map(g => (
-                <span key={g} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '5px 10px 5px 12px', borderRadius: '50px', fontSize: '12px', border: `1.5px solid ${genre === g ? '#3A4F41' : 'rgba(0,0,0,0.1)'}`, background: genre === g ? 'rgba(58,79,65,0.08)' : 'transparent', color: genre === g ? '#3A4F41' : 'rgba(0,0,0,0.5)' }}>
+                <span key={g} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '5px 10px 5px 12px', borderRadius: '50px', fontSize: '12px', border: `1.5px solid ${genre === g ? '#3A4F41' : 'rgba(30,45,31,0.1)'}`, background: genre === g ? 'rgba(58,79,65,0.08)' : 'transparent', color: genre === g ? '#3A4F41' : 'rgba(30,45,31,0.5)' }}>
                   <span style={{ cursor: 'pointer' }} onClick={() => setGenre(genre === g ? '' : g)}>{g}</span>
                   <button onClick={() => removeCustomGenre(g)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1, color: 'inherit', opacity: 0.5, fontSize: '13px' }}>×</button>
                 </span>
@@ -551,7 +551,7 @@ function NewProjectModal({ onClose, onCreate }: { onClose: () => void; onCreate:
                   width: '100%', padding: '8px 12px',
                   borderRadius: '10px', border: '1.5px solid #3A4F41',
                   background: '#fff', fontSize: '13px', outline: 'none',
-                  boxSizing: 'border-box', fontFamily: 'inherit', color: '#1a1a1a',
+                  boxSizing: 'border-box', fontFamily: 'inherit', color: '#1E2D1F',
                 }}
                 onBlur={e => {
                   const val = e.target.value.trim();
@@ -564,7 +564,7 @@ function NewProjectModal({ onClose, onCreate }: { onClose: () => void; onCreate:
 
           {/* Color */}
           <div>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.4)', marginBottom: '8px' }}>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.4)', marginBottom: '8px' }}>
               Цвет обложки
             </label>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -574,30 +574,30 @@ function NewProjectModal({ onClose, onCreate }: { onClose: () => void; onCreate:
                   onClick={() => setColor(c)}
                   style={{
                     width: '28px', height: '28px', borderRadius: '8px',
-                    background: c, border: `2.5px solid ${color === c ? '#1a1a1a' : 'transparent'}`,
+                    background: c, border: `2.5px solid ${color === c ? '#1E2D1F' : 'transparent'}`,
                     cursor: 'pointer', transition: 'transform 0.15s, border-color 0.15s',
                     transform: color === c ? 'scale(1.15)' : 'scale(1)',
                   }}
                 />
               ))}
               <input type="color" value={color} onChange={e => setColor(e.target.value)}
-                style={{ width: '28px', height: '28px', borderRadius: '8px', border: '1.5px solid rgba(0,0,0,0.1)', cursor: 'pointer', padding: '2px' }}
+                style={{ width: '28px', height: '28px', borderRadius: '8px', border: '1.5px solid rgba(30,45,31,0.1)', cursor: 'pointer', padding: '2px' }}
               />
             </div>
           </div>
 
           {/* Preview mini-book */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', background: 'rgba(0,0,0,0.03)', borderRadius: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', background: 'rgba(30,45,31,0.03)', borderRadius: '12px' }}>
             <div style={{
               width: '28px', height: '44px', background: color, borderRadius: '2px 4px 4px 2px',
-              boxShadow: '-1px 0 0 rgba(0,0,0,0.2), 1px 1px 4px rgba(0,0,0,0.2)',
+              boxShadow: '-1px 0 0 rgba(30,45,31,0.2), 1px 1px 4px rgba(30,45,31,0.2)',
               flexShrink: 0,
             }} />
             <div>
-              <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, fontFamily: '"Cormorant Garamond", serif', color: '#1a1a1a' }}>
+              <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, fontFamily: '"Cormorant Garamond", serif', color: '#1E2D1F' }}>
                 {title || 'Название книги'}
               </p>
-              <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'rgba(0,0,0,0.4)' }}>
+              <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'rgba(30,45,31,0.4)' }}>
                 {genre || 'Жанр'} · 0 слов
               </p>
             </div>
@@ -605,8 +605,8 @@ function NewProjectModal({ onClose, onCreate }: { onClose: () => void; onCreate:
         </div>
 
         {/* Footer */}
-        <div style={{ background: '#fff', padding: '16px 24px', borderTop: '1px solid rgba(0,0,0,0.06)', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ padding: '10px 18px', borderRadius: '12px', border: 'none', background: 'transparent', fontSize: '14px', cursor: 'pointer', color: 'rgba(0,0,0,0.5)', fontWeight: 500 }}>
+        <div style={{ background: '#fff', padding: '16px 24px', borderTop: '1px solid rgba(30,45,31,0.06)', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={{ padding: '10px 18px', borderRadius: '12px', border: 'none', background: 'transparent', fontSize: '14px', cursor: 'pointer', color: 'rgba(30,45,31,0.5)', fontWeight: 500 }}>
             Отмена
           </button>
           <button
@@ -614,8 +614,8 @@ function NewProjectModal({ onClose, onCreate }: { onClose: () => void; onCreate:
             disabled={!title}
             style={{
               padding: '10px 22px', borderRadius: '12px', border: 'none',
-              background: title ? '#3A4F41' : 'rgba(0,0,0,0.08)',
-              color: title ? '#fff' : 'rgba(0,0,0,0.3)',
+              background: title ? '#3A4F41' : 'rgba(30,45,31,0.08)',
+              color: title ? '#fff' : 'rgba(30,45,31,0.3)',
               fontSize: '14px', fontWeight: 600, cursor: title ? 'pointer' : 'not-allowed',
               transition: 'all 0.2s',
             }}
@@ -641,18 +641,18 @@ function RenameModal({ project, onClose, onRename }: {
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', animation: 'fadeIn 0.15s ease' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(30,45,31,0.5)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', animation: 'fadeIn 0.15s ease' }}
       onClick={onClose}
     >
       <div
-        style={{ background: '#F4F1E9', borderRadius: '20px', width: '100%', maxWidth: '380px', overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.3)', animation: 'slideUp 0.2s cubic-bezier(0.34,1.56,0.64,1)' }}
+        style={{ background: '#F5F0E8', borderRadius: '20px', width: '100%', maxWidth: '380px', overflow: 'hidden', boxShadow: '0 24px 60px rgba(30,45,31,0.3)', animation: 'slideUp 0.2s cubic-bezier(0.34,1.56,0.64,1)' }}
         onClick={e => e.stopPropagation()}
       >
-        <div style={{ background: '#fff', padding: '18px 22px', borderBottom: '1px solid rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ background: '#fff', padding: '18px 22px', borderBottom: '1px solid rgba(30,45,31,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: '20px', fontWeight: 700, margin: 0 }}>
             Переименовать
           </h2>
-          <button onClick={onClose} style={{ background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(0,0,0,0.5)' }}>
+          <button onClick={onClose} style={{ background: 'rgba(30,45,31,0.05)', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(30,45,31,0.5)' }}>
             <X size={15} />
           </button>
         </div>
@@ -663,19 +663,19 @@ function RenameModal({ project, onClose, onRename }: {
             value={title}
             onChange={e => setTitle(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') confirm(); if (e.key === 'Escape') onClose(); }}
-            style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: '1.5px solid rgba(0,0,0,0.1)', background: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
+            style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: '1.5px solid rgba(30,45,31,0.1)', background: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
             onFocus={e => (e.target.style.borderColor = '#3A4F41')}
-            onBlur={e => (e.target.style.borderColor = 'rgba(0,0,0,0.1)')}
+            onBlur={e => (e.target.style.borderColor = 'rgba(30,45,31,0.1)')}
           />
         </div>
-        <div style={{ background: '#fff', padding: '14px 22px', borderTop: '1px solid rgba(0,0,0,0.06)', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ padding: '9px 16px', borderRadius: '12px', border: 'none', background: 'transparent', fontSize: '13px', cursor: 'pointer', color: 'rgba(0,0,0,0.5)', fontWeight: 500 }}>
+        <div style={{ background: '#fff', padding: '14px 22px', borderTop: '1px solid rgba(30,45,31,0.06)', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={{ padding: '9px 16px', borderRadius: '12px', border: 'none', background: 'transparent', fontSize: '13px', cursor: 'pointer', color: 'rgba(30,45,31,0.5)', fontWeight: 500 }}>
             Отмена
           </button>
           <button
             onClick={confirm}
             disabled={!title.trim()}
-            style={{ padding: '9px 20px', borderRadius: '12px', border: 'none', background: title.trim() ? '#3A4F41' : 'rgba(0,0,0,0.08)', color: title.trim() ? '#fff' : 'rgba(0,0,0,0.3)', fontSize: '13px', fontWeight: 600, cursor: title.trim() ? 'pointer' : 'not-allowed', transition: 'all 0.2s' }}
+            style={{ padding: '9px 20px', borderRadius: '12px', border: 'none', background: title.trim() ? '#3A4F41' : 'rgba(30,45,31,0.08)', color: title.trim() ? '#fff' : 'rgba(30,45,31,0.3)', fontSize: '13px', fontWeight: 600, cursor: title.trim() ? 'pointer' : 'not-allowed', transition: 'all 0.2s' }}
           >
             Сохранить
           </button>
@@ -694,7 +694,7 @@ function ConfirmDeleteModal({ title, onClose, onConfirm }: {
     <div
       style={{
         position: 'fixed', inset: 0,
-        background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)',
+        background: 'rgba(30,45,31,0.45)', backdropFilter: 'blur(4px)',
         zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '16px', animation: 'fadeIn 0.15s ease'
       }}
@@ -702,26 +702,26 @@ function ConfirmDeleteModal({ title, onClose, onConfirm }: {
     >
       <div
         style={{
-          background: '#F4F1E9', borderRadius: '20px', width: '100%', maxWidth: '400px',
-          overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.28)',
+          background: '#F5F0E8', borderRadius: '20px', width: '100%', maxWidth: '400px',
+          overflow: 'hidden', boxShadow: '0 24px 60px rgba(30,45,31,0.28)',
           animation: 'slideUp 0.2s cubic-bezier(0.34,1.56,0.64,1)',
         }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div style={{
-          background: '#fff', padding: '16px 22px', borderBottom: '1px solid rgba(0,0,0,0.06)',
+          background: '#fff', padding: '16px 22px', borderBottom: '1px solid rgba(30,45,31,0.06)',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center'
         }}>
-          <h2 style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: '20px', fontWeight: 700, margin: 0, color: '#1a1a1a' }}>
+          <h2 style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: '20px', fontWeight: 700, margin: 0, color: '#1E2D1F' }}>
             Удалить проект?
           </h2>
           <button
             onClick={onClose}
             style={{
-              background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: '50%',
+              background: 'rgba(30,45,31,0.05)', border: 'none', borderRadius: '50%',
               width: '30px', height: '30px', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(0,0,0,0.5)'
+              display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(30,45,31,0.5)'
             }}
           >
             <X size={15} />
@@ -730,7 +730,7 @@ function ConfirmDeleteModal({ title, onClose, onConfirm }: {
 
         {/* Body */}
         <div style={{ padding: '24px 22px' }}>
-          <p style={{ fontSize: '14px', color: 'rgba(0,0,0,0.6)', margin: 0, lineHeight: 1.5 }}>
+          <p style={{ fontSize: '14px', color: 'rgba(30,45,31,0.6)', margin: 0, lineHeight: 1.5 }}>
             Проект <strong>«{title}»</strong> будет удалён безвозвратно вместе со всеми написанными главами, материалами и статистикой.<br/><br/>
             Это действие нельзя отменить.
           </p>
@@ -738,7 +738,7 @@ function ConfirmDeleteModal({ title, onClose, onConfirm }: {
 
         {/* Footer */}
         <div style={{
-          background: '#fff', padding: '14px 22px', borderTop: '1px solid rgba(0,0,0,0.06)',
+          background: '#fff', padding: '14px 22px', borderTop: '1px solid rgba(30,45,31,0.06)',
           display: 'flex', gap: '10px', justifyContent: 'flex-end', alignItems: 'center'
         }}>
           <button
@@ -746,7 +746,7 @@ function ConfirmDeleteModal({ title, onClose, onConfirm }: {
             style={{
               padding: '9px 16px', borderRadius: '12px', border: 'none',
               background: 'transparent', fontSize: '13px', cursor: 'pointer',
-              color: 'rgba(0,0,0,0.5)', fontWeight: 500
+              color: 'rgba(30,45,31,0.5)', fontWeight: 500
             }}
           >
             Отмена
@@ -958,7 +958,7 @@ export default function Dashboard() {
         }
       `}</style>
 
-      <div style={{ minHeight: '100vh', background: '#F4F1E9', fontFamily: "'Golos Text', sans-serif" }}>
+      <div style={{ minHeight: '100vh', background: '#F5F0E8', fontFamily: "'Golos Text', sans-serif" }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '56px 40px' }}>
 
           {/* Header */}
@@ -971,7 +971,7 @@ export default function Dashboard() {
                 fontFamily: '"Cormorant Garamond", serif',
                 fontSize: 'clamp(40px, 5vw, 60px)',
                 fontWeight: 700, fontStyle: 'italic',
-                color: 'rgba(0,0,0,0.8)', margin: '0 0 6px',
+                color: 'rgba(30,45,31,0.8)', margin: '0 0 6px',
                 lineHeight: 1.1,
               }}>
                 Ваши проекты
@@ -982,12 +982,12 @@ export default function Dashboard() {
               {/* Search */}
               <div style={{
                 display: 'flex', alignItems: 'center', gap: '8px',
-                background: searchFocused ? '#fff' : 'rgba(0,0,0,0.05)',
+                background: searchFocused ? '#fff' : 'rgba(30,45,31,0.05)',
                 borderRadius: '50px', padding: '8px 14px',
-                border: `1.5px solid ${searchFocused ? 'rgba(0,0,0,0.15)' : 'transparent'}`,
+                border: `1.5px solid ${searchFocused ? 'rgba(30,45,31,0.15)' : 'transparent'}`,
                 transition: 'all 0.2s',
               }}>
-                <Search size={15} style={{ color: 'rgba(0,0,0,0.35)', flexShrink: 0 }} />
+                <Search size={15} style={{ color: 'rgba(30,45,31,0.35)', flexShrink: 0 }} />
                 <input
                   type="text"
                   placeholder="Найти книгу..."
@@ -998,7 +998,7 @@ export default function Dashboard() {
                   style={{
                     border: 'none', background: 'transparent', outline: 'none',
                     fontSize: '13px', width: searchFocused ? '140px' : '80px',
-                    transition: 'width 0.3s ease', color: 'rgba(0,0,0,0.8)',
+                    transition: 'width 0.3s ease', color: 'rgba(30,45,31,0.8)',
                   }}
                 />
               </div>
@@ -1006,19 +1006,19 @@ export default function Dashboard() {
               <button
                 onClick={() => navigate('/ideas')}
                 style={{
-                  background: 'rgba(0,0,0,0.05)', color: 'rgba(0,0,0,0.7)', border: 'none',
+                  background: 'rgba(30,45,31,0.05)', color: 'rgba(30,45,31,0.7)', border: 'none',
                   borderRadius: '50px', padding: '9px 18px', fontSize: '13px',
                   fontWeight: 600, cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: '6px',
                   transition: 'all 0.2s', whiteSpace: 'nowrap',
                 }}
                 onMouseEnter={e => {
-                  e.currentTarget.style.background = 'rgba(0,0,0,0.08)';
-                  e.currentTarget.style.color = 'rgba(0,0,0,0.9)';
+                  e.currentTarget.style.background = 'rgba(30,45,31,0.08)';
+                  e.currentTarget.style.color = 'rgba(30,45,31,0.9)';
                 }}
                 onMouseLeave={e => {
-                  e.currentTarget.style.background = 'rgba(0,0,0,0.05)';
-                  e.currentTarget.style.color = 'rgba(0,0,0,0.7)';
+                  e.currentTarget.style.background = 'rgba(30,45,31,0.05)';
+                  e.currentTarget.style.color = 'rgba(30,45,31,0.7)';
                 }}
               >
                 <BookOpen size={16} /> Идеи
@@ -1027,14 +1027,14 @@ export default function Dashboard() {
               <button
                 onClick={() => setIsImportOpen(true)}
                 style={{
-                  background: 'rgba(0,0,0,0.05)', color: 'rgba(0,0,0,0.7)', border: 'none',
+                  background: 'rgba(30,45,31,0.05)', color: 'rgba(30,45,31,0.7)', border: 'none',
                   borderRadius: '50px', padding: '9px 18px', fontSize: '13px',
                   fontWeight: 600, cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: '6px',
                   transition: 'all 0.2s', whiteSpace: 'nowrap',
                 }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.08)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.05)'; }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(30,45,31,0.08)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(30,45,31,0.05)'; }}
               >
                 <Upload size={16} /> Импорт
               </button>
@@ -1063,7 +1063,7 @@ export default function Dashboard() {
 
               <button 
                 onClick={() => navigate('/settings')}
-                style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,0,0,0.06)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(0,0,0,0.5)', flexShrink: 0 }}
+                style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(30,45,31,0.06)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(30,45,31,0.5)', flexShrink: 0 }}
               >
                 <User size={17} />
               </button>
@@ -1089,12 +1089,12 @@ export default function Dashboard() {
                 <div key={i} style={{
                   display: 'flex', alignItems: 'center', gap: '9px',
                   padding: '9px 18px', background: 'rgba(255,255,255,0.6)',
-                  borderRadius: '50px', border: '1px solid rgba(0,0,0,0.06)',
+                  borderRadius: '50px', border: '1px solid rgba(30,45,31,0.06)',
                   fontSize: '13px',
                 }}>
-                  <span style={{ color: 'rgba(0,0,0,0.35)' }}>{stat.icon}</span>
-                  <span style={{ color: 'rgba(0,0,0,0.4)' }}>{stat.label}:</span>
-                  <span style={{ color: 'rgba(0,0,0,0.75)', fontWeight: 600 }}>{stat.value}</span>
+                  <span style={{ color: 'rgba(30,45,31,0.35)' }}>{stat.icon}</span>
+                  <span style={{ color: 'rgba(30,45,31,0.4)' }}>{stat.label}:</span>
+                  <span style={{ color: 'rgba(30,45,31,0.75)', fontWeight: 600 }}>{stat.value}</span>
                 </div>
               ))}
             </div>
@@ -1110,9 +1110,9 @@ export default function Dashboard() {
                     onClick={() => setSelectedGenre(null)}
                     style={{
                       padding: '7px 16px', borderRadius: '50px', fontSize: '13px', fontWeight: 500,
-                      border: `1.5px solid ${selectedGenre === null ? '#3A4F41' : 'rgba(0,0,0,0.1)'}`,
+                      border: `1.5px solid ${selectedGenre === null ? '#3A4F41' : 'rgba(30,45,31,0.1)'}`,
                       background: selectedGenre === null ? 'rgba(58,79,65,0.08)' : 'transparent',
-                      color: selectedGenre === null ? '#3A4F41' : 'rgba(0,0,0,0.45)',
+                      color: selectedGenre === null ? '#3A4F41' : 'rgba(30,45,31,0.45)',
                       cursor: 'pointer', transition: 'all 0.15s',
                     }}
                   >
@@ -1124,16 +1124,16 @@ export default function Dashboard() {
                       onClick={() => setSelectedGenre(selectedGenre === g ? null : g)}
                       style={{
                         padding: '7px 16px', borderRadius: '50px', fontSize: '13px', fontWeight: 500,
-                        border: `1.5px solid ${selectedGenre === g ? '#3A4F41' : 'rgba(0,0,0,0.1)'}`,
+                        border: `1.5px solid ${selectedGenre === g ? '#3A4F41' : 'rgba(30,45,31,0.1)'}`,
                         background: selectedGenre === g ? 'rgba(58,79,65,0.08)' : 'transparent',
-                        color: selectedGenre === g ? '#3A4F41' : 'rgba(0,0,0,0.45)',
+                        color: selectedGenre === g ? '#3A4F41' : 'rgba(30,45,31,0.45)',
                         cursor: 'pointer', transition: 'all 0.15s',
                       }}
                     >
                       {g}
                     </button>
                   ))}
-                  <div style={{ width: '1px', height: '18px', background: 'rgba(0,0,0,0.1)', margin: '0 2px' }} />
+                  <div style={{ width: '1px', height: '18px', background: 'rgba(30,45,31,0.1)', margin: '0 2px' }} />
                 </>
               )}
 
@@ -1148,8 +1148,8 @@ export default function Dashboard() {
                     paddingLeft: '14px', paddingRight: '34px',
                     paddingTop: '7px', paddingBottom: '7px',
                     borderRadius: '50px', fontSize: '13px',
-                    border: '1.5px solid rgba(0,0,0,0.1)', background: 'transparent',
-                    color: 'rgba(0,0,0,0.5)', cursor: 'pointer', outline: 'none',
+                    border: '1.5px solid rgba(30,45,31,0.1)', background: 'transparent',
+                    color: 'rgba(30,45,31,0.5)', cursor: 'pointer', outline: 'none',
                     fontFamily: 'inherit',
                   }}
                 >
@@ -1159,7 +1159,7 @@ export default function Dashboard() {
                 </select>
                 <svg
                   width="12" height="12" viewBox="0 0 12 12" fill="none"
-                  style={{ position: 'absolute', right: '12px', pointerEvents: 'none', color: 'rgba(0,0,0,0.4)' }}
+                  style={{ position: 'absolute', right: '12px', pointerEvents: 'none', color: 'rgba(30,45,31,0.4)' }}
                 >
                   <path d="M2 4.5L6 8.5L10 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
@@ -1169,7 +1169,7 @@ export default function Dashboard() {
 
           {isLoading ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
-              <div style={{ width: '28px', height: '28px', border: '3px solid rgba(0,0,0,0.1)', borderTopColor: '#3A4F41', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+              <div style={{ width: '28px', height: '28px', border: '3px solid rgba(30,45,31,0.1)', borderTopColor: '#3A4F41', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
             </div>
           ) : projects.length === 0 ? (
             <EmptyState onNew={() => setIsModalOpen(true)} />
@@ -1293,9 +1293,9 @@ export default function Dashboard() {
       {toast && (
         <div style={{
           position: 'fixed', bottom: '28px', left: '50%', transform: 'translateX(-50%)',
-          background: '#1a1a1a', color: '#fff', borderRadius: '50px',
+          background: '#1E2D1F', color: '#fff', borderRadius: '50px',
           padding: '10px 22px', fontSize: '13px', fontWeight: 500,
-          boxShadow: '0 4px 20px rgba(0,0,0,0.35)', zIndex: 9999,
+          boxShadow: '0 4px 20px rgba(30,45,31,0.35)', zIndex: 9999,
           animation: 'fadeInUp 0.2s ease', whiteSpace: 'nowrap',
           pointerEvents: 'none',
         }}>

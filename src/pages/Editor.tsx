@@ -1113,7 +1113,7 @@ export default function Editor() {
         {/* Backdrop шторки глав (только < lg) */}
         {!isFocusMode && isChaptersDrawerOpen && (
           <div
-            className="fixed inset-0 bg-black/30 z-40 lg:hidden"
+            className="fixed inset-0 bg-ink/30 z-40 lg:hidden"
             onClick={() => setIsChaptersDrawerOpen(false)}
           />
         )}
@@ -1215,7 +1215,7 @@ export default function Editor() {
                 border: '1px solid rgba(30,45,31,0.12)',
                 borderRadius: '24px',
                 padding: '5px 6px 5px 14px',
-                boxShadow: '0 4px 24px rgba(0,0,0,0.14)',
+                boxShadow: '0 4px 24px rgba(30,45,31,0.14)',
                 fontSize: '13px',
                 color: '#1e2d1f',
                 userSelect: 'none',
@@ -1290,7 +1290,7 @@ export default function Editor() {
             тап по остатку закрывает её. На md+ затемнения нет — текст читаем. */}
         {!isFocusMode && isAnySidePanelOpen && (
           <div
-            className="absolute inset-0 bg-black/30 z-40 md:hidden"
+            className="absolute inset-0 bg-ink/30 z-40 md:hidden"
             onClick={closeAllSidePanels}
           />
         )}

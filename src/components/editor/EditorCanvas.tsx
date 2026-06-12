@@ -627,7 +627,7 @@ export function EditorCanvas({
   };
 
   return (
-    <main className="flex-1 min-w-0 flex flex-col relative bg-transparent shadow-[-10px_0_20px_rgba(0,0,0,0.02)] z-10 transition-all duration-300">
+    <main className="flex-1 min-w-0 flex flex-col relative bg-transparent shadow-[-10px_0_20px_rgba(30,45,31,0.02)] z-10 transition-all duration-300">
       {!isFocusMode && (
       <>
       {/* Top Formatting Toolbar */}
@@ -696,7 +696,7 @@ export function EditorCanvas({
                 className={`px-2 py-1 rounded-md transition-colors flex items-center gap-1.5 ${
                   isBlockMenuOpen || currentBlockStyle !== 'paragraph'
                     ? 'text-[#1e2d1f] bg-[#1e2d1f]/6'
-                    : 'text-black/55 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'
+                    : 'text-ink/55 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'
                 }`}
                 title="Тип текста"
               >
@@ -740,7 +740,7 @@ export function EditorCanvas({
                 className={`px-2 py-1 rounded-md transition-colors flex items-center gap-1.5 ${
                   isListMenuOpen || currentListStyle
                     ? 'text-[#1e2d1f] bg-[#1e2d1f]/6'
-                    : 'text-black/55 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'
+                    : 'text-ink/55 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'
                 }`}
                 title="Списки"
               >
@@ -1038,7 +1038,7 @@ export function EditorCanvas({
                   setIsListMenuOpen(false);
                 }}
                 className={`px-2 py-1 rounded-md transition-colors flex items-center gap-1.5 ${
-                  isFontMenuOpen ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-black/55 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'
+                  isFontMenuOpen ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-ink/55 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'
                 } ${editorFontClass}`}
                 title="Шрифт рукописи"
               >
@@ -1129,7 +1129,7 @@ export function EditorCanvas({
             <button
               onClick={onOpenSearch}
               title="Поиск по тексту (Cmd+F)"
-              className="w-8 h-8 rounded-full bg-black/5 hover:bg-black/10 border-none cursor-pointer flex items-center justify-center text-black/50 hover:text-black/80 transition-colors flex-shrink-0"
+              className="w-8 h-8 rounded-full bg-ink/5 hover:bg-ink/10 border-none cursor-pointer flex items-center justify-center text-ink/50 hover:text-ink/80 transition-colors flex-shrink-0"
             >
               <Search size={15} />
             </button>
@@ -1138,7 +1138,7 @@ export function EditorCanvas({
             <button
               onClick={onOpenExport}
               title="Экспорт и резервная копия"
-              className="w-8 h-8 rounded-full bg-black/5 hover:bg-black/10 border-none cursor-pointer flex items-center justify-center text-black/50 hover:text-black/80 transition-colors flex-shrink-0"
+              className="w-8 h-8 rounded-full bg-ink/5 hover:bg-ink/10 border-none cursor-pointer flex items-center justify-center text-ink/50 hover:text-ink/80 transition-colors flex-shrink-0"
             >
               <Download size={15} />
             </button>
@@ -1146,7 +1146,7 @@ export function EditorCanvas({
           <button
             onClick={onOpenSettings}
             title="Настройки профиля"
-            className="w-8 h-8 rounded-full bg-black/5 hover:bg-black/10 border-none cursor-pointer flex items-center justify-center text-black/50 hover:text-black/80 transition-colors flex-shrink-0"
+            className="w-8 h-8 rounded-full bg-ink/5 hover:bg-ink/10 border-none cursor-pointer flex items-center justify-center text-ink/50 hover:text-ink/80 transition-colors flex-shrink-0"
           >
             <User size={16} />
           </button>

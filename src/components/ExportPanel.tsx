@@ -141,7 +141,7 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
     <div
       style={{
         position: 'fixed', inset: 0,
-        background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)',
+        background: 'rgba(30,45,31,0.45)', backdropFilter: 'blur(4px)',
         zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '16px', animation: 'fadeIn 0.15s ease',
       }}
@@ -149,9 +149,9 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
     >
       <div
         style={{
-          background: '#F4F1E9', borderRadius: '20px',
+          background: '#F5F0E8', borderRadius: '20px',
           width: '100%', maxWidth: '460px',
-          overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.28)',
+          overflow: 'hidden', boxShadow: '0 24px 60px rgba(30,45,31,0.28)',
           animation: 'slideUp 0.2s cubic-bezier(0.34,1.56,0.64,1)',
         }}
         onClick={e => e.stopPropagation()}
@@ -159,7 +159,7 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
         {/* ── Header ── */}
         <div style={{
           background: '#fff', padding: '18px 22px',
-          borderBottom: '1px solid rgba(0,0,0,0.06)',
+          borderBottom: '1px solid rgba(30,45,31,0.06)',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         }}>
           <div>
@@ -169,15 +169,15 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
             }}>
               Экспорт рукописи
             </h2>
-            <p style={{ fontSize: '12px', color: 'rgba(0,0,0,0.4)', margin: 0 }}>{projectTitle}</p>
+            <p style={{ fontSize: '12px', color: 'rgba(30,45,31,0.4)', margin: 0 }}>{projectTitle}</p>
           </div>
           <button
             onClick={onClose}
             style={{
-              background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: '50%',
+              background: 'rgba(30,45,31,0.05)', border: 'none', borderRadius: '50%',
               width: '30px', height: '30px', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'rgba(0,0,0,0.5)',
+              color: 'rgba(30,45,31,0.5)',
             }}
           >
             <X size={15} />
@@ -189,14 +189,14 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
           {/* ── Chapter filter ── */}
           <div>
             <p style={{
-              fontSize: '11px', fontWeight: 700, color: 'rgba(0,0,0,0.35)',
+              fontSize: '11px', fontWeight: 700, color: 'rgba(30,45,31,0.35)',
               textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px',
             }}>
               Главы
             </p>
             <div style={{
               display: 'flex', gap: '6px',
-              background: 'rgba(0,0,0,0.04)', borderRadius: '11px', padding: '3px',
+              background: 'rgba(30,45,31,0.04)', borderRadius: '11px', padding: '3px',
             }}>
               {FILTERS.map(f => (
                 <button
@@ -206,8 +206,8 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
                     flex: 1, padding: '6px 0', borderRadius: '8px', border: 'none',
                     fontSize: '12px', fontWeight: 500, cursor: 'pointer',
                     background: filter === f.id ? '#fff' : 'transparent',
-                    color: filter === f.id ? '#1a1a1a' : 'rgba(0,0,0,0.45)',
-                    boxShadow: filter === f.id ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                    color: filter === f.id ? '#1E2D1F' : 'rgba(30,45,31,0.45)',
+                    boxShadow: filter === f.id ? '0 1px 4px rgba(30,45,31,0.08)' : 'none',
                     transition: 'all 0.15s',
                   }}
                 >
@@ -221,17 +221,17 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
           <label style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '10px 14px', borderRadius: '12px',
-            background: includeBible ? 'rgba(58,79,65,0.08)' : 'rgba(0,0,0,0.03)',
+            background: includeBible ? 'rgba(58,79,65,0.08)' : 'rgba(30,45,31,0.03)',
             border: `1.5px solid ${includeBible ? 'rgba(58,79,65,0.2)' : 'transparent'}`,
             cursor: 'pointer', transition: 'all 0.15s',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <BookOpen size={15} color={includeBible ? '#3A4F41' : 'rgba(0,0,0,0.35)'} />
+              <BookOpen size={15} color={includeBible ? '#3A4F41' : 'rgba(30,45,31,0.35)'} />
               <div>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#1a1a1a' }}>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: '#1E2D1F' }}>
                   Приложить Библию истории
                 </div>
-                <div style={{ fontSize: '11px', color: 'rgba(0,0,0,0.4)', lineHeight: 1.4 }}>
+                <div style={{ fontSize: '11px', color: 'rgba(30,45,31,0.4)', lineHeight: 1.4 }}>
                   Добавить персонажей, локации и правила мира
                 </div>
               </div>
@@ -239,7 +239,7 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
             <div
               style={{
                 width: '36px', height: '20px', borderRadius: '10px',
-                background: includeBible ? '#3A4F41' : 'rgba(0,0,0,0.15)',
+                background: includeBible ? '#3A4F41' : 'rgba(30,45,31,0.15)',
                 position: 'relative', flexShrink: 0, transition: 'background 0.2s',
               }}
             >
@@ -248,7 +248,7 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
                 left: includeBible ? '18px' : '2px',
                 width: '16px', height: '16px', borderRadius: '50%',
                 background: '#fff', transition: 'left 0.2s',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                boxShadow: '0 1px 3px rgba(30,45,31,0.2)',
               }} />
             </div>
             <input
@@ -262,7 +262,7 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
           {/* ── Format list ── */}
           <div>
             <p style={{
-              fontSize: '11px', fontWeight: 700, color: 'rgba(0,0,0,0.35)',
+              fontSize: '11px', fontWeight: 700, color: 'rgba(30,45,31,0.35)',
               textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px',
             }}>
               Формат
@@ -281,7 +281,7 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
                     style={{
                       display: 'flex', alignItems: 'center', gap: '12px',
                       padding: '11px 14px', borderRadius: '13px',
-                      border: `1.5px solid ${isDone ? 'rgba(58,79,65,0.3)' : 'rgba(0,0,0,0.08)'}`,
+                      border: `1.5px solid ${isDone ? 'rgba(58,79,65,0.3)' : 'rgba(30,45,31,0.08)'}`,
                       background: isDone ? 'rgba(58,79,65,0.06)' : '#fff',
                       cursor: isDisabled ? 'not-allowed' : 'pointer',
                       textAlign: 'left', transition: 'all 0.15s',
@@ -293,7 +293,7 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
                     }}
                     onMouseLeave={e => {
                       if (!isDone)
-                        e.currentTarget.style.borderColor = 'rgba(0,0,0,0.08)';
+                        e.currentTarget.style.borderColor = 'rgba(30,45,31,0.08)';
                     }}
                   >
                     <div style={{
@@ -309,30 +309,30 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '1px' }}>
-                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#1a1a1a' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#1E2D1F' }}>
                           {fmt.label}
                         </span>
                         <span style={{
                           fontSize: '10px', fontFamily: 'monospace',
-                          color: 'rgba(0,0,0,0.35)', background: 'rgba(0,0,0,0.04)',
+                          color: 'rgba(30,45,31,0.35)', background: 'rgba(30,45,31,0.04)',
                           padding: '1px 5px', borderRadius: '3px',
                         }}>
                           {fmt.ext}
                         </span>
                         {bibleNote && (
                           <span style={{
-                            fontSize: '10px', color: 'rgba(0,0,0,0.3)',
+                            fontSize: '10px', color: 'rgba(30,45,31,0.3)',
                             fontStyle: 'italic',
                           }}>
                             (без Библии)
                           </span>
                         )}
                       </div>
-                      <p style={{ fontSize: '11px', color: 'rgba(0,0,0,0.42)', margin: 0, lineHeight: 1.4 }}>
+                      <p style={{ fontSize: '11px', color: 'rgba(30,45,31,0.42)', margin: 0, lineHeight: 1.4 }}>
                         {fmt.description}
                       </p>
                     </div>
-                    <div style={{ flexShrink: 0, color: isDone ? '#3A4F41' : 'rgba(0,0,0,0.22)' }}>
+                    <div style={{ flexShrink: 0, color: isDone ? '#3A4F41' : 'rgba(30,45,31,0.22)' }}>
                       {!isLoading && (isDone
                         ? <span style={{ fontSize: '11px', fontWeight: 600, color: '#3A4F41' }}>✓</span>
                         : <Download size={14} />
@@ -351,7 +351,7 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
             display: 'flex', alignItems: 'flex-start', gap: '9px',
           }}>
             <Shield size={14} style={{ color: '#3A4F41', marginTop: '1px', flexShrink: 0 }} />
-            <p style={{ fontSize: '11px', color: 'rgba(0,0,0,0.55)', margin: 0, lineHeight: 1.5 }}>
+            <p style={{ fontSize: '11px', color: 'rgba(30,45,31,0.55)', margin: 0, lineHeight: 1.5 }}>
               Ваши тексты хранятся в защищённой базе данных. Эти файлы — ваша локальная копия.
             </p>
           </div>
@@ -364,7 +364,7 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
         {/* ── Footer ── */}
         <div style={{
           background: '#fff', padding: '13px 22px',
-          borderTop: '1px solid rgba(0,0,0,0.06)',
+          borderTop: '1px solid rgba(30,45,31,0.06)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
           <button
@@ -373,14 +373,14 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
             style={{
               display: 'flex', alignItems: 'center', gap: '6px',
               fontSize: '12px',
-              color: justDownloaded === 'all' ? '#3A4F41' : 'rgba(0,0,0,0.42)',
+              color: justDownloaded === 'all' ? '#3A4F41' : 'rgba(30,45,31,0.42)',
               background: 'none', border: 'none',
               cursor: loading !== null ? 'not-allowed' : 'pointer',
               fontWeight: 500, transition: 'color 0.15s', padding: 0,
             }}
-            onMouseEnter={e => { if (!loading) e.currentTarget.style.color = '#1a1a1a'; }}
+            onMouseEnter={e => { if (!loading) e.currentTarget.style.color = '#1E2D1F'; }}
             onMouseLeave={e => {
-              e.currentTarget.style.color = justDownloaded === 'all' ? '#3A4F41' : 'rgba(0,0,0,0.42)';
+              e.currentTarget.style.color = justDownloaded === 'all' ? '#3A4F41' : 'rgba(30,45,31,0.42)';
             }}
           >
             {loading === 'all'
@@ -393,8 +393,8 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
             onClick={onClose}
             style={{
               padding: '8px 18px', borderRadius: '10px', border: 'none',
-              background: 'rgba(0,0,0,0.06)', fontSize: '13px',
-              cursor: 'pointer', color: 'rgba(0,0,0,0.6)', fontWeight: 500,
+              background: 'rgba(30,45,31,0.06)', fontSize: '13px',
+              cursor: 'pointer', color: 'rgba(30,45,31,0.6)', fontWeight: 500,
             }}
           >
             Закрыть

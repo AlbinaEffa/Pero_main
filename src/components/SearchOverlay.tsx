@@ -135,7 +135,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-[#1e2d1f]/20 backdrop-blur-sm">
       <div 
-        className="w-full max-w-2xl bg-[#fdfbf7] rounded-2xl shadow-2xl border border-[#1e2d1f]/10 overflow-hidden flex flex-col max-h-[80vh]"
+        className="w-full max-w-2xl bg-[#F5F0E8] rounded-2xl shadow-2xl border border-[#1e2d1f]/10 overflow-hidden flex flex-col max-h-[80vh]"
         onClick={e => e.stopPropagation()}
       >
         {/* Header / Search Input */}
@@ -204,7 +204,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({
         </div>
 
         {/* Results Area */}
-        <div className="flex-1 overflow-y-auto p-2 bg-[#fdfbf7]">
+        <div className="flex-1 overflow-y-auto p-2 bg-[#F5F0E8]">
           {!query ? (
             <div className="py-12 text-center text-[#1e2d1f]/40 text-sm">
               Введите текст для поиска по текущей книге.<br/>

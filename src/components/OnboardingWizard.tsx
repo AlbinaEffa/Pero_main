@@ -123,11 +123,11 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
       animation: 'fadeIn 0.25s ease',
     }}>
       <div style={{
-        background: '#FDFBF7',
+        background: '#F5F0E8',
         borderRadius: '28px',
         maxWidth: '500px', width: '100%',
         padding: '40px',
-        boxShadow: '0 24px 80px rgba(0,0,0,0.25)',
+        boxShadow: '0 24px 80px rgba(30,45,31,0.25)',
         position: 'relative',
         animation: 'slideUp 0.3s ease',
       }}>
@@ -137,7 +137,7 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
           style={{
             position: 'absolute', top: '16px', right: '16px',
             background: 'none', border: 'none', cursor: 'pointer',
-            color: 'rgba(0,0,0,0.3)', padding: '4px',
+            color: 'rgba(30,45,31,0.3)', padding: '4px',
             borderRadius: '50%', display: 'flex',
           }}
         >
@@ -152,16 +152,16 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
               <h2 style={{
                 fontFamily: '"Cormorant Garamond", serif',
                 fontSize: '28px', fontWeight: 700, fontStyle: 'italic',
-                color: '#1a1a1a', margin: '0 0 8px',
+                color: '#1E2D1F', margin: '0 0 8px',
               }}>
                 Добро пожаловать в Перо
               </h2>
-              <p style={{ fontSize: '14px', color: 'rgba(0,0,0,0.5)', margin: 0, lineHeight: 1.6 }}>
+              <p style={{ fontSize: '14px', color: 'rgba(30,45,31,0.5)', margin: 0, lineHeight: 1.6 }}>
                 Студия для тех, кто пишет серьёзно. Расскажите немного о себе.
               </p>
             </div>
 
-            <p style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(0,0,0,0.6)', marginBottom: '12px' }}>
+            <p style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(30,45,31,0.6)', marginBottom: '12px' }}>
               Что вы пишете?
             </p>
 
@@ -173,7 +173,7 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
                   style={{
                     display: 'flex', alignItems: 'center', gap: '12px',
                     padding: '12px 16px', borderRadius: '14px',
-                    border: `2px solid ${writerType === wt.id ? '#3A4F41' : 'rgba(0,0,0,0.08)'}`,
+                    border: `2px solid ${writerType === wt.id ? '#3A4F41' : 'rgba(30,45,31,0.08)'}`,
                     background: writerType === wt.id ? '#f0f4f1' : 'transparent',
                     cursor: 'pointer', textAlign: 'left',
                     transition: 'all 0.15s',
@@ -182,7 +182,7 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
                   <span style={{ fontSize: '20px' }}>{wt.emoji}</span>
                   <span style={{
                     fontSize: '14px', fontWeight: 500,
-                    color: writerType === wt.id ? '#2a3d2e' : 'rgba(0,0,0,0.7)',
+                    color: writerType === wt.id ? '#2a3d2e' : 'rgba(30,45,31,0.7)',
                   }}>
                     {wt.label}
                   </span>
@@ -213,11 +213,11 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
               <h2 style={{
                 fontFamily: '"Cormorant Garamond", serif',
                 fontSize: '26px', fontWeight: 700, fontStyle: 'italic',
-                color: '#1a1a1a', margin: '0 0 8px',
+                color: '#1E2D1F', margin: '0 0 8px',
               }}>
                 С чего начнём?
               </h2>
-              <p style={{ fontSize: '13px', color: 'rgba(0,0,0,0.45)', margin: 0 }}>
+              <p style={{ fontSize: '13px', color: 'rgba(30,45,31,0.45)', margin: 0 }}>
                 Выберите, как хотите попробовать Перо
               </p>
             </div>
@@ -229,7 +229,7 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
                 style={{
                   display: 'flex', alignItems: 'flex-start', gap: '14px',
                   padding: '16px 18px', borderRadius: '16px',
-                  border: '2px solid rgba(0,0,0,0.08)',
+                  border: '2px solid rgba(30,45,31,0.08)',
                   background: 'transparent', cursor: 'pointer', textAlign: 'left',
                   transition: 'all 0.15s',
                 }}
@@ -238,7 +238,7 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
                   e.currentTarget.style.background = '#f8fbf9';
                 }}
                 onMouseLeave={e => {
-                  e.currentTarget.style.border = '2px solid rgba(0,0,0,0.08)';
+                  e.currentTarget.style.border = '2px solid rgba(30,45,31,0.08)';
                   e.currentTarget.style.background = 'transparent';
                 }}
               >
@@ -250,10 +250,10 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
                   <Upload size={18} color="#3A4F41" />
                 </div>
                 <div>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#1a1a1a', marginBottom: '2px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#1E2D1F', marginBottom: '2px' }}>
                     Загрузить мою рукопись
                   </div>
-                  <div style={{ fontSize: '12px', color: 'rgba(0,0,0,0.45)', lineHeight: 1.5 }}>
+                  <div style={{ fontSize: '12px', color: 'rgba(30,45,31,0.45)', lineHeight: 1.5 }}>
                     TXT, DOCX, PDF, EPUB, FB2 — Перо разобьёт на главы автоматически
                   </div>
                 </div>
@@ -266,7 +266,7 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
                 style={{
                   display: 'flex', alignItems: 'flex-start', gap: '14px',
                   padding: '16px 18px', borderRadius: '16px',
-                  border: '2px solid rgba(0,0,0,0.08)',
+                  border: '2px solid rgba(30,45,31,0.08)',
                   background: 'transparent', cursor: isLoadingDemo ? 'not-allowed' : 'pointer',
                   textAlign: 'left', transition: 'all 0.15s',
                   opacity: isLoadingDemo ? 0.7 : 1,
@@ -278,7 +278,7 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
                   }
                 }}
                 onMouseLeave={e => {
-                  e.currentTarget.style.border = '2px solid rgba(0,0,0,0.08)';
+                  e.currentTarget.style.border = '2px solid rgba(30,45,31,0.08)';
                   e.currentTarget.style.background = 'transparent';
                 }}
               >
@@ -293,10 +293,10 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
                   }
                 </div>
                 <div>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#1a1a1a', marginBottom: '2px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#1E2D1F', marginBottom: '2px' }}>
                     Попробовать на демо-тексте
                   </div>
-                  <div style={{ fontSize: '12px', color: 'rgba(0,0,0,0.45)', lineHeight: 1.5 }}>
+                  <div style={{ fontSize: '12px', color: 'rgba(30,45,31,0.45)', lineHeight: 1.5 }}>
                     Загрузим готовую историю — сразу увидите, как работает Библия и соавтор
                   </div>
                 </div>
@@ -308,31 +308,31 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
                 style={{
                   display: 'flex', alignItems: 'flex-start', gap: '14px',
                   padding: '16px 18px', borderRadius: '16px',
-                  border: '2px solid rgba(0,0,0,0.08)',
+                  border: '2px solid rgba(30,45,31,0.08)',
                   background: 'transparent', cursor: 'pointer', textAlign: 'left',
                   transition: 'all 0.15s',
                 }}
                 onMouseEnter={e => {
-                  e.currentTarget.style.border = '2px solid rgba(0,0,0,0.15)';
-                  e.currentTarget.style.background = 'rgba(0,0,0,0.02)';
+                  e.currentTarget.style.border = '2px solid rgba(30,45,31,0.15)';
+                  e.currentTarget.style.background = 'rgba(30,45,31,0.02)';
                 }}
                 onMouseLeave={e => {
-                  e.currentTarget.style.border = '2px solid rgba(0,0,0,0.08)';
+                  e.currentTarget.style.border = '2px solid rgba(30,45,31,0.08)';
                   e.currentTarget.style.background = 'transparent';
                 }}
               >
                 <div style={{
                   width: '40px', height: '40px', flexShrink: 0,
-                  background: 'rgba(0,0,0,0.05)', borderRadius: '12px',
+                  background: 'rgba(30,45,31,0.05)', borderRadius: '12px',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <Pen size={18} color="rgba(0,0,0,0.5)" />
+                  <Pen size={18} color="rgba(30,45,31,0.5)" />
                 </div>
                 <div>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#1a1a1a', marginBottom: '2px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#1E2D1F', marginBottom: '2px' }}>
                     Начну с нуля
                   </div>
-                  <div style={{ fontSize: '12px', color: 'rgba(0,0,0,0.45)', lineHeight: 1.5 }}>
+                  <div style={{ fontSize: '12px', color: 'rgba(30,45,31,0.45)', lineHeight: 1.5 }}>
                     Создать пустой проект и начать писать прямо сейчас
                   </div>
                 </div>
@@ -355,11 +355,11 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
               <h2 style={{
                 fontFamily: '"Cormorant Garamond", serif',
                 fontSize: '26px', fontWeight: 700, fontStyle: 'italic',
-                color: '#1a1a1a', margin: '0 0 8px',
+                color: '#1E2D1F', margin: '0 0 8px',
               }}>
                 Перо изучает историю
               </h2>
-              <p style={{ fontSize: '13px', color: 'rgba(0,0,0,0.5)', margin: 0, lineHeight: 1.6 }}>
+              <p style={{ fontSize: '13px', color: 'rgba(30,45,31,0.5)', margin: 0, lineHeight: 1.6 }}>
                 Загружаем демо-рукопись и запускаем фоновые процессы…
               </p>
             </div>
@@ -375,13 +375,13 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
                   <div key={i} style={{
                     display: 'flex', alignItems: 'center', gap: '12px',
                     padding: '12px 16px', borderRadius: '14px',
-                    background: done ? 'rgba(58,79,65,0.08)' : 'rgba(0,0,0,0.03)',
+                    background: done ? 'rgba(58,79,65,0.08)' : 'rgba(30,45,31,0.03)',
                     transition: 'background 0.4s ease',
                   }}>
                     <span style={{ fontSize: '18px' }}>{item.icon}</span>
                     <span style={{
                       fontSize: '13px', flex: 1,
-                      color: done ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.4)',
+                      color: done ? 'rgba(30,45,31,0.75)' : 'rgba(30,45,31,0.4)',
                       transition: 'color 0.3s',
                     }}>
                       {item.label}
@@ -391,7 +391,7 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
                       : (
                         <Loader2
                           size={16}
-                          color="rgba(0,0,0,0.25)"
+                          color="rgba(30,45,31,0.25)"
                           style={{ animation: 'spin 1s linear infinite', flexShrink: 0 }}
                         />
                       )
@@ -411,11 +411,11 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
               <h2 style={{
                 fontFamily: '"Cormorant Garamond", serif',
                 fontSize: '26px', fontWeight: 700, fontStyle: 'italic',
-                color: '#1a1a1a', margin: '0 0 8px',
+                color: '#1E2D1F', margin: '0 0 8px',
               }}>
                 Перо изучает вашу историю
               </h2>
-              <p style={{ fontSize: '13px', color: 'rgba(0,0,0,0.5)', margin: 0, lineHeight: 1.6 }}>
+              <p style={{ fontSize: '13px', color: 'rgba(30,45,31,0.5)', margin: 0, lineHeight: 1.6 }}>
                 В фоне запущены три процесса. Они займут меньше минуты.
               </p>
             </div>
@@ -432,7 +432,7 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
                   background: 'rgba(58,79,65,0.06)',
                 }}>
                   <span style={{ fontSize: '18px' }}>{item.icon}</span>
-                  <span style={{ fontSize: '13px', color: 'rgba(0,0,0,0.7)', flex: 1 }}>
+                  <span style={{ fontSize: '13px', color: 'rgba(30,45,31,0.7)', flex: 1 }}>
                     {item.label}
                   </span>
                   <CheckCircle2 size={16} color="#3A4F41" style={{ opacity: 0.6 }} />
@@ -441,7 +441,7 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
             </div>
 
             <p style={{
-              fontSize: '12px', color: 'rgba(0,0,0,0.4)',
+              fontSize: '12px', color: 'rgba(30,45,31,0.4)',
               textAlign: 'center', margin: '0 0 20px', lineHeight: 1.6,
             }}>
               Соавтор уже готов отвечать на вопросы — даже пока идёт обработка.
@@ -472,7 +472,7 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
               <div key={s} style={{
                 width: s === step ? '16px' : '6px',
                 height: '6px', borderRadius: '99px',
-                background: s === step ? '#3A4F41' : 'rgba(0,0,0,0.15)',
+                background: s === step ? '#3A4F41' : 'rgba(30,45,31,0.15)',
                 transition: 'all 0.25s',
               }} />
             ))}

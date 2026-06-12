@@ -81,15 +81,15 @@ export function EntityAttributesBlock({ attributes }: { attributes?: EntityAttri
   if (entries.length === 0) return null;
   return (
     <div>
-      <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">Детали</h4>
-      <div className="bg-white rounded-xl border border-black/5 shadow-sm overflow-hidden">
+      <h4 className="text-[10px] font-bold text-ink/40 uppercase tracking-wider mb-2 ml-1">Детали</h4>
+      <div className="bg-white rounded-xl border border-ink/5 shadow-sm overflow-hidden">
         {entries.map(({ label, value }, i) => (
           <div
             key={label}
-            className={`flex gap-3 px-4 py-2.5 ${i < entries.length - 1 ? 'border-b border-black/5' : ''}`}
+            className={`flex gap-3 px-4 py-2.5 ${i < entries.length - 1 ? 'border-b border-ink/5' : ''}`}
           >
-            <span className="text-[11px] font-semibold text-black/35 w-24 flex-shrink-0 pt-0.5">{label}</span>
-            <span className="text-[12px] text-black/75 leading-relaxed">{value}</span>
+            <span className="text-[11px] font-semibold text-ink/35 w-24 flex-shrink-0 pt-0.5">{label}</span>
+            <span className="text-[12px] text-ink/75 leading-relaxed">{value}</span>
           </div>
         ))}
       </div>
@@ -110,7 +110,7 @@ export function FirstAppearanceLine({ entity, chapters }: { entity: Entity; chap
   const chapter = chapters.find(c => c.id === entity.chapterId);
   if (!chapter) return null;
   return (
-    <div className="flex items-center gap-1.5 text-[11px] text-black/45">
+    <div className="flex items-center gap-1.5 text-[11px] text-ink/45">
       <BookOpen size={11} className="flex-shrink-0" />
       <span>Впервые: {chapter.title}</span>
     </div>
@@ -157,24 +157,24 @@ export function EntityConnectionsBlock({ entity, links, entities, onSelectEntity
   if (rows.length === 0) return null;
   return (
     <div>
-      <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">Связи</h4>
-      <div className="bg-white rounded-xl border border-black/5 shadow-sm overflow-hidden">
+      <h4 className="text-[10px] font-bold text-ink/40 uppercase tracking-wider mb-2 ml-1">Связи</h4>
+      <div className="bg-white rounded-xl border border-ink/5 shadow-sm overflow-hidden">
         {rows.map(({ link, other, label }, i) => (
           <div
             key={link.id}
-            className={`flex items-center gap-2 px-4 py-2.5 group ${i < rows.length - 1 ? 'border-b border-black/5' : ''}`}
+            className={`flex items-center gap-2 px-4 py-2.5 group ${i < rows.length - 1 ? 'border-b border-ink/5' : ''}`}
           >
             <button
               onClick={onSelectEntity ? () => onSelectEntity(other) : undefined}
               className={`flex-1 min-w-0 text-left ${onSelectEntity ? 'cursor-pointer' : 'cursor-default'}`}
             >
-              <span className="text-[12px] font-semibold text-black/80 hover:text-black transition-colors">{other.name}</span>
-              <span className="text-[11px] text-black/45 ml-2">{label}</span>
+              <span className="text-[12px] font-semibold text-ink/80 hover:text-ink transition-colors">{other.name}</span>
+              <span className="text-[11px] text-ink/45 ml-2">{label}</span>
             </button>
             {onDeleteLink && (
               <button
                 onClick={() => onDeleteLink(link.id)}
-                className="p-1 rounded text-black/20 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                className="p-1 rounded text-ink/20 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
                 title="Удалить связь"
               >
                 <Trash2 size={12} />
@@ -220,8 +220,8 @@ export function EntityTimelineBlock({ entity, events, chapters, onDeleteEvent }:
   const chapterById = new Map(chapters.map(c => [c.id, c]));
   return (
     <div>
-      <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">Таймлайн</h4>
-      <div className="bg-white rounded-xl border border-black/5 shadow-sm px-4 py-3">
+      <h4 className="text-[10px] font-bold text-ink/40 uppercase tracking-wider mb-2 ml-1">Таймлайн</h4>
+      <div className="bg-white rounded-xl border border-ink/5 shadow-sm px-4 py-3">
         <div className="relative">
           {own.map((ev, i) => {
             const meta = EVENT_TYPE_META[ev.eventType ?? 'other'] ?? EVENT_TYPE_META.other;
@@ -231,18 +231,18 @@ export function EntityTimelineBlock({ entity, events, chapters, onDeleteEvent }:
               <div key={ev.id} className="flex gap-3 group relative pb-4 last:pb-0">
                 {/* Vertical connector */}
                 {i < own.length - 1 && (
-                  <div className="absolute left-[13px] top-7 bottom-0 w-px bg-black/8" />
+                  <div className="absolute left-[13px] top-7 bottom-0 w-px bg-ink/8" />
                 )}
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${meta.color}`} title={meta.label}>
                   <Icon size={13} />
                 </div>
                 <div className="flex-1 min-w-0 pt-0.5">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-[12px] font-semibold text-black/80 leading-snug">{ev.title}</p>
+                    <p className="text-[12px] font-semibold text-ink/80 leading-snug">{ev.title}</p>
                     {onDeleteEvent && (
                       <button
                         onClick={() => onDeleteEvent(ev.id)}
-                        className="p-0.5 rounded text-black/20 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
+                        className="p-0.5 rounded text-ink/20 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
                         title="Удалить событие"
                       >
                         <Trash2 size={11} />
@@ -250,10 +250,10 @@ export function EntityTimelineBlock({ entity, events, chapters, onDeleteEvent }:
                     )}
                   </div>
                   {ev.description && (
-                    <p className="text-[11px] text-black/55 leading-relaxed mt-0.5">{ev.description}</p>
+                    <p className="text-[11px] text-ink/55 leading-relaxed mt-0.5">{ev.description}</p>
                   )}
                   {chapterTitle && (
-                    <p className="text-[10px] text-black/35 mt-1">{chapterTitle}</p>
+                    <p className="text-[10px] text-ink/35 mt-1">{chapterTitle}</p>
                   )}
                 </div>
               </div>

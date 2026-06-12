@@ -326,7 +326,7 @@ export function StoryBiblePanel({
                 <div className="w-20 h-20 rounded-full bg-rose-100 flex items-center justify-center mb-4">
                   <Users size={32} className="text-rose-500" />
                 </div>
-                <h2 className="text-xl font-bold text-[#1a1a1a] mb-1">{selected.name}</h2>
+                <h2 className="text-xl font-bold text-[#1E2D1F] mb-1">{selected.name}</h2>
                 <div className="flex items-center justify-center gap-1.5 flex-wrap mb-2">
                   <span className="text-[9px] font-bold text-rose-500 uppercase tracking-wider">ПЕРСОНАЖ</span>
                   {selected.significance && (
@@ -338,8 +338,8 @@ export function StoryBiblePanel({
                 <FirstAppearanceLine entity={selected} chapters={chapters} />
               </div>
               <div>
-                <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">Описание</h4>
-                <div className="bg-white p-4 rounded-xl border border-black/5 shadow-sm text-[13px] leading-relaxed text-black/80">
+                <h4 className="text-[10px] font-bold text-ink/40 uppercase tracking-wider mb-2 ml-1">Описание</h4>
+                <div className="bg-white p-4 rounded-xl border border-ink/5 shadow-sm text-[13px] leading-relaxed text-ink/80">
                   {selected.description}
                 </div>
               </div>
@@ -370,11 +370,11 @@ export function StoryBiblePanel({
                   <div className="grid grid-cols-2 gap-3">
                     {group.items.map(char => (
                       <div key={char.id} onClick={() => setSelectedCharId(char.id)}
-                        className="cursor-pointer rounded-xl p-3 transition-all bg-white border border-transparent hover:border-black/10 hover:shadow-sm flex flex-col items-center text-center">
+                        className="cursor-pointer rounded-xl p-3 transition-all bg-white border border-transparent hover:border-ink/10 hover:shadow-sm flex flex-col items-center text-center">
                         <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center mb-3">
                           <Users size={20} className="text-rose-500" />
                         </div>
-                        <h3 className="font-bold text-[13px] text-[#1a1a1a] truncate w-full">{char.name}</h3>
+                        <h3 className="font-bold text-[13px] text-[#1E2D1F] truncate w-full">{char.name}</h3>
                         <p className="text-[9px] font-bold text-rose-400 uppercase tracking-wider">ПЕРСОНАЖ</p>
                       </div>
                     ))}
@@ -398,7 +398,7 @@ export function StoryBiblePanel({
                 <div className="w-20 h-20 rounded-full bg-[#e3e8e3] flex items-center justify-center mb-4">
                   <MapPin size={32} className="text-[#4a5d4e]" />
                 </div>
-                <h2 className="text-xl font-bold text-[#1a1a1a] mb-1">{selected.name}</h2>
+                <h2 className="text-xl font-bold text-[#1E2D1F] mb-1">{selected.name}</h2>
                 <div className="flex items-center justify-center gap-1.5 flex-wrap">
                   <span className="text-[9px] font-bold text-[#4a5d4e] uppercase tracking-wider">ЛОКАЦИЯ</span>
                   {selected.significance && (
@@ -411,8 +411,8 @@ export function StoryBiblePanel({
                   <FirstAppearanceLine entity={selected} chapters={chapters} />
                 </div>
               </div>
-              <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">Описание</h4>
-              <div className="bg-white p-4 rounded-xl border border-black/5 shadow-sm text-[13px] leading-relaxed text-black/80 mb-4">
+              <h4 className="text-[10px] font-bold text-ink/40 uppercase tracking-wider mb-2 ml-1">Описание</h4>
+              <div className="bg-white p-4 rounded-xl border border-ink/5 shadow-sm text-[13px] leading-relaxed text-ink/80 mb-4">
                 {selected.description}
               </div>
               <div className="space-y-4">
@@ -431,11 +431,11 @@ export function StoryBiblePanel({
             <div className="grid grid-cols-2 gap-3">
               {locs.map(loc => (
                 <div key={loc.id} onClick={() => setSelectedLocId(loc.id)}
-                  className="cursor-pointer rounded-xl p-3 transition-all bg-white border border-transparent hover:border-black/10 hover:shadow-sm flex flex-col items-center text-center">
+                  className="cursor-pointer rounded-xl p-3 transition-all bg-white border border-transparent hover:border-ink/10 hover:shadow-sm flex flex-col items-center text-center">
                   <div className="w-12 h-12 rounded-full bg-[#e3e8e3] flex items-center justify-center mb-3">
                     <MapPin size={20} className="text-[#4a5d4e]" />
                   </div>
-                  <h3 className="font-bold text-[13px] text-[#1a1a1a] truncate w-full">{loc.name}</h3>
+                  <h3 className="font-bold text-[13px] text-[#1E2D1F] truncate w-full">{loc.name}</h3>
                   <p className="text-[9px] font-bold text-[#4a5d4e] uppercase tracking-wider">ЛОКАЦИЯ</p>
                 </div>
               ))}
@@ -456,7 +456,7 @@ export function StoryBiblePanel({
                 <div className="w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center mb-4">
                   <Box size={32} className="text-amber-600" />
                 </div>
-                <h2 className="text-xl font-bold text-[#1a1a1a] mb-1">{selected.name}</h2>
+                <h2 className="text-xl font-bold text-[#1E2D1F] mb-1">{selected.name}</h2>
                 <div className="flex items-center justify-center gap-1.5 flex-wrap">
                   <span className="text-[9px] font-bold text-amber-500 uppercase tracking-wider">ПРЕДМЕТ</span>
                   {selected.significance && (
@@ -469,8 +469,8 @@ export function StoryBiblePanel({
                   <FirstAppearanceLine entity={selected} chapters={chapters} />
                 </div>
               </div>
-              <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">Описание</h4>
-              <div className="bg-white p-4 rounded-xl border border-black/5 shadow-sm text-[13px] leading-relaxed text-black/80 mb-4">
+              <h4 className="text-[10px] font-bold text-ink/40 uppercase tracking-wider mb-2 ml-1">Описание</h4>
+              <div className="bg-white p-4 rounded-xl border border-ink/5 shadow-sm text-[13px] leading-relaxed text-ink/80 mb-4">
                 {selected.description}
               </div>
               <div className="space-y-4">
@@ -489,11 +489,11 @@ export function StoryBiblePanel({
             <div className="grid grid-cols-2 gap-3">
               {items.map(item => (
                 <div key={item.id} onClick={() => setSelectedItemId(item.id)}
-                  className="cursor-pointer rounded-xl p-3 transition-all bg-white border border-transparent hover:border-black/10 hover:shadow-sm flex flex-col items-center text-center">
+                  className="cursor-pointer rounded-xl p-3 transition-all bg-white border border-transparent hover:border-ink/10 hover:shadow-sm flex flex-col items-center text-center">
                   <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mb-3">
                     <Box size={20} className="text-amber-600" />
                   </div>
-                  <h3 className="font-bold text-[13px] text-[#1a1a1a] truncate w-full">{item.name}</h3>
+                  <h3 className="font-bold text-[13px] text-[#1E2D1F] truncate w-full">{item.name}</h3>
                   <p className="text-[9px] font-bold text-amber-500 uppercase tracking-wider">ПРЕДМЕТ</p>
                 </div>
               ))}
@@ -514,7 +514,7 @@ export function StoryBiblePanel({
                 <div className="w-20 h-20 rounded-2xl bg-blue-100 flex items-center justify-center mb-4">
                   <Globe size={32} className="text-blue-500" />
                 </div>
-                <h2 className="text-xl font-bold text-[#1a1a1a] mb-1">{selected.name}</h2>
+                <h2 className="text-xl font-bold text-[#1E2D1F] mb-1">{selected.name}</h2>
                 <div className="flex items-center justify-center gap-1.5 flex-wrap">
                   <span className="text-[9px] font-bold text-blue-500 uppercase tracking-wider">ПРАВИЛО МИРА</span>
                   {selected.significance && (
@@ -524,8 +524,8 @@ export function StoryBiblePanel({
                   )}
                 </div>
               </div>
-              <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">Описание</h4>
-              <div className="bg-white p-4 rounded-xl border border-black/5 shadow-sm text-[13px] leading-relaxed text-black/80 italic font-serif mb-4">
+              <h4 className="text-[10px] font-bold text-ink/40 uppercase tracking-wider mb-2 ml-1">Описание</h4>
+              <div className="bg-white p-4 rounded-xl border border-ink/5 shadow-sm text-[13px] leading-relaxed text-ink/80 italic font-serif mb-4">
                 {selected.description}
               </div>
               <div className="space-y-4">
@@ -544,12 +544,12 @@ export function StoryBiblePanel({
             <div className="flex flex-col gap-3">
               {rules.map(rule => (
                 <div key={rule.id} onClick={() => setSelectedRuleId(rule.id)}
-                  className="cursor-pointer rounded-xl p-4 transition-all bg-white border border-transparent hover:border-black/10 hover:shadow-sm flex items-center gap-4">
+                  className="cursor-pointer rounded-xl p-4 transition-all bg-white border border-transparent hover:border-ink/10 hover:shadow-sm flex items-center gap-4">
                   <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
                     <Globe size={20} className="text-blue-500" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-[14px] text-[#1a1a1a] mb-0.5 truncate">{rule.name}</h3>
+                    <h3 className="font-bold text-[14px] text-[#1E2D1F] mb-0.5 truncate">{rule.name}</h3>
                     <p className="text-[9px] font-bold text-blue-400 uppercase tracking-wider">ПРАВИЛО</p>
                   </div>
                 </div>

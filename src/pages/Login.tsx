@@ -60,7 +60,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--color-paper)] p-6 font-sans">
-      <div className="w-full max-w-md bg-white p-10 rounded-3xl shadow-xl shadow-black/5 border border-black/5">
+      <div className="w-full max-w-md bg-white p-10 rounded-3xl shadow-xl shadow-black/5 border border-ink/5">
         <div className="flex justify-center mb-8">
           <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <PeroMark size={34} className="text-[var(--color-accent)]" />
@@ -72,7 +72,7 @@ export default function Login() {
           <h2 className="text-3xl font-serif font-medium mb-2">
             {isLogin ? 'С возвращением' : 'Создать аккаунт'}
           </h2>
-          <p className="text-black/50 text-sm">
+          <p className="text-ink/50 text-sm">
             {isLogin ? 'Введите свои данные для доступа к студии.' : 'Начните свой писательский путь сегодня.'}
           </p>
         </div>
@@ -86,7 +86,7 @@ export default function Login() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {!isLogin && (
             <div>
-              <label htmlFor="name" className="block text-xs font-bold uppercase tracking-widest text-black/60 mb-2">Имя</label>
+              <label htmlFor="name" className="block text-xs font-bold uppercase tracking-widest text-ink/60 mb-2">Имя</label>
               <input 
                 id="name"
                 name="name"
@@ -94,14 +94,14 @@ export default function Login() {
                 value={displayName}
                 onChange={e => setDisplayName(e.target.value)}
                 autoComplete="name"
-                className="w-full px-4 py-3 rounded-xl border border-black/10 focus:border-black focus:ring-1 focus:ring-black outline-none transition-all bg-[var(--color-paper-dark)] focus:bg-white"
+                className="w-full px-4 py-3 rounded-xl border border-ink/10 focus:border-ink focus:ring-1 focus:ring-ink outline-none transition-all bg-[var(--color-paper-dark)] focus:bg-white"
                 placeholder="Имя автора"
               />
             </div>
           )}
           
           <div>
-            <label htmlFor="email" className="block text-xs font-bold uppercase tracking-widest text-black/60 mb-2">Email</label>
+            <label htmlFor="email" className="block text-xs font-bold uppercase tracking-widest text-ink/60 mb-2">Email</label>
             <input 
               id="email"
               name="email"
@@ -110,14 +110,14 @@ export default function Login() {
               onChange={e => setEmail(e.target.value)}
               required
               autoComplete="email"
-              className="w-full px-4 py-3 rounded-xl border border-black/10 focus:border-black focus:ring-1 focus:ring-black outline-none transition-all bg-[var(--color-paper-dark)] focus:bg-white"
+              className="w-full px-4 py-3 rounded-xl border border-ink/10 focus:border-ink focus:ring-1 focus:ring-ink outline-none transition-all bg-[var(--color-paper-dark)] focus:bg-white"
               placeholder="author@example.com"
             />
           </div>
           
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label htmlFor="password" className="block text-xs font-bold uppercase tracking-widest text-black/60">Пароль</label>
+              <label htmlFor="password" className="block text-xs font-bold uppercase tracking-widest text-ink/60">Пароль</label>
             </div>
             <input
               id="password"
@@ -127,11 +127,11 @@ export default function Login() {
               onChange={e => setPassword(e.target.value)}
               required
               autoComplete={isLogin ? "current-password" : "new-password"}
-              className="w-full px-4 py-3 rounded-xl border border-black/10 focus:border-black focus:ring-1 focus:ring-black outline-none transition-all bg-[var(--color-paper-dark)] focus:bg-white"
+              className="w-full px-4 py-3 rounded-xl border border-ink/10 focus:border-ink focus:ring-1 focus:ring-ink outline-none transition-all bg-[var(--color-paper-dark)] focus:bg-white"
               placeholder="••••••••"
             />
             {!isLogin && (
-              <p className="mt-1.5 text-xs text-black/40">
+              <p className="mt-1.5 text-xs text-ink/40">
                 Минимум 8 символов, латинские буквы и цифры
               </p>
             )}
@@ -140,7 +140,7 @@ export default function Login() {
           <button 
             type="submit" 
             disabled={isLoading}
-            className={`w-full flex items-center justify-center gap-2 bg-black text-white py-4 rounded-xl font-medium transition-colors mt-8 ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-black/90'}`}
+            className={`w-full flex items-center justify-center gap-2 bg-ink text-white py-4 rounded-xl font-medium transition-colors mt-8 ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-ink/90'}`}
           >
             {isLoading ? (
               <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
@@ -153,7 +153,7 @@ export default function Login() {
           </button>
         </form>
 
-        <div className="mt-8 text-center text-sm text-black/60">
+        <div className="mt-8 text-center text-sm text-ink/60">
           {isLogin ? "Нет аккаунта? " : "Уже есть аккаунт? "}
           <button 
             onClick={() => {
@@ -161,7 +161,7 @@ export default function Login() {
               setError('');
             }} 
             type="button"
-            className="text-black font-semibold hover:underline"
+            className="text-ink font-semibold hover:underline"
           >
             {isLogin ? 'Зарегистрироваться' : 'Войти'}
           </button>

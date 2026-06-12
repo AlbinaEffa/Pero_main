@@ -67,7 +67,7 @@ export function BottomToolbar({
       <div className="relative">
         {isBibleMenuOpen && (
           <div className="absolute bottom-full mb-2 right-0 w-48 bg-white rounded-xl shadow-xl border border-[#1e2d1f]/10 py-2 z-50">
-            <div className="px-4 py-2 text-[10px] font-bold text-black/40 uppercase tracking-widest mb-1">
+            <div className="px-4 py-2 text-[10px] font-bold text-ink/40 uppercase tracking-widest mb-1">
               Библия истории
             </div>
             {BIBLE_MENU_ITEMS.map(item => {
@@ -88,7 +88,7 @@ export function BottomToolbar({
             })}
             {isBibleOpen && (
               <>
-                <div className="h-px bg-black/5 my-1 mx-2" />
+                <div className="h-px bg-ink/5 my-1 mx-2" />
                 <button
                   onClick={() => onSetBibleMenuOpen(false)}
                   className="w-full flex items-center gap-3 px-4 py-2 text-sm text-left hover:bg-red-50 text-red-600 transition-colors"
@@ -101,7 +101,7 @@ export function BottomToolbar({
           </div>
         )}
 
-        <div className={`bg-white/95 backdrop-blur-md shadow-[0_4px_25px_rgba(0,0,0,0.06)] border border-[#1e2d1f]/5 rounded-2xl px-2 py-2 flex items-center gap-1 overflow-x-auto hide-scrollbar max-w-[calc(100vw-2rem)] ${
+        <div className={`bg-white/95 backdrop-blur-md shadow-[0_4px_25px_rgba(30,45,31,0.06)] border border-[#1e2d1f]/5 rounded-2xl px-2 py-2 flex items-center gap-1 overflow-x-auto hide-scrollbar max-w-[calc(100vw-2rem)] ${
           isSidePanelOpen ? 'max-xl:max-w-[calc(100vw-320px-2rem)]' : ''
         }`}>
           {isDictationSupported ? (

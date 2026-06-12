@@ -136,9 +136,9 @@ export function FeedbackButton() {
       {isOpen && (
         <div style={{
           position: 'fixed', bottom: '24px', right: '24px',
-          background: '#FDFBF7', borderRadius: '20px',
+          background: '#F5F0E8', borderRadius: '20px',
           width: '320px',
-          boxShadow: '0 16px 48px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.06)',
+          boxShadow: '0 16px 48px rgba(30,45,31,0.18), 0 0 0 1px rgba(30,45,31,0.06)',
           zIndex: 7000,
           animation: 'slideUp 0.2s ease',
           overflow: 'hidden',
@@ -147,12 +147,12 @@ export function FeedbackButton() {
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '16px 18px 12px',
-            borderBottom: '1px solid rgba(0,0,0,0.06)',
+            borderBottom: '1px solid rgba(30,45,31,0.06)',
           }}>
             <span style={{
               fontFamily: '"Cormorant Garamond", serif',
               fontSize: '17px', fontWeight: 700, fontStyle: 'italic',
-              color: '#1a1a1a',
+              color: '#1E2D1F',
             }}>
               Ваш отзыв
             </span>
@@ -160,7 +160,7 @@ export function FeedbackButton() {
               onClick={handleClose}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
-                color: 'rgba(0,0,0,0.35)', padding: '2px',
+                color: 'rgba(30,45,31,0.35)', padding: '2px',
                 display: 'flex', borderRadius: '6px',
               }}
             >
@@ -177,11 +177,11 @@ export function FeedbackButton() {
               }}>
                 <CheckCircle2 size={36} color="#3A4F41" />
                 <p style={{
-                  fontSize: '14px', fontWeight: 600, color: '#1a1a1a', margin: 0,
+                  fontSize: '14px', fontWeight: 600, color: '#1E2D1F', margin: 0,
                 }}>
                   Спасибо!
                 </p>
-                <p style={{ fontSize: '12px', color: 'rgba(0,0,0,0.45)', margin: 0, textAlign: 'center' }}>
+                <p style={{ fontSize: '12px', color: 'rgba(30,45,31,0.45)', margin: 0, textAlign: 'center' }}>
                   Ваш отзыв получен. Мы читаем каждое сообщение.
                 </p>
               </div>
@@ -198,10 +198,10 @@ export function FeedbackButton() {
                       style={{
                         flex: 1, padding: '7px 4px',
                         borderRadius: '10px',
-                        border: `1.5px solid ${type === t.id ? '#3A4F41' : 'rgba(0,0,0,0.1)'}`,
+                        border: `1.5px solid ${type === t.id ? '#3A4F41' : 'rgba(30,45,31,0.1)'}`,
                         background: type === t.id ? '#f0f4f1' : 'transparent',
                         cursor: 'pointer', fontSize: '11px',
-                        color: type === t.id ? '#2a3d2e' : 'rgba(0,0,0,0.55)',
+                        color: type === t.id ? '#2a3d2e' : 'rgba(30,45,31,0.55)',
                         fontWeight: 500, transition: 'all 0.15s',
                         display: 'flex', flexDirection: 'column',
                         alignItems: 'center', gap: '3px',
@@ -224,16 +224,16 @@ export function FeedbackButton() {
                   maxLength={2000}
                   style={{
                     width: '100%', resize: 'none',
-                    border: '1.5px solid rgba(0,0,0,0.1)',
+                    border: '1.5px solid rgba(30,45,31,0.1)',
                     borderRadius: '12px', padding: '10px 12px',
                     fontSize: '13px', lineHeight: 1.6,
-                    color: '#1a1a1a', background: 'rgba(0,0,0,0.02)',
+                    color: '#1E2D1F', background: 'rgba(30,45,31,0.02)',
                     outline: 'none', boxSizing: 'border-box',
                     fontFamily: 'inherit',
                     transition: 'border-color 0.15s',
                   }}
                   onFocus={e => { e.currentTarget.style.borderColor = 'rgba(58,79,65,0.4)'; }}
-                  onBlur={e  => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.1)'; }}
+                  onBlur={e  => { e.currentTarget.style.borderColor = 'rgba(30,45,31,0.1)'; }}
                 />
 
                 {/* Char count + hint */}
@@ -241,10 +241,10 @@ export function FeedbackButton() {
                   display: 'flex', justifyContent: 'space-between',
                   marginTop: '6px', marginBottom: '14px',
                 }}>
-                  <span style={{ fontSize: '11px', color: 'rgba(0,0,0,0.3)' }}>
+                  <span style={{ fontSize: '11px', color: 'rgba(30,45,31,0.3)' }}>
                     ⌘↵ отправить
                   </span>
-                  <span style={{ fontSize: '11px', color: 'rgba(0,0,0,0.3)' }}>
+                  <span style={{ fontSize: '11px', color: 'rgba(30,45,31,0.3)' }}>
                     {message.length}/2000
                   </span>
                 </div>
@@ -260,8 +260,8 @@ export function FeedbackButton() {
                   disabled={!message.trim() || isSending}
                   style={{
                     width: '100%', padding: '11px',
-                    background: message.trim() ? '#3A4F41' : 'rgba(0,0,0,0.1)',
-                    color: message.trim() ? '#fff' : 'rgba(0,0,0,0.35)',
+                    background: message.trim() ? '#3A4F41' : 'rgba(30,45,31,0.1)',
+                    color: message.trim() ? '#fff' : 'rgba(30,45,31,0.35)',
                     border: 'none', borderRadius: '12px',
                     fontSize: '13px', fontWeight: 600,
                     cursor: message.trim() ? 'pointer' : 'not-allowed',

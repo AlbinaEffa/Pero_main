@@ -192,11 +192,11 @@ export function SearchPanel({ projectId, onClose }: Props) {
     >
       <div
         style={{
-          background: '#F4F1E9',
+          background: '#F5F0E8',
           borderRadius: '20px',
           width: '100%',
           maxWidth: '560px',
-          boxShadow: '0 32px 80px rgba(0,0,0,0.35)',
+          boxShadow: '0 32px 80px rgba(30,45,31,0.35)',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
@@ -212,9 +212,9 @@ export function SearchPanel({ projectId, onClose }: Props) {
           gap: '10px',
           padding: '14px 18px',
           background: '#fff',
-          borderBottom: '1px solid rgba(0,0,0,0.07)',
+          borderBottom: '1px solid rgba(30,45,31,0.07)',
         }}>
-          <Search size={18} style={{ color: 'rgba(0,0,0,0.3)', flexShrink: 0 }} />
+          <Search size={18} style={{ color: 'rgba(30,45,31,0.3)', flexShrink: 0 }} />
           <input
             ref={inputRef}
             value={query}
@@ -228,24 +228,24 @@ export function SearchPanel({ projectId, onClose }: Props) {
               fontSize: '15px',
               fontFamily: 'inherit',
               background: 'transparent',
-              color: '#1a1a1a',
+              color: '#1E2D1F',
             }}
           />
           {isLoading
-            ? <Loader2 size={16} style={{ color: 'rgba(0,0,0,0.3)', flexShrink: 0, animation: 'spin 0.8s linear infinite' }} />
+            ? <Loader2 size={16} style={{ color: 'rgba(30,45,31,0.3)', flexShrink: 0, animation: 'spin 0.8s linear infinite' }} />
             : query
               ? (
                 <button
                   onClick={() => { requestIdRef.current++; setQuery(''); setResults([]); setIsLoading(false); inputRef.current?.focus(); }}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: 'rgba(0,0,0,0.3)', flexShrink: 0 }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: 'rgba(30,45,31,0.3)', flexShrink: 0 }}
                 >
                   <X size={16} />
                 </button>
               )
               : (
                 <kbd style={{
-                  fontSize: '11px', color: 'rgba(0,0,0,0.3)',
-                  background: 'rgba(0,0,0,0.05)', borderRadius: '4px',
+                  fontSize: '11px', color: 'rgba(30,45,31,0.3)',
+                  background: 'rgba(30,45,31,0.05)', borderRadius: '4px',
                   padding: '2px 6px', fontFamily: 'monospace', flexShrink: 0,
                 }}>
                   Esc
@@ -257,13 +257,13 @@ export function SearchPanel({ projectId, onClose }: Props) {
         {/* ── Results ── */}
         <div ref={listRef} style={{ overflowY: 'auto', flex: 1 }}>
           {query.trim().length >= 2 && !isLoading && results.length === 0 && (
-            <div style={{ padding: '32px 20px', textAlign: 'center', color: 'rgba(0,0,0,0.35)', fontSize: '14px' }}>
+            <div style={{ padding: '32px 20px', textAlign: 'center', color: 'rgba(30,45,31,0.35)', fontSize: '14px' }}>
               Ничего не найдено по&nbsp;«{query}»
             </div>
           )}
 
           {query.trim().length < 2 && (
-            <div style={{ padding: '20px 20px 24px', color: 'rgba(0,0,0,0.3)', fontSize: '13px', textAlign: 'center' }}>
+            <div style={{ padding: '20px 20px 24px', color: 'rgba(30,45,31,0.3)', fontSize: '13px', textAlign: 'center' }}>
               Введите минимум 2 символа — ищем по главам и Библии
             </div>
           )}
@@ -277,7 +277,7 @@ export function SearchPanel({ projectId, onClose }: Props) {
                 fontWeight: 700,
                 letterSpacing: '0.1em',
                 textTransform: 'uppercase',
-                color: 'rgba(0,0,0,0.35)',
+                color: 'rgba(30,45,31,0.35)',
               }}>
                 {group.label}
               </div>
@@ -312,11 +312,11 @@ export function SearchPanel({ projectId, onClose }: Props) {
                       width: '28px',
                       height: '28px',
                       borderRadius: '8px',
-                      background: isSelected ? 'rgba(58,79,65,0.14)' : 'rgba(0,0,0,0.05)',
+                      background: isSelected ? 'rgba(58,79,65,0.14)' : 'rgba(30,45,31,0.05)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: isSelected ? '#3A4F41' : 'rgba(0,0,0,0.4)',
+                      color: isSelected ? '#3A4F41' : 'rgba(30,45,31,0.4)',
                       flexShrink: 0,
                       marginTop: '1px',
                     }}>
@@ -326,15 +326,15 @@ export function SearchPanel({ projectId, onClose }: Props) {
                     {/* Content */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: result.snippet ? '2px' : 0 }}>
-                        <span style={{ fontSize: '14px', fontWeight: 600, color: '#1a1a1a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontSize: '14px', fontWeight: 600, color: '#1E2D1F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {highlight(result.title, query)}
                         </span>
                         <span style={{
                           fontSize: '10px',
-                          background: 'rgba(0,0,0,0.06)',
+                          background: 'rgba(30,45,31,0.06)',
                           borderRadius: '4px',
                           padding: '1px 5px',
-                          color: 'rgba(0,0,0,0.4)',
+                          color: 'rgba(30,45,31,0.4)',
                           flexShrink: 0,
                           fontWeight: 500,
                         }}>
@@ -345,7 +345,7 @@ export function SearchPanel({ projectId, onClose }: Props) {
                       {result.snippet && (
                         <p style={{
                           fontSize: '12px',
-                          color: 'rgba(0,0,0,0.5)',
+                          color: 'rgba(30,45,31,0.5)',
                           margin: 0,
                           lineHeight: 1.5,
                           overflow: 'hidden',
@@ -358,7 +358,7 @@ export function SearchPanel({ projectId, onClose }: Props) {
                       )}
 
                       {result.type !== 'chapter' && result.chapterTitle && (
-                        <p style={{ fontSize: '11px', color: 'rgba(0,0,0,0.3)', margin: '2px 0 0', fontStyle: 'italic' }}>
+                        <p style={{ fontSize: '11px', color: 'rgba(30,45,31,0.3)', margin: '2px 0 0', fontStyle: 'italic' }}>
                           {result.chapterTitle}
                         </p>
                       )}
@@ -374,16 +374,16 @@ export function SearchPanel({ projectId, onClose }: Props) {
         {flatResults.length > 0 && (
           <div style={{
             padding: '8px 18px',
-            borderTop: '1px solid rgba(0,0,0,0.06)',
+            borderTop: '1px solid rgba(30,45,31,0.06)',
             display: 'flex',
             gap: '14px',
             fontSize: '11px',
-            color: 'rgba(0,0,0,0.3)',
+            color: 'rgba(30,45,31,0.3)',
             background: '#fff',
           }}>
-            <span><kbd style={{ fontFamily: 'monospace', background: 'rgba(0,0,0,0.06)', borderRadius: '3px', padding: '1px 4px' }}>↑↓</kbd> навигация</span>
-            <span><kbd style={{ fontFamily: 'monospace', background: 'rgba(0,0,0,0.06)', borderRadius: '3px', padding: '1px 4px' }}>Enter</kbd> открыть</span>
-            <span><kbd style={{ fontFamily: 'monospace', background: 'rgba(0,0,0,0.06)', borderRadius: '3px', padding: '1px 4px' }}>Esc</kbd> закрыть</span>
+            <span><kbd style={{ fontFamily: 'monospace', background: 'rgba(30,45,31,0.06)', borderRadius: '3px', padding: '1px 4px' }}>↑↓</kbd> навигация</span>
+            <span><kbd style={{ fontFamily: 'monospace', background: 'rgba(30,45,31,0.06)', borderRadius: '3px', padding: '1px 4px' }}>Enter</kbd> открыть</span>
+            <span><kbd style={{ fontFamily: 'monospace', background: 'rgba(30,45,31,0.06)', borderRadius: '3px', padding: '1px 4px' }}>Esc</kbd> закрыть</span>
           </div>
         )}
       </div>

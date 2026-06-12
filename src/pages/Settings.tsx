@@ -138,7 +138,7 @@ export default function Settings({
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className="flex items-center gap-2 bg-[#2d3748] hover:bg-[#1a202c] disabled:opacity-50 text-white px-5 py-2.5 rounded-xl font-medium transition-colors shadow-sm"
+              className="flex items-center gap-2 bg-[#1E2D1F] hover:bg-[#16221A] disabled:opacity-50 text-white px-5 py-2.5 rounded-xl font-medium transition-colors shadow-sm"
             >
               <Save size={18} />
               {isSaving ? 'Сохраняем...' : 'Сохранить'}
@@ -153,7 +153,7 @@ export default function Settings({
             {/* Profile Photo */}
             <div className="flex items-center gap-6">
               <div className="relative">
-                <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-200 border-4 border-white shadow-sm">
+                <div className="w-24 h-24 rounded-full overflow-hidden bg-[#E8E2D5] border-4 border-white shadow-sm">
                   <img 
                     src={user?.photoURL || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80"} 
                     alt="Profile" 
@@ -161,7 +161,7 @@ export default function Settings({
                     referrerPolicy="no-referrer"
                   />
                 </div>
-                <button className="absolute bottom-0 right-0 bg-white p-2 rounded-full shadow-md border border-gray-100 text-gray-600 hover:text-gray-900 transition-colors">
+                <button className="absolute bottom-0 right-0 bg-white p-2 rounded-full shadow-md border border-ink/10 text-ink/60 hover:text-ink transition-colors">
                   <Pencil size={14} />
                 </button>
               </div>
@@ -241,7 +241,7 @@ export default function Settings({
               <button
                 onClick={handleCheckout}
                 disabled={isCheckingOut || !billing}
-                className="flex items-center gap-2.5 px-5 py-3 bg-[#2d3748] hover:bg-[#1a202c] disabled:opacity-50 text-white rounded-xl font-medium text-sm transition-colors shadow-sm"
+                className="flex items-center gap-2.5 px-5 py-3 bg-[#1E2D1F] hover:bg-[#16221A] disabled:opacity-50 text-white rounded-xl font-medium text-sm transition-colors shadow-sm"
               >
                 {isCheckingOut ? <Loader2 size={16} className="animate-spin" /> : <Crown size={16} />}
                 {billing?.plan === 'pro'
@@ -270,7 +270,7 @@ export default function Settings({
                       <p className="text-sm text-[#9ca3af]">В разработке</p>
                     </div>
                   </div>
-                  <div className="w-12 h-6 rounded-full bg-[#e2e8f0] relative">
+                  <div className="w-12 h-6 rounded-full bg-[#E8E2D5] relative">
                     <div className="w-5 h-5 rounded-full bg-white absolute top-0.5 left-0.5" />
                   </div>
                 </div>
@@ -286,7 +286,7 @@ export default function Settings({
                       <p className="text-sm text-[#9ca3af]">В разработке</p>
                     </div>
                   </div>
-                  <div className="w-12 h-6 rounded-full bg-[#e2e8f0] relative">
+                  <div className="w-12 h-6 rounded-full bg-[#E8E2D5] relative">
                     <div className="w-5 h-5 rounded-full bg-white absolute top-0.5 left-0.5" />
                   </div>
                 </div>
@@ -302,7 +302,7 @@ export default function Settings({
                       <p className="text-sm text-[#9ca3af]">В разработке</p>
                     </div>
                   </div>
-                  <div className="w-12 h-6 rounded-full bg-[#e2e8f0] relative">
+                  <div className="w-12 h-6 rounded-full bg-[#E8E2D5] relative">
                     <div className="w-5 h-5 rounded-full bg-white absolute top-0.5 left-0.5" />
                   </div>
                 </div>
@@ -320,7 +320,7 @@ export default function Settings({
                   </div>
                   <button 
                     onClick={() => setShowWordCount(!showWordCount)}
-                    className={`w-12 h-6 rounded-full transition-colors relative ${showWordCount ? 'bg-[#2d3748]' : 'bg-[#e2e8f0]'}`}
+                    className={`w-12 h-6 rounded-full transition-colors relative ${showWordCount ? 'bg-[#1E2D1F]' : 'bg-[#E8E2D5]'}`}
                   >
                     <div className={`w-5 h-5 rounded-full bg-white absolute top-0.5 transition-transform ${showWordCount ? 'translate-x-6.5 left-0' : 'translate-x-0.5 left-0'}`} />
                   </button>
@@ -339,7 +339,7 @@ export default function Settings({
                   </div>
                   <button 
                     onClick={() => setIndentParagraphs(!indentParagraphs)}
-                    className={`w-12 h-6 rounded-full transition-colors relative ${indentParagraphs ? 'bg-[#2d3748]' : 'bg-[#e2e8f0]'}`}
+                    className={`w-12 h-6 rounded-full transition-colors relative ${indentParagraphs ? 'bg-[#1E2D1F]' : 'bg-[#E8E2D5]'}`}
                   >
                     <div className={`w-5 h-5 rounded-full bg-white absolute top-0.5 transition-transform ${indentParagraphs ? 'translate-x-6.5 left-0' : 'translate-x-0.5 left-0'}`} />
                   </button>
@@ -359,7 +359,7 @@ export default function Settings({
                     </div>
                     <span className="text-[15px] font-medium text-[#1a1f2c]">Смена пароля</span>
                   </div>
-                  <ChevronRight size={18} className="text-gray-400" />
+                  <ChevronRight size={18} className="text-ink/40" />
                 </button>
 
                 <button className="w-full flex items-center justify-between p-2 hover:bg-white/60 rounded-xl transition-colors group">
@@ -369,7 +369,7 @@ export default function Settings({
                     </div>
                     <span className="text-[15px] font-medium text-[#1a1f2c]">Двухфакторная аутентификация</span>
                   </div>
-                  <ChevronRight size={18} className="text-gray-400" />
+                  <ChevronRight size={18} className="text-ink/40" />
                 </button>
               </div>
             </div>
@@ -430,7 +430,7 @@ export default function Settings({
         </div>
 
         {/* Footer Actions */}
-        <div className="pt-8 border-t border-gray-200 flex items-center justify-between">
+        <div className="pt-8 border-t border-ink/10 flex items-center justify-between">
           <button 
             onClick={() => logout()}
             className="flex items-center gap-2 text-[#6b7280] hover:text-[#1a1f2c] font-medium transition-colors"

@@ -14,10 +14,10 @@ export default function AppLayout() {
   return (
     <div className="flex h-screen w-full bg-[var(--color-paper)]">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-black/10 flex flex-col bg-[var(--color-paper-dark)]">
-        <div className="p-6 border-b border-black/10">
+      <aside className="w-64 border-r border-ink/10 flex flex-col bg-[var(--color-paper-dark)]">
+        <div className="p-6 border-b border-ink/10">
           <h1 className="text-3xl font-serif font-bold italic tracking-tighter">перо</h1>
-          <p className="text-xs uppercase tracking-widest text-black/50 mt-1 font-sans font-semibold">Студия Писателя</p>
+          <p className="text-xs uppercase tracking-widest text-ink/50 mt-1 font-sans font-semibold">Студия Писателя</p>
         </div>
         
         <nav className="flex-1 p-5 space-y-2">
@@ -25,7 +25,7 @@ export default function AppLayout() {
             to="/dashboard" 
             className={({ isActive }) => 
               `flex items-center gap-3 px-4 py-3 rounded-xl text-[15px] font-medium transition-all ${
-                isActive ? 'bg-[#2d3748] text-white shadow-sm' : 'text-[#4a5568] hover:bg-black/5 hover:text-black'
+                isActive ? 'bg-[#2d3748] text-white shadow-sm' : 'text-[#4a5568] hover:bg-ink/5 hover:text-ink'
               }`
             }
           >
@@ -36,7 +36,7 @@ export default function AppLayout() {
             to="/settings" 
             className={({ isActive }) => 
               `flex items-center gap-3 px-4 py-3 rounded-xl text-[15px] font-medium transition-all ${
-                isActive ? 'bg-[#2d3748] text-white shadow-sm' : 'text-[#4a5568] hover:bg-black/5 hover:text-black'
+                isActive ? 'bg-[#2d3748] text-white shadow-sm' : 'text-[#4a5568] hover:bg-ink/5 hover:text-ink'
               }`
             }
           >
@@ -45,19 +45,19 @@ export default function AppLayout() {
           </NavLink>
         </nav>
         
-        <div className="p-4 border-t border-black/10">
+        <div className="p-4 border-t border-ink/10">
           {user && (
             <div className="mb-4 px-3 flex items-center gap-3">
               {user.photoURL ? (
                 <img src={user.photoURL} alt={user.displayName || 'User'} className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-black/10 flex items-center justify-center text-xs font-bold">
+                <div className="w-8 h-8 rounded-full bg-ink/10 flex items-center justify-center text-xs font-bold">
                   {user.email?.[0].toUpperCase()}
                 </div>
               )}
               <div className="overflow-hidden">
                 <p className="text-sm font-medium truncate">{user.displayName || 'Пользователь'}</p>
-                <p className="text-xs text-black/50 truncate">{user.email}</p>
+                <p className="text-xs text-ink/50 truncate">{user.email}</p>
               </div>
             </div>
           )}

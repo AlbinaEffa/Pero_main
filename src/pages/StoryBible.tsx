@@ -175,7 +175,7 @@ export default function StoryBible() {
     : id ? `/editor/${id}` : '/dashboard';
 
   return (
-    <div className="flex h-screen w-full bg-[#F9FAFB] font-sans overflow-hidden text-[#1a1a1a]">
+    <div className="flex h-screen w-full bg-[#F5F0E8] font-sans overflow-hidden text-[#1E2D1F]">
       <AhaCelebration />
 
       {/* ── Left Sidebar ──────────────────────────────────────────────────── */}
@@ -234,7 +234,7 @@ export default function StoryBible() {
           <div className="flex items-center justify-between border border-white/20 rounded-md px-3 py-2.5 text-white">
             <div className="flex items-center gap-2.5">
               <BarChart2 size={18} strokeWidth={2} />
-              <span className="font-semibold text-[15px] tracking-wide">Statistics</span>
+              <span className="font-semibold text-[15px] tracking-wide">Статистика</span>
             </div>
             <ChevronUp size={16} className="text-white/60" strokeWidth={2} />
           </div>
@@ -245,23 +245,23 @@ export default function StoryBible() {
       <div className="flex-1 flex flex-col min-w-0">
 
         {/* Top bar */}
-        <header className="h-16 bg-white flex items-center justify-between px-6 border-b border-black/5 flex-shrink-0">
+        <header className="h-16 bg-[#F5F0E8] flex items-center justify-between px-6 border-b border-ink/10 flex-shrink-0">
           <div className="flex items-center gap-4">
-            <button onClick={() => navigate(-1)} className="text-black/60 hover:text-black transition-colors">
+            <button onClick={() => navigate(-1)} className="text-ink/60 hover:text-ink transition-colors">
               <ArrowLeft size={20} />
             </button>
-            <h1 className="text-[17px] font-semibold text-[#1a1a1a]">Story Bible — {tabCfg.label}</h1>
+            <h1 className="text-[17px] font-semibold text-[#1E2D1F]">Библия истории — {tabCfg.label}</h1>
           </div>
           <button
             onClick={() => navigate('/settings')}
-            className="w-8 h-8 rounded-full bg-[#E5D5C5] flex items-center justify-center text-[#8C6B4A] border border-black/5 hover:bg-[#d4c1b0] transition-colors"
+            className="w-8 h-8 rounded-full bg-[#E5D5C5] flex items-center justify-center text-[#8C6B4A] border border-ink/5 hover:bg-[#d4c1b0] transition-colors"
           >
             <User size={16} />
           </button>
         </header>
 
         {/* Tabs */}
-        <div className="px-8 max-md:px-4 pt-6 border-b border-black/5 bg-white flex-shrink-0 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+        <div className="px-8 max-md:px-4 pt-6 border-b border-ink/10 bg-[#F5F0E8] flex-shrink-0 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
           <div className="flex gap-8 max-md:gap-5 whitespace-nowrap">
             {TABS.map(tab => (
               <button
@@ -269,8 +269,8 @@ export default function StoryBible() {
                 onClick={() => switchTab(tab.id)}
                 className={`pb-4 text-[15px] font-medium border-b-2 transition-colors ${
                   activeTab === tab.id
-                    ? 'border-black text-black'
-                    : 'border-transparent text-black/50 hover:text-black/80'
+                    ? 'border-ink text-ink'
+                    : 'border-transparent text-ink/50 hover:text-ink/80'
                 }`}
               >
                 {tab.label}
@@ -286,32 +286,32 @@ export default function StoryBible() {
 
         {/* Body */}
         {isLoading ? (
-          <div className="flex-1 flex items-center justify-center text-black/40 text-sm">Загрузка...</div>
+          <div className="flex-1 flex items-center justify-center text-ink/40 text-sm">Загрузка...</div>
         ) : (
           <div className="flex-1 flex overflow-hidden">
 
             {/* List column */}
-            <div className={`overflow-y-auto p-8 max-md:p-4 bg-white ${selected && activeTab !== 'inbox' ? 'flex-1 border-r border-black/5' : 'flex-1'}`}>
+            <div className={`overflow-y-auto p-8 max-md:p-4 bg-[#F5F0E8] ${selected && activeTab !== 'inbox' ? 'flex-1 border-r border-ink/10' : 'flex-1'}`}>
               {activeTab === 'inbox' ? (
                 // ── Inbox ──────────────────────────────────────────────────
                 <>
-                  <h2 className="text-[13px] font-bold text-black/40 uppercase tracking-wider mb-6">
+                  <h2 className="text-[13px] font-bold text-ink/40 uppercase tracking-wider mb-6">
                     Ожидают проверки
                   </h2>
                   {tabEntities.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-black/30">
-                      <Check size={36} className="mb-3 text-black/20" />
+                    <div className="flex flex-col items-center justify-center py-20 text-ink/30">
+                      <Check size={36} className="mb-3 text-ink/20" />
                       <p className="text-[15px] font-medium">Всё проверено</p>
                       <p className="text-sm mt-1">Новых предложений нет</p>
                     </div>
                   ) : (
                     <div className="space-y-3 max-w-2xl">
                       {tabEntities.map(entity => (
-                        <div key={entity.id} className="bg-white border border-black/8 rounded-2xl p-5 flex items-start gap-4 shadow-sm hover:shadow-md transition-shadow">
+                        <div key={entity.id} className="bg-white border border-ink/8 rounded-2xl p-5 flex items-start gap-4 shadow-sm hover:shadow-md transition-shadow">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <span className="font-bold text-[16px] text-[#1a1a1a]">{entity.name}</span>
-                              <span className="text-[10px] font-bold text-black/40 uppercase tracking-wider">{typeLabel(entity.type)}</span>
+                              <span className="font-bold text-[16px] text-[#1E2D1F]">{entity.name}</span>
+                              <span className="text-[10px] font-bold text-ink/40 uppercase tracking-wider">{typeLabel(entity.type)}</span>
                               {entity.significance && (
                                 <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${significanceColor(entity.significance)}`}>
                                   {significanceLabel(entity.significance)}
@@ -319,7 +319,7 @@ export default function StoryBible() {
                               )}
                             </div>
                             {entity.description && (
-                              <p className="text-[13px] text-black/60 leading-relaxed line-clamp-2">{entity.description}</p>
+                              <p className="text-[13px] text-ink/60 leading-relaxed line-clamp-2">{entity.description}</p>
                             )}
                           </div>
                           <div className="flex gap-2 flex-shrink-0">
@@ -332,7 +332,7 @@ export default function StoryBible() {
                             </button>
                             <button
                               onClick={() => handleReject(entity.id)}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/5 hover:bg-black/10 text-black/60 text-[12px] font-medium transition-colors"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ink/5 hover:bg-ink/10 text-ink/60 text-[12px] font-medium transition-colors"
                             >
                               <X size={13} strokeWidth={2.5} />
                               Отклонить
@@ -346,12 +346,12 @@ export default function StoryBible() {
               ) : (
                 // ── Entity grid ────────────────────────────────────────────
                 <>
-                  <h2 className="text-[13px] font-bold text-black/40 uppercase tracking-wider mb-8">
+                  <h2 className="text-[13px] font-bold text-ink/40 uppercase tracking-wider mb-8">
                     {tabCfg.label}
                   </h2>
                   {tabEntities.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-black/30">
-                      <tabCfg.icon size={36} className="mb-3 text-black/20" />
+                    <div className="flex flex-col items-center justify-center py-20 text-ink/30">
+                      <tabCfg.icon size={36} className="mb-3 text-ink/20" />
                       <p className="text-[15px] font-medium">Пока пусто</p>
                       <p className="text-sm mt-1">Добавьте записи через ИИ-извлечение в редакторе</p>
                     </div>
@@ -360,8 +360,8 @@ export default function StoryBible() {
                       {groupBySignificance(tabEntities).map(group => (
                         <div key={group.key}>
                           <div className="flex items-center gap-2 mb-4">
-                            <span className="text-[12px] font-bold uppercase tracking-wider text-black/35">{group.title}</span>
-                            <span className="text-[12px] text-black/25 font-medium">· {group.items.length}</span>
+                            <span className="text-[12px] font-bold uppercase tracking-wider text-ink/35">{group.title}</span>
+                            <span className="text-[12px] text-ink/25 font-medium">· {group.items.length}</span>
                           </div>
                           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             {group.items.map(entity => {
@@ -372,21 +372,21 @@ export default function StoryBible() {
                                   onClick={() => setSelectedId(entity.id)}
                                   className={`cursor-pointer rounded-2xl p-4 transition-all border-2 ${
                                     isSelected
-                                      ? 'border-[#1a1a1a] bg-white shadow-sm'
-                                      : 'border-transparent bg-black/[0.02] hover:bg-black/[0.05]'
+                                      ? 'border-[#1E2D1F] bg-white shadow-sm'
+                                      : 'border-transparent bg-white/60 hover:bg-white'
                                   }`}
                                 >
                                   {/* Icon avatar */}
                                   <div className="aspect-square rounded-xl bg-[#F0F0EB] flex items-center justify-center mb-3 relative">
-                                    <tabCfg.icon size={32} className="text-black/20" />
+                                    <tabCfg.icon size={32} className="text-ink/20" />
                                     {isSelected && (
                                       <div className="absolute top-2 right-2 w-5 h-5 bg-[#2C3E2D] rounded-full flex items-center justify-center text-white shadow-md border-2 border-white">
                                         <Check size={12} strokeWidth={3} />
                                       </div>
                                     )}
                                   </div>
-                                  <h3 className="font-bold text-[15px] text-[#1a1a1a] truncate">{entity.name}</h3>
-                                  <p className="text-[11px] font-bold text-black/40 uppercase tracking-wider mt-0.5">
+                                  <h3 className="font-bold text-[15px] text-[#1E2D1F] truncate">{entity.name}</h3>
+                                  <p className="text-[11px] font-bold text-ink/40 uppercase tracking-wider mt-0.5">
                                     {typeLabel(entity.type)}
                                   </p>
                                 </div>
@@ -404,7 +404,7 @@ export default function StoryBible() {
             {/* Detail panel: на широких экранах — колонка справа; на узких —
                 оверлей, открывается явным тапом по карточке (selectedId) */}
             {activeTab !== 'inbox' && selected && selectedId && (
-              <div className="fixed inset-0 bg-black/30 z-40 lg:hidden" onClick={() => setSelectedId(null)} />
+              <div className="fixed inset-0 bg-ink/30 z-40 lg:hidden" onClick={() => setSelectedId(null)} />
             )}
             {activeTab !== 'inbox' && selected && (
               <EntityDetailPanel
@@ -506,16 +506,16 @@ function EntityDetailPanel({
   }
 
   return (
-    <div className={`overflow-y-auto bg-[#F9FAFB] flex-shrink-0 flex-col border-l border-black/5 lg:flex lg:static lg:w-[400px] ${
+    <div className={`overflow-y-auto bg-[#F5F0E8] flex-shrink-0 flex-col border-l border-ink/5 lg:flex lg:static lg:w-[400px] ${
       mobileOverlay
         ? 'flex max-lg:fixed max-lg:inset-y-0 max-lg:right-0 max-lg:z-50 max-lg:w-full max-lg:max-w-[440px] max-lg:shadow-2xl'
         : 'max-lg:hidden'
     }`}>
       {/* Header */}
-      <div className="p-8 flex flex-col items-center text-center border-b border-black/5 bg-white relative">
+      <div className="p-8 flex flex-col items-center text-center border-b border-ink/5 bg-white relative">
         <button
           onClick={onClose}
-          className="lg:hidden absolute top-4 left-4 p-2 rounded-lg text-black/40 hover:text-black/70 hover:bg-black/5 transition-colors"
+          className="lg:hidden absolute top-4 left-4 p-2 rounded-lg text-ink/40 hover:text-ink/70 hover:bg-ink/5 transition-colors"
           title="Закрыть"
         >
           <X size={18} />
@@ -523,23 +523,23 @@ function EntityDetailPanel({
         {!isEditing && (
           <button
             onClick={startEditing}
-            className="absolute top-4 right-4 p-2 rounded-lg text-black/30 hover:text-black/70 hover:bg-black/5 transition-colors"
+            className="absolute top-4 right-4 p-2 rounded-lg text-ink/30 hover:text-ink/70 hover:bg-ink/5 transition-colors"
             title="Редактировать"
           >
             <Pencil size={15} />
           </button>
         )}
-        <div className="w-24 h-24 rounded-2xl bg-[#F0F0EB] flex items-center justify-center mb-5 shadow-sm border border-black/5">
-          <Icon size={40} className="text-black/20" />
+        <div className="w-24 h-24 rounded-2xl bg-[#F0F0EB] flex items-center justify-center mb-5 shadow-sm border border-ink/5">
+          <Icon size={40} className="text-ink/20" />
         </div>
         {isEditing ? (
           <input
             value={draftName}
             onChange={e => setDraftName(e.target.value)}
-            className="text-2xl font-bold text-[#1a1a1a] mb-2 text-center border-b-2 border-black/15 focus:border-black/50 outline-none bg-transparent w-full"
+            className="text-2xl font-bold text-[#1E2D1F] mb-2 text-center border-b-2 border-ink/15 focus:border-ink/50 outline-none bg-transparent w-full"
           />
         ) : (
-          <h2 className="text-3xl font-bold text-[#1a1a1a] mb-2">{entity.name}</h2>
+          <h2 className="text-3xl font-bold text-[#1E2D1F] mb-2">{entity.name}</h2>
         )}
         <p className="text-[13px] font-bold text-blue-500 uppercase tracking-wider mb-2">
           {typeLabel(entity.type)}
@@ -549,7 +549,7 @@ function EntityDetailPanel({
             <select
               value={draftSignificance}
               onChange={e => setDraftSignificance(e.target.value as EntitySignificance | '')}
-              className="text-[12px] border border-black/15 rounded-lg px-2 py-1 bg-white outline-none"
+              className="text-[12px] border border-ink/15 rounded-lg px-2 py-1 bg-white outline-none"
             >
               <option value="">Без категории</option>
               <option value="major">Ключевой</option>
@@ -577,29 +577,29 @@ function EntityDetailPanel({
         {isEditing ? (
           <>
             <div>
-              <h4 className="text-[12px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">Описание</h4>
+              <h4 className="text-[12px] font-bold text-ink/40 uppercase tracking-wider mb-2 ml-1">Описание</h4>
               <textarea
                 value={draftDescription}
                 onChange={e => setDraftDescription(e.target.value)}
                 rows={4}
-                className="w-full bg-white p-4 rounded-2xl border border-black/10 focus:border-black/30 shadow-sm text-[14px] leading-relaxed text-black/80 outline-none resize-y"
+                className="w-full bg-white p-4 rounded-2xl border border-ink/10 focus:border-ink/30 shadow-sm text-[14px] leading-relaxed text-ink/80 outline-none resize-y"
               />
             </div>
             {editableKeys.length > 0 && (
               <div>
-                <h4 className="text-[12px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">Детали</h4>
-                <div className="bg-white rounded-2xl border border-black/10 shadow-sm overflow-hidden">
+                <h4 className="text-[12px] font-bold text-ink/40 uppercase tracking-wider mb-2 ml-1">Детали</h4>
+                <div className="bg-white rounded-2xl border border-ink/10 shadow-sm overflow-hidden">
                   {editableKeys.map((key, i) => (
-                    <div key={key} className={`px-4 py-3 ${i < editableKeys.length - 1 ? 'border-b border-black/5' : ''}`}>
-                      <label className="block text-[11px] font-semibold text-black/40 mb-1">
+                    <div key={key} className={`px-4 py-3 ${i < editableKeys.length - 1 ? 'border-b border-ink/5' : ''}`}>
+                      <label className="block text-[11px] font-semibold text-ink/40 mb-1">
                         {ATTRIBUTE_LABELS[key] ?? key}
-                        {key === 'aliases' && <span className="font-normal text-black/30"> (через запятую)</span>}
+                        {key === 'aliases' && <span className="font-normal text-ink/30"> (через запятую)</span>}
                       </label>
                       <textarea
                         value={draftAttrs[key] ?? ''}
                         onChange={e => setDraftAttrs(prev => ({ ...prev, [key]: e.target.value }))}
                         rows={key === 'background' || key === 'motivations' ? 2 : 1}
-                        className="w-full text-[13px] text-black/80 leading-relaxed outline-none resize-none border-b border-transparent focus:border-black/20"
+                        className="w-full text-[13px] text-ink/80 leading-relaxed outline-none resize-none border-b border-transparent focus:border-ink/20"
                       />
                     </div>
                   ))}
@@ -618,7 +618,7 @@ function EntityDetailPanel({
               <button
                 onClick={() => setIsEditing(false)}
                 disabled={isSaving}
-                className="px-5 py-3 rounded-xl bg-black/5 hover:bg-black/10 text-black/60 font-medium transition-colors"
+                className="px-5 py-3 rounded-xl bg-ink/5 hover:bg-ink/10 text-ink/60 font-medium transition-colors"
               >
                 Отмена
               </button>
@@ -628,15 +628,15 @@ function EntityDetailPanel({
           <>
             {entity.description ? (
               <div>
-                <h4 className="text-[12px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">
+                <h4 className="text-[12px] font-bold text-ink/40 uppercase tracking-wider mb-2 ml-1">
                   Описание
                 </h4>
-                <div className="bg-white p-4 rounded-2xl border border-black/5 shadow-sm text-[14px] leading-relaxed text-black/80">
+                <div className="bg-white p-4 rounded-2xl border border-ink/5 shadow-sm text-[14px] leading-relaxed text-ink/80">
                   {entity.description}
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center py-6 text-black/30">
+              <div className="flex flex-col items-center py-6 text-ink/30">
                 <AlertTriangle size={24} className="mb-2" />
                 <p className="text-sm">Описание отсутствует</p>
               </div>

@@ -192,7 +192,7 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
   return (
     <div
       style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
+        position: 'fixed', inset: 0, background: 'rgba(30,45,31,0.55)',
         backdropFilter: 'blur(4px)', zIndex: 200,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '16px', animation: 'fadeIn 0.15s ease',
@@ -201,10 +201,10 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
     >
       <div
         style={{
-          background: '#F4F1E9', borderRadius: '24px', width: '100%',
+          background: '#F5F0E8', borderRadius: '24px', width: '100%',
           maxWidth: step === 'preview' ? '560px' : '480px',
           maxHeight: '90vh',
-          boxShadow: '0 24px 60px rgba(0,0,0,0.3)',
+          boxShadow: '0 24px 60px rgba(30,45,31,0.3)',
           overflow: 'hidden',
           display: 'flex', flexDirection: 'column',
           animation: 'slideUp 0.2s cubic-bezier(0.34,1.56,0.64,1)',
@@ -212,7 +212,7 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
         onClick={e => e.stopPropagation()}
       >
         {/* ── Header ── */}
-        <div style={{ background: '#fff', padding: '20px 24px', borderBottom: '1px solid rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+        <div style={{ background: '#fff', padding: '20px 24px', borderBottom: '1px solid rgba(30,45,31,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           <div>
             <h2 style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: '22px', fontWeight: 700, margin: 0 }}>
               {step === 'upload'   && 'Импорт рукописи'}
@@ -221,18 +221,18 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
               {step === 'creating' && 'Создаём проект'}
             </h2>
             {step === 'upload' && (
-              <p style={{ fontSize: '12px', color: 'rgba(0,0,0,0.4)', margin: '2px 0 0' }}>
+              <p style={{ fontSize: '12px', color: 'rgba(30,45,31,0.4)', margin: '2px 0 0' }}>
                 TXT · DOCX · PDF · EPUB · FB2 · до 20 МБ
               </p>
             )}
             {step === 'preview' && parsed && (
-              <p style={{ fontSize: '12px', color: 'rgba(0,0,0,0.4)', margin: '2px 0 0' }}>
+              <p style={{ fontSize: '12px', color: 'rgba(30,45,31,0.4)', margin: '2px 0 0' }}>
                 {parsed.chapters.length} {parsed.chapters.length === 1 ? 'глава' : parsed.chapters.length < 5 ? 'главы' : 'глав'} · {formatWords(parsed.totalWords)} слов
               </p>
             )}
           </div>
           {step !== 'parsing' && step !== 'creating' && (
-            <button onClick={onClose} style={{ background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(0,0,0,0.5)' }}>
+            <button onClick={onClose} style={{ background: 'rgba(30,45,31,0.05)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(30,45,31,0.5)' }}>
               <X size={16} />
             </button>
           )}
@@ -250,7 +250,7 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
                 onDrop={onDrop}
                 onClick={() => fileInputRef.current?.click()}
                 style={{
-                  border: `2px dashed ${isDragging ? '#3A4F41' : 'rgba(0,0,0,0.14)'}`,
+                  border: `2px dashed ${isDragging ? '#3A4F41' : 'rgba(30,45,31,0.14)'}`,
                   borderRadius: '18px',
                   padding: '40px 24px',
                   textAlign: 'center',
@@ -260,11 +260,11 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
                 }}
               >
                 <input ref={fileInputRef} type="file" accept={ACCEPTED_EXTS.join(',')} style={{ display: 'none' }} onChange={onFileInput} />
-                <Upload size={36} style={{ color: isDragging ? '#3A4F41' : 'rgba(0,0,0,0.2)', marginBottom: '12px', transition: 'color 0.2s' }} />
-                <p style={{ fontSize: '15px', fontWeight: 600, color: 'rgba(0,0,0,0.65)', margin: '0 0 6px' }}>
+                <Upload size={36} style={{ color: isDragging ? '#3A4F41' : 'rgba(30,45,31,0.2)', marginBottom: '12px', transition: 'color 0.2s' }} />
+                <p style={{ fontSize: '15px', fontWeight: 600, color: 'rgba(30,45,31,0.65)', margin: '0 0 6px' }}>
                   Перетащите файл сюда
                 </p>
-                <p style={{ fontSize: '13px', color: 'rgba(0,0,0,0.4)', margin: 0 }}>
+                <p style={{ fontSize: '13px', color: 'rgba(30,45,31,0.4)', margin: 0 }}>
                   или нажмите, чтобы выбрать
                 </p>
               </div>
@@ -281,14 +281,14 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
           {/* STEP: parsing */}
           {step === 'parsing' && (
             <div style={{ textAlign: 'center', padding: '20px 0 10px' }}>
-              <div style={{ width: '48px', height: '48px', border: '4px solid rgba(0,0,0,0.08)', borderTopColor: '#3A4F41', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 20px' }} />
-              <p style={{ fontSize: '15px', fontWeight: 600, color: 'rgba(0,0,0,0.7)', marginBottom: '6px' }}>
+              <div style={{ width: '48px', height: '48px', border: '4px solid rgba(30,45,31,0.08)', borderTopColor: '#3A4F41', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 20px' }} />
+              <p style={{ fontSize: '15px', fontWeight: 600, color: 'rgba(30,45,31,0.7)', marginBottom: '6px' }}>
                 Анализируем рукопись…
               </p>
-              <p style={{ fontSize: '13px', color: 'rgba(0,0,0,0.4)', margin: 0 }}>
+              <p style={{ fontSize: '13px', color: 'rgba(30,45,31,0.4)', margin: 0 }}>
                 {fileName}
               </p>
-              <p style={{ fontSize: '12px', color: 'rgba(0,0,0,0.3)', margin: '10px 0 0' }}>
+              <p style={{ fontSize: '12px', color: 'rgba(30,45,31,0.3)', margin: '10px 0 0' }}>
                 Определяем структуру глав
               </p>
             </div>
@@ -299,22 +299,22 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
               {/* Title */}
               <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.4)', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.4)', marginBottom: '6px' }}>
                   Название
                 </label>
                 <input
                   type="text"
                   value={title}
                   onChange={e => setTitle(e.target.value)}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: '1.5px solid rgba(0,0,0,0.1)', background: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: '1.5px solid rgba(30,45,31,0.1)', background: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
                   onFocus={e => (e.target.style.borderColor = '#3A4F41')}
-                  onBlur={e => (e.target.style.borderColor = 'rgba(0,0,0,0.1)')}
+                  onBlur={e => (e.target.style.borderColor = 'rgba(30,45,31,0.1)')}
                 />
               </div>
 
               {/* Genre */}
               <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.4)', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.4)', marginBottom: '6px' }}>
                   Жанр <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(можно выбрать несколько)</span>
                 </label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -324,9 +324,9 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
                       onClick={() => toggleGenre(g)}
                       style={{
                         padding: '5px 12px', borderRadius: '50px', fontSize: '12px',
-                        border: `1.5px solid ${genres.includes(g) ? '#3A4F41' : 'rgba(0,0,0,0.1)'}`,
+                        border: `1.5px solid ${genres.includes(g) ? '#3A4F41' : 'rgba(30,45,31,0.1)'}`,
                         background: genres.includes(g) ? 'rgba(58,79,65,0.08)' : 'transparent',
-                        color: genres.includes(g) ? '#3A4F41' : 'rgba(0,0,0,0.5)',
+                        color: genres.includes(g) ? '#3A4F41' : 'rgba(30,45,31,0.5)',
                         cursor: 'pointer', fontWeight: 400, transition: 'all 0.15s',
                       }}
                     >
@@ -335,7 +335,7 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
                   ))}
                   {/* Saved custom genre chips */}
                   {customGenres.map(g => (
-                    <span key={g} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '5px 10px 5px 12px', borderRadius: '50px', fontSize: '12px', border: `1.5px solid ${genres.includes(g) ? '#3A4F41' : 'rgba(0,0,0,0.1)'}`, background: genres.includes(g) ? 'rgba(58,79,65,0.08)' : 'transparent', color: genres.includes(g) ? '#3A4F41' : 'rgba(0,0,0,0.5)' }}>
+                    <span key={g} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '5px 10px 5px 12px', borderRadius: '50px', fontSize: '12px', border: `1.5px solid ${genres.includes(g) ? '#3A4F41' : 'rgba(30,45,31,0.1)'}`, background: genres.includes(g) ? 'rgba(58,79,65,0.08)' : 'transparent', color: genres.includes(g) ? '#3A4F41' : 'rgba(30,45,31,0.5)' }}>
                       <span style={{ cursor: 'pointer' }} onClick={() => toggleGenre(g)}>{g}</span>
                       <button onClick={() => removeCustomGenre(g)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1, color: 'inherit', opacity: 0.5, fontSize: '13px' }}>×</button>
                     </span>
@@ -362,19 +362,19 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
                   }}
                   style={{
                     marginTop: '8px', width: '100%', padding: '7px 12px',
-                    borderRadius: '10px', border: '1.5px solid rgba(0,0,0,0.1)',
+                    borderRadius: '10px', border: '1.5px solid rgba(30,45,31,0.1)',
                     background: '#fff', fontSize: '12px', outline: 'none',
-                    boxSizing: 'border-box', fontFamily: 'inherit', color: '#1a1a1a',
+                    boxSizing: 'border-box', fontFamily: 'inherit', color: '#1E2D1F',
                     transition: 'border-color 0.15s',
                   }}
                   onFocus={e => (e.target.style.borderColor = '#3A4F41')}
-                  onBlur={e => (e.target.style.borderColor = 'rgba(0,0,0,0.1)')}
+                  onBlur={e => (e.target.style.borderColor = 'rgba(30,45,31,0.1)')}
                 />
               </div>
 
               {/* Color */}
               <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.4)', marginBottom: '8px' }}>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.4)', marginBottom: '8px' }}>
                   Цвет обложки
                 </label>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -384,30 +384,30 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
                       onClick={() => setColor(c)}
                       style={{
                         width: '26px', height: '26px', borderRadius: '8px', background: c,
-                        border: `2.5px solid ${color === c ? '#1a1a1a' : 'transparent'}`,
+                        border: `2.5px solid ${color === c ? '#1E2D1F' : 'transparent'}`,
                         cursor: 'pointer', transition: 'transform 0.15s',
                         transform: color === c ? 'scale(1.15)' : 'scale(1)',
                       }}
                     />
                   ))}
                   <input type="color" value={color} onChange={e => setColor(e.target.value)}
-                    style={{ width: '26px', height: '26px', borderRadius: '8px', border: '1.5px solid rgba(0,0,0,0.1)', cursor: 'pointer', padding: '2px' }}
+                    style={{ width: '26px', height: '26px', borderRadius: '8px', border: '1.5px solid rgba(30,45,31,0.1)', cursor: 'pointer', padding: '2px' }}
                   />
                 </div>
               </div>
 
               {/* Preview mini-book */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', background: 'rgba(0,0,0,0.03)', borderRadius: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', background: 'rgba(30,45,31,0.03)', borderRadius: '12px' }}>
                 <div style={{
                   width: '28px', height: '44px', background: color, borderRadius: '2px 4px 4px 2px',
-                  boxShadow: '-1px 0 0 rgba(0,0,0,0.2), 1px 1px 4px rgba(0,0,0,0.2)',
+                  boxShadow: '-1px 0 0 rgba(30,45,31,0.2), 1px 1px 4px rgba(30,45,31,0.2)',
                   flexShrink: 0,
                 }} />
                 <div>
-                  <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, fontFamily: '"Cormorant Garamond", serif', color: '#1a1a1a' }}>
+                  <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, fontFamily: '"Cormorant Garamond", serif', color: '#1E2D1F' }}>
                     {title || 'Название книги'}
                   </p>
-                  <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'rgba(0,0,0,0.4)' }}>
+                  <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'rgba(30,45,31,0.4)' }}>
                     {genres.length > 0 ? genres.join(', ') : 'Жанр'} · {formatWords(parsed.totalWords)} слов
                   </p>
                 </div>
@@ -415,22 +415,22 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
 
               {/* Chapter list */}
               <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.4)', marginBottom: '8px' }}>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.4)', marginBottom: '8px' }}>
                   Главы ({parsed.chapters.length})
                 </label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   {visibleChapters.map((chapter, i) => (
-                    <div key={i} style={{ background: '#fff', borderRadius: '12px', padding: '10px 14px', border: '1px solid rgba(0,0,0,0.06)' }}>
+                    <div key={i} style={{ background: '#fff', borderRadius: '12px', padding: '10px 14px', border: '1px solid rgba(30,45,31,0.06)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px', marginBottom: chapter.preview ? '4px' : 0 }}>
-                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#1a1a1a', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#1E2D1F', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {chapter.title}
                         </span>
-                        <span style={{ fontSize: '11px', color: 'rgba(0,0,0,0.35)', flexShrink: 0 }}>
+                        <span style={{ fontSize: '11px', color: 'rgba(30,45,31,0.35)', flexShrink: 0 }}>
                           {formatWords(chapter.wordCount)} сл.
                         </span>
                       </div>
                       {chapter.preview && (
-                        <p style={{ fontSize: '12px', color: 'rgba(0,0,0,0.45)', margin: 0, lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' } as React.CSSProperties}>
+                        <p style={{ fontSize: '12px', color: 'rgba(30,45,31,0.45)', margin: 0, lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' } as React.CSSProperties}>
                           {chapter.preview}
                         </p>
                       )}
@@ -440,7 +440,7 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
                   {parsed.chapters.length > 5 && (
                     <button
                       onClick={() => setShowAllChapters(!showAllChapters)}
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px', background: 'transparent', border: '1.5px dashed rgba(0,0,0,0.12)', borderRadius: '12px', cursor: 'pointer', fontSize: '12px', color: 'rgba(0,0,0,0.45)', transition: 'all 0.15s' }}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px', background: 'transparent', border: '1.5px dashed rgba(30,45,31,0.12)', borderRadius: '12px', cursor: 'pointer', fontSize: '12px', color: 'rgba(30,45,31,0.45)', transition: 'all 0.15s' }}
                     >
                       {showAllChapters ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                       {showAllChapters ? 'Скрыть' : `Показать ещё ${parsed.chapters.length - 5}`}
@@ -462,15 +462,15 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
           {step === 'creating' && (
             <div style={{ textAlign: 'center', padding: '20px 0 10px' }}>
               {!processingWarning && (
-                <div style={{ width: '48px', height: '48px', border: '4px solid rgba(0,0,0,0.08)', borderTopColor: '#3A4F41', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 20px' }} />
+                <div style={{ width: '48px', height: '48px', border: '4px solid rgba(30,45,31,0.08)', borderTopColor: '#3A4F41', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 20px' }} />
               )}
               {processingWarning ? (
                 <CheckCircle size={40} style={{ color: '#3A4F41', margin: '0 auto 16px', display: 'block' }} />
               ) : null}
-              <p style={{ fontSize: '15px', fontWeight: 600, color: 'rgba(0,0,0,0.7)', marginBottom: '6px' }}>
+              <p style={{ fontSize: '15px', fontWeight: 600, color: 'rgba(30,45,31,0.7)', marginBottom: '6px' }}>
                 {processingWarning ? 'Проект создан' : 'Создаём проект…'}
               </p>
-              <p style={{ fontSize: '13px', color: 'rgba(0,0,0,0.4)', margin: '0 0 12px' }}>
+              <p style={{ fontSize: '13px', color: 'rgba(30,45,31,0.4)', margin: '0 0 12px' }}>
                 «{title}»
               </p>
               {processingWarning ? (
@@ -489,8 +489,8 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
 
         {/* ── Footer ── */}
         {(step === 'preview') && (
-          <div style={{ background: '#fff', padding: '14px 24px', borderTop: '1px solid rgba(0,0,0,0.06)', display: 'flex', gap: '10px', justifyContent: 'flex-end', flexShrink: 0 }}>
-            <button onClick={onClose} style={{ padding: '10px 18px', borderRadius: '12px', border: 'none', background: 'transparent', fontSize: '14px', cursor: 'pointer', color: 'rgba(0,0,0,0.5)', fontWeight: 500 }}>
+          <div style={{ background: '#fff', padding: '14px 24px', borderTop: '1px solid rgba(30,45,31,0.06)', display: 'flex', gap: '10px', justifyContent: 'flex-end', flexShrink: 0 }}>
+            <button onClick={onClose} style={{ padding: '10px 18px', borderRadius: '12px', border: 'none', background: 'transparent', fontSize: '14px', cursor: 'pointer', color: 'rgba(30,45,31,0.5)', fontWeight: 500 }}>
               Отмена
             </button>
             <button
@@ -498,8 +498,8 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
               disabled={!title.trim()}
               style={{
                 padding: '10px 22px', borderRadius: '12px', border: 'none',
-                background: title.trim() ? '#3A4F41' : 'rgba(0,0,0,0.08)',
-                color: title.trim() ? '#fff' : 'rgba(0,0,0,0.3)',
+                background: title.trim() ? '#3A4F41' : 'rgba(30,45,31,0.08)',
+                color: title.trim() ? '#fff' : 'rgba(30,45,31,0.3)',
                 fontSize: '14px', fontWeight: 600,
                 cursor: title.trim() ? 'pointer' : 'not-allowed',
                 transition: 'all 0.2s',

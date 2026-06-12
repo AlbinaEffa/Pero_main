@@ -328,39 +328,6 @@ function ShelfSlot({ icon: Icon, label, height, onClick }: {
   );
 }
 
-/** Блокнот идей, лежащий на полке: записная книжка рядом с книгами, а не кнопка в шапке. */
-function IdeasNotebook({ onClick }: { onClick: () => void }) {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        alignSelf: 'flex-end', flexShrink: 0, marginLeft: '20px',
-        width: '150px', height: '36px',
-        background: '#8B6B32', border: 'none', borderRadius: '3px 5px 5px 3px',
-        boxShadow: hovered ? '3px 4px 14px rgba(139,107,50,0.45)' : '2px 2px 8px rgba(30,45,31,0.2)',
-        transform: hovered ? 'translateY(-6px)' : 'none',
-        transition: 'all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
-        cursor: 'pointer', position: 'relative',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
-      }}
-      title="Библиотека идей"
-    >
-      {/* Кромка страниц */}
-      <div style={{ position: 'absolute', top: '3px', bottom: '3px', right: '2px', width: '3px', background: 'rgba(245,240,232,0.85)', borderRadius: '1px' }} />
-      <BookOpen size={13} style={{ color: 'rgba(245,240,232,0.85)' }} />
-      <span style={{
-        fontFamily: '"Cormorant Garamond", serif', fontSize: '14px', fontWeight: 600,
-        letterSpacing: '0.1em', color: 'rgba(245,240,232,0.92)',
-      }}>
-        Идеи
-      </span>
-    </button>
-  );
-}
-
 function Shelf({ projects, label, onOpen, onDelete, onEdit, onBible, onExport, onArchive, onDuplicate, onChangeColor, emptyLabel, getProcessing, onProcessingClick, trailing }: {
   projects: Project[];
   label: string;
@@ -507,7 +474,7 @@ function EmptyState({ onNew }: { onNew: () => void }) {
   );
 }
 
-function NewProjectModal({ onClose, onCreate }: { onClose: () => void; onCreate: (title: string, genre: string, color: string) => void }) {
+function NewProjectModal({ onClose, onCreate, onImport }: { onClose: () => void; onCreate: (title: string, genre: string, color: string) => void; onImport?: () => void }) {
   const [title, setTitle] = useState('');
   const [genre, setGenre] = useState('');
   const [color, setColor] = useState('#3A4F41');
@@ -555,10 +522,10 @@ function NewProjectModal({ onClose, onCreate }: { onClose: () => void; onCreate:
         <div style={{ background: '#fff', padding: '20px 24px', borderBottom: '1px solid rgba(30,45,31,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h2 style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: '22px', fontWeight: 700, margin: 0 }}>
-              Новый проект
+              Новая книга
             </h2>
             <p style={{ fontSize: '12px', color: 'rgba(30,45,31,0.4)', margin: '2px 0 0' }}>
-              Создайте новую книгу с нуля
+              Начните с чистого листа или принесите готовую рукопись
             </p>
           </div>
           <button onClick={onClose} style={{ background: 'rgba(30,45,31,0.05)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(30,45,31,0.5)' }}>
@@ -567,6 +534,31 @@ function NewProjectModal({ onClose, onCreate }: { onClose: () => void; onCreate:
         </div>
 
         <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Импорт готовой рукописи — главный сценарий Перо живёт прямо в «Новой книге» */}
+          {onImport && (
+            <button
+              onClick={onImport}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left',
+                padding: '13px 16px', borderRadius: '14px', cursor: 'pointer',
+                background: 'rgba(74,93,78,0.07)', border: '1.5px dashed rgba(74,93,78,0.4)',
+                transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(74,93,78,0.13)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(74,93,78,0.07)'; }}
+            >
+              <Upload size={18} style={{ color: '#4A5D4E', flexShrink: 0 }} />
+              <span style={{ minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1E2D1F' }}>
+                  У меня уже есть рукопись
+                </span>
+                <span style={{ display: 'block', fontSize: '12px', color: 'rgba(30,45,31,0.5)', marginTop: '1px' }}>
+                  Импорт docx, fb2, epub, pdf или txt — Перо прочитает и построит библию
+                </span>
+              </span>
+            </button>
+          )}
+
           {/* Title */}
           <div>
             <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.4)', marginBottom: '6px' }}>
@@ -1212,11 +1204,7 @@ export default function Dashboard() {
                 projects={activeProjects}
                 label="Текущие"
                 trailing={
-                  <>
-                    <ShelfSlot icon={Plus} label="Новая книга" height={232} onClick={() => setIsModalOpen(true)} />
-                    <ShelfSlot icon={Upload} label="Импорт рукописи" height={208} onClick={() => setIsImportOpen(true)} />
-                    <IdeasNotebook onClick={() => navigate('/ideas')} />
-                  </>
+                  <ShelfSlot icon={Plus} label="Новая книга" height={232} onClick={() => setIsModalOpen(true)} />
                 }
                 onOpen={handleOpen}
                 onDelete={id => setDeletingProjectId(id)}
@@ -1260,7 +1248,11 @@ export default function Dashboard() {
       </div>
 
       {isModalOpen && (
-        <NewProjectModal onClose={() => setIsModalOpen(false)} onCreate={handleCreate} />
+        <NewProjectModal
+          onClose={() => setIsModalOpen(false)}
+          onCreate={handleCreate}
+          onImport={() => { setIsModalOpen(false); setIsImportOpen(true); }}
+        />
       )}
       {isImportOpen && (
         <ImportModal

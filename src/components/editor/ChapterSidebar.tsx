@@ -2,7 +2,7 @@ type EditorFontName = 'cormorant' | 'literata' | 'source-serif';
 import { Link, useNavigate } from 'react-router-dom';
 import { useState, useRef, useCallback } from 'react';
 import {
-  ChevronLeft, BookOpen, Sparkles, Plus,
+  ChevronLeft, BookOpen, Sparkles, Plus, Lightbulb,
   FileText, FileCheck, AlertCircle, Trash2, ChevronDown, GripVertical,
 } from 'lucide-react';
 import { Chapter, ChapterType } from './types';
@@ -338,6 +338,13 @@ export function ChapterSidebar({
           <Sparkles size={16} className={isCoauthoring ? 'text-purple-300' : 'text-white/50'} />
           ИИ-Соавтор
         </button>
+        <Link
+          to="/ideas"
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-white/10"
+        >
+          <Lightbulb size={16} className="text-white/50" />
+          Идеи
+        </Link>
 
         {/* Word count + save status */}
         <div className="flex flex-col gap-2 px-3 pt-2">

@@ -294,7 +294,7 @@ function Shelf({ projects, label, onOpen, onDelete, onEdit, onBible, onExport, o
         <span style={{
           fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em',
           textTransform: 'uppercase', color: 'rgba(0,0,0,0.3)',
-          fontFamily: 'Inter, sans-serif'
+          fontFamily: "'Golos Text', sans-serif"
         }}>
           {label}
         </span>
@@ -957,7 +957,7 @@ export default function Dashboard() {
         }
       `}</style>
 
-      <div style={{ minHeight: '100vh', background: '#F4F1E9', fontFamily: 'Inter, sans-serif' }}>
+      <div style={{ minHeight: '100vh', background: '#F4F1E9', fontFamily: "'Golos Text', sans-serif" }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '56px 40px' }}>
 
           {/* Header */}

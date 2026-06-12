@@ -1,14 +1,56 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600;7..72,700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600;7..72,700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Golos Text", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Cormorant Garamond", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  
-  --color-ink: #141414;
-  --color-paper: #F9F8F6;
-  --color-paper-dark: #F0EFEA;
-  --color-accent: #8B7355;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-ink: #1E2D1F;
+  --color-paper: #F5F0E8;
+  --color-paper-dark: #E8E2D5;
+  --color-accent: #4A5D4E;
+
+  /*
+   * Палитра пигментов (см. DESIGN.md, раздел Color).
+   * Переопределяем стандартные семейства Tailwind приглушёнными «красками на бумаге»,
+   * чтобы все существующие классы (rose-*, amber-*, ...) перекрасились атомарно:
+   *   rose → терракота (персонажи) · amber → охра (предметы, warning)
+   *   blue/sky → чернильно-синий (правила, info) · violet → слива (ключевой)
+   *   emerald → мох (успех) · red → брусника (ошибка)
+   * Чистые веб-цвета на пергаменте запрещены.
+   */
+  --color-rose-50: #F8F0ED; --color-rose-100: #F1E3DE; --color-rose-200: #E3C9C0;
+  --color-rose-300: #D0A89C; --color-rose-400: #BB8174; --color-rose-500: #A14F44;
+  --color-rose-600: #8E463C; --color-rose-700: #763A32; --color-rose-800: #5F302A;
+  --color-rose-900: #4C2823;
+
+  --color-amber-50: #F8F2E6; --color-amber-100: #F2E9D8; --color-amber-200: #E7D6B2;
+  --color-amber-300: #D6BC85; --color-amber-400: #BD9A55; --color-amber-500: #A67E33;
+  --color-amber-600: #91682E; --color-amber-700: #785527; --color-amber-800: #604521;
+  --color-amber-900: #4D381C;
+
+  --color-blue-50: #F0F2F5; --color-blue-100: #E6E8EC; --color-blue-200: #CFD4DD;
+  --color-blue-300: #AEB6C5; --color-blue-400: #8794A9; --color-blue-500: #67748E;
+  --color-blue-600: #54627F; --color-blue-700: #46526A; --color-blue-800: #3A4356;
+  --color-blue-900: #2F3745;
+
+  --color-sky-100: #E4E9EF; --color-sky-700: #46526A;
+
+  --color-violet-50: #F3EFF4; --color-violet-100: #EBE4EE; --color-violet-200: #DACDDF;
+  --color-violet-300: #BFABC8; --color-violet-400: #A186AE; --color-violet-500: #836A91;
+  --color-violet-600: #71597F; --color-violet-700: #5E4A6A; --color-violet-800: #4C3C56;
+  --color-violet-900: #3E3146;
+
+  --color-emerald-50: #EFF3EC; --color-emerald-100: #E5EBE0; --color-emerald-200: #CDD9C6;
+  --color-emerald-300: #ACC0A4; --color-emerald-400: #87A381; --color-emerald-500: #66875F;
+  --color-emerald-600: #4D6B4D; --color-emerald-700: #415A41; --color-emerald-800: #364A36;
+  --color-emerald-900: #2C3C2C;
+
+  --color-red-50: #F7EEEC; --color-red-100: #F1DFDA; --color-red-200: #E2C3BB;
+  --color-red-300: #CE9F93; --color-red-400: #B77264; --color-red-500: #9E4338;
+  --color-red-600: #8B3B31; --color-red-700: #74312A; --color-red-800: #5E2922;
+  --color-red-900: #4B221D;
 }
 
 @layer base {
@@ -85,7 +127,7 @@
 }
 
 .editor-body code {
-  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 0.78em;
   font-weight: 500;
   color: #5d6773;

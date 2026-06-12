@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Перо — дизайн-система</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;1,7..72,400&family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1E2D1F;
+    --sage: #4A5D4E;
+    --sage-light: #E3E8E3;
+    --parchment: #F5F0E8;
+    --parchment-deep: #E8E2D5;
+    --card: #FFFFFF;
+    --text: #1E2D1F;
+    --text-soft: rgba(30, 45, 31, 0.62);
+    --text-faint: rgba(30, 45, 31, 0.40);
+    --border: rgba(30, 45, 31, 0.08);
+    /* Пигменты: смысловые цвета как чернила на бумаге — тёплые, малонасыщенные */
+    --rose: #A14F44;       --rose-bg: #F1E3DE;     /* терракота — персонажи */
+    --amber: #91682E;      --amber-bg: #F2E9D8;    /* охра — предметы */
+    --blue: #54627F;       --blue-bg: #E6E8EC;     /* чернильно-синий — правила */
+    --emerald: #4D6B4D;    --emerald-bg: #E5EBE0;  /* мох — успех */
+    --red: #9E4338;        --red-bg: #F1DFDA;      /* брусника — ошибка */
+    --violet: #71597F;     --violet-bg: #EBE4EE;   /* слива — ключевой */
+    --shadow: 0 1px 3px rgba(30,45,31,0.06), 0 4px 16px rgba(30,45,31,0.05);
+  }
+  [data-theme="dark"] {
+    --ink: #E9E4D8;
+    --sage: #9DB5A1;
+    --sage-light: #2A3B2C;
+    --parchment: #141D15;
+    --parchment-deep: #0E150F;
+    --card: #1C281D;
+    --text: #E9E4D8;
+    --text-soft: rgba(233, 228, 216, 0.65);
+    --text-faint: rgba(233, 228, 216, 0.40);
+    --border: rgba(233, 228, 216, 0.10);
+    --rose: #D5A096;       --rose-bg: rgba(161,79,68,0.18);
+    --amber: #CFAE78;      --amber-bg: rgba(145,104,46,0.18);
+    --blue: #A8B3C9;       --blue-bg: rgba(84,98,127,0.22);
+    --emerald: #A3BCA0;    --emerald-bg: rgba(77,107,77,0.22);
+    --red: #D6A097;        --red-bg: rgba(158,67,56,0.20);
+    --violet: #BCA8C8;     --violet-bg: rgba(113,89,127,0.22);
+    --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.25);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Golos Text', sans-serif;
+    background: var(--parchment);
+    color: var(--text);
+    line-height: 1.6;
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 32px 96px; }
+
+  /* ── Hero ── */
+  header { padding: 72px 0 56px; text-align: center; position: relative; }
+  .theme-toggle {
+    position: absolute; top: 28px; right: 0;
+    font-family: 'Golos Text', sans-serif; font-size: 13px; font-weight: 500;
+    background: var(--card); color: var(--text-soft);
+    border: 1px solid var(--border); border-radius: 99px;
+    padding: 8px 18px; cursor: pointer; box-shadow: var(--shadow);
+    transition: all 0.2s ease;
+  }
+  .theme-toggle:hover { color: var(--text); }
+  .feather { font-size: 40px; display: block; margin-bottom: 12px; }
+  h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 76px; font-weight: 600; letter-spacing: 0.01em; line-height: 1.05;
+  }
+  .tagline {
+    font-family: 'Cormorant Garamond', serif; font-style: italic;
+    font-size: 24px; color: var(--text-soft); margin-top: 12px;
+  }
+  .sys-label {
+    display: inline-block; margin-top: 24px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  /* ── Sections ── */
+  section { margin-top: 72px; }
+  .sec-title {
+    font-family: 'Cormorant Garamond', serif; font-size: 34px; font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .sec-sub { color: var(--text-soft); font-size: 14.5px; margin-bottom: 28px; max-width: 640px; }
+
+  /* ── Typography specimens ── */
+  .spec-grid { display: grid; gap: 20px; }
+  .spec {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 28px 32px; box-shadow: var(--shadow);
+  }
+  .spec-role {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--text-faint); margin-bottom: 14px; display: flex; justify-content: space-between;
+  }
+  .spec-role .fname { color: var(--sage); letter-spacing: 0.04em; text-transform: none; font-weight: 600; }
+  .spec-display { font-family: 'Cormorant Garamond', serif; font-size: 42px; font-weight: 600; line-height: 1.15; }
+  .spec-display em { font-weight: 500; }
+  .spec-manuscript { font-family: 'Literata', serif; font-size: 18px; line-height: 1.75; max-width: 660px; }
+  .spec-manuscript .indent { text-indent: 1.5em; margin-top: 0.4em; }
+  .spec-ui { font-size: 14px; }
+  .spec-ui .row { display: flex; gap: 24px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+  .spec-mono { font-family: 'JetBrains Mono', monospace; font-size: 13.5px; line-height: 1.7; color: var(--text-soft); }
+  .spec-mono b { color: var(--text); font-weight: 500; }
+  .vs { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  .vs > div { padding-right: 24px; }
+  .vs > div + div { border-left: 1px dashed var(--border); padding-left: 24px; padding-right: 0; }
+  .vs .who { font-size: 11px; color: var(--text-faint); margin-bottom: 8px; font-weight: 600; }
+  .old-font { font-family: Inter, Arial, sans-serif; }
+
+  /* ── Palette ── */
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+  .swatch {
+    border-radius: 14px; overflow: hidden; border: 1px solid var(--border);
+    background: var(--card); box-shadow: var(--shadow);
+  }
+  .swatch .chip { height: 72px; }
+  .swatch .meta { padding: 10px 14px; }
+  .swatch .name { font-size: 13px; font-weight: 600; }
+  .swatch .hex { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--text-soft); }
+
+  /* ── Components ── */
+  .comp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+  .comp {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 24px 26px; box-shadow: var(--shadow);
+  }
+  .comp h4 {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--text-faint); margin-bottom: 16px;
+  }
+  .btn {
+    font-family: 'Golos Text', sans-serif; font-size: 14px; font-weight: 500;
+    border-radius: 12px; padding: 10px 20px; cursor: pointer; border: none;
+    transition: all 0.15s ease; margin: 0 8px 8px 0;
+  }
+  .btn-primary { background: var(--ink); color: var(--parchment); }
+  [data-theme="dark"] .btn-primary { background: var(--sage); color: #0E150F; }
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-secondary { background: var(--parchment-deep); color: var(--text); }
+  .btn-secondary:hover { filter: brightness(0.96); }
+  .btn-ghost { background: transparent; color: var(--text-soft); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--text); background: var(--parchment); }
+
+  .entity-tags span {
+    display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+    padding: 4px 10px; border-radius: 6px; margin: 0 6px 8px 0;
+  }
+  .tag-char { background: var(--rose-bg); color: var(--rose); }
+  .tag-loc  { background: var(--sage-light); color: var(--sage); }
+  .tag-item { background: var(--amber-bg); color: var(--amber); }
+  .tag-rule { background: var(--blue-bg); color: var(--blue); }
+  .tag-major { background: var(--violet-bg); color: var(--violet); }
+
+  .input-demo label { display: block; font-size: 12.5px; font-weight: 600; color: var(--text-soft); margin-bottom: 6px; }
+  .input-demo input {
+    font-family: 'Golos Text', sans-serif; font-size: 14px;
+    width: 100%; padding: 10px 14px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--parchment);
+    color: var(--text); outline: none; transition: border 0.15s ease;
+  }
+  .input-demo input:focus { border-color: var(--sage); }
+
+  .alert {
+    border-radius: 12px; padding: 11px 16px; font-size: 13.5px; margin-bottom: 10px;
+    display: flex; gap: 10px; align-items: baseline;
+    color: var(--text-soft); border: 1px solid transparent;
+  }
+  .alert b { font-weight: 600; }
+  .a-success { background: var(--emerald-bg); border-color: color-mix(in srgb, var(--emerald) 22%, transparent); } .a-success b { color: var(--emerald); }
+  .a-warn    { background: var(--amber-bg);   border-color: color-mix(in srgb, var(--amber) 22%, transparent); }   .a-warn b    { color: var(--amber); }
+  .a-error   { background: var(--red-bg);     border-color: color-mix(in srgb, var(--red) 22%, transparent); }     .a-error b   { color: var(--red); }
+  .a-info    { background: var(--blue-bg);    border-color: color-mix(in srgb, var(--blue) 22%, transparent); }    .a-info b    { color: var(--blue); }
+
+  /* ── Bible card demo ── */
+  .bible-card { max-width: 420px; }
+  .bible-card .char-name { font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 600; margin: 4px 0 2px; }
+  .bible-card .char-desc { font-size: 13.5px; color: var(--text-soft); line-height: 1.6; margin-top: 8px; }
+  .bible-card .attr { display: flex; gap: 12px; font-size: 12.5px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .bible-card .attr:last-child { border-bottom: none; }
+  .bible-card .attr .k { color: var(--text-faint); width: 90px; flex-shrink: 0; font-weight: 600; }
+
+  footer { margin-top: 88px; text-align: center; color: var(--text-faint); font-size: 13px; }
+  footer .q { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 19px; color: var(--text-soft); margin-bottom: 6px; }
+
+  @media (max-width: 720px) {
+    h1 { font-size: 52px; }
+    .vs { grid-template-columns: 1fr; }
+    .vs > div + div { border-left: none; border-top: 1px dashed var(--border); padding: 16px 0 0; margin-top: 16px; }
+    .wrap { padding: 0 18px 64px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <button class="theme-toggle" onclick="toggleTheme()"><span id="theme-label">🌙 Ночная мастерская</span></button>
+    <span class="feather">🪶</span>
+    <h1>Перо</h1>
+    <p class="tagline">Перо помнит — автор пишет</p>
+    <span class="sys-label">Дизайн-система · Тёплая литературная мастерская</span>
+  </header>
+
+  <!-- ═══ Typography ═══ -->
+  <section>
+    <h2 class="sec-title">Типографика</h2>
+    <p class="sec-sub">Четыре шрифта, четыре роли. Все — с полной поддержкой кириллицы. Серифы несут «литературность», гротеск Golos Text спроектирован для русского текста в интерфейсах.</p>
+
+    <div class="spec-grid">
+      <div class="spec">
+        <div class="spec-role"><span>Заголовки · Display</span><span class="fname">Cormorant Garamond 600</span></div>
+        <div class="spec-display">Глава седьмая, в которой <em>Майя слышит лес</em></div>
+      </div>
+
+      <div class="spec">
+        <div class="spec-role"><span>Текст рукописи · дефолт редактора</span><span class="fname">Literata 400 · 18px/1.75</span></div>
+        <div class="spec-manuscript">
+          <p>Туман держался до полудня, цепляясь за серебристые осины, и Майя впервые подумала, что лес её рассматривает. Не враждебно — внимательно, как старик разглядывает незнакомую птицу на подоконнике.</p>
+          <p class="indent">— Вам тут не место, — сказал Ашер, не оборачиваясь. — Уезжайте, пока дорогу не размыло.</p>
+        </div>
+      </div>
+
+      <div class="spec">
+        <div class="spec-role"><span>Интерфейс · было → стало</span><span class="fname">Inter → Golos Text</span></div>
+        <div class="vs">
+          <div>
+            <div class="who">БЫЛО — Inter (как у всех)</div>
+            <div class="spec-ui old-font">
+              Библия истории · Персонажи · 24<br>
+              <span style="opacity:.6">Глава изменялась после последнего анализа. Проверить заново?</span>
+            </div>
+          </div>
+          <div>
+            <div class="who">СТАЛО — Golos Text (для русского)</div>
+            <div class="spec-ui">
+              Библия истории · Персонажи · 24<br>
+              <span style="opacity:.6">Глава изменялась после последнего анализа. Проверить заново?</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="spec">
+        <div class="spec-role"><span>Данные и статистика</span><span class="fname">JetBrains Mono</span></div>
+        <div class="spec-mono">
+          слов сегодня <b>1 847</b> · всего <b>29 250</b> · глав <b>12</b> · сущностей <b>87</b><br>
+          последний анализ: <b>гл. 12 «Сон о лесе»</b> · 3 новых факта
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ Palette ═══ -->
+  <section>
+    <h2 class="sec-title">Палитра</h2>
+    <p class="sec-sub">Основа «чернила на пергаменте» + пигменты для смысловых меток: терракота, охра, чернильно-синий, слива, мох. Никаких чистых веб-цветов — только то, что могло бы быть краской на бумаге.</p>
+
+    <div class="swatches">
+      <div class="swatch"><div class="chip" style="background:#1E2D1F"></div><div class="meta"><div class="name">Чернила</div><div class="hex">#1E2D1F</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#4A5D4E"></div><div class="meta"><div class="name">Шалфей</div><div class="hex">#4A5D4E</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#F5F0E8; border-bottom:1px solid rgba(30,45,31,.07)"></div><div class="meta"><div class="name">Пергамент</div><div class="hex">#F5F0E8</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#E8E2D5"></div><div class="meta"><div class="name">Пергамент тёмный</div><div class="hex">#E8E2D5</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#A14F44"></div><div class="meta"><div class="name">Терракота · персонажи</div><div class="hex">#A14F44</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#91682E"></div><div class="meta"><div class="name">Охра · предметы</div><div class="hex">#91682E</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#54627F"></div><div class="meta"><div class="name">Чернильно-синий · правила</div><div class="hex">#54627F</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#71597F"></div><div class="meta"><div class="name">Слива · ключевой</div><div class="hex">#71597F</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#4D6B4D"></div><div class="meta"><div class="name">Мох · успех</div><div class="hex">#4D6B4D</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#9E4338"></div><div class="meta"><div class="name">Брусника · ошибка</div><div class="hex">#9E4338</div></div></div>
+    </div>
+  </section>
+
+  <!-- ═══ Components ═══ -->
+  <section>
+    <h2 class="sec-title">Компоненты</h2>
+    <p class="sec-sub">Как система живёт в интерфейсе — кнопки, поля, статусы и карточка персонажа из библии.</p>
+
+    <div class="comp-grid">
+      <div class="comp">
+        <h4>Кнопки</h4>
+        <button class="btn btn-primary">Извлечь факты</button>
+        <button class="btn btn-secondary">Одобрить</button>
+        <button class="btn btn-ghost">Отложить</button>
+        <h4 style="margin-top:20px">Метки сущностей</h4>
+        <div class="entity-tags">
+          <span class="tag-char">ПЕРСОНАЖ</span>
+          <span class="tag-loc">ЛОКАЦИЯ</span>
+          <span class="tag-item">ПРЕДМЕТ</span>
+          <span class="tag-rule">ПРАВИЛО</span>
+          <span class="tag-major">КЛЮЧЕВОЙ</span>
+        </div>
+        <h4 style="margin-top:20px">Поле ввода</h4>
+        <div class="input-demo">
+          <label>Название главы</label>
+          <input type="text" value="Сон о лесе" />
+        </div>
+      </div>
+
+      <div class="comp">
+        <h4>Статусы</h4>
+        <div class="alert a-success"><b>Готово.</b> 3 новых факта добавлены в библию.</div>
+        <div class="alert a-warn"><b>Глава изменилась.</b> Библия может отставать от текста.</div>
+        <div class="alert a-error"><b>Противоречие.</b> Ашер умер в гл. 5, но говорит в гл. 7.</div>
+        <div class="alert a-info"><b>Совет.</b> Надиктуйте сцену — Перо расставит знаки за вас.</div>
+      </div>
+
+      <div class="comp bible-card">
+        <h4>Карточка персонажа</h4>
+        <div class="entity-tags"><span class="tag-char">ПЕРСОНАЖ</span><span class="tag-major">КЛЮЧЕВОЙ</span></div>
+        <div class="char-name">Майя Орлова</div>
+        <div style="font-size:11.5px;color:var(--text-faint)">Впервые: Глава 1</div>
+        <div class="char-desc">Молодая исследовательница, приехавшая в Серебряный Бор изучать аномалию. Логик и наблюдатель.</div>
+        <div style="margin-top:14px">
+          <div class="attr"><span class="k">Речь</span><span>короткие точные фразы, редкие вспышки сарказма</span></div>
+          <div class="attr"><span class="k">Мотивация</span><span>доказать существование аномалии</span></div>
+          <div class="attr"><span class="k">Секреты</span><span>скрывает, что слышит лес во сне</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p class="q">«Какого цвета были глаза у героя в первой книге?» — Перо помнит.</p>
+    <p>Дизайн-система Перо · превью · /design-consultation</p>
+  </footer>
+</div>
+
+<script>
+  function toggleTheme() {
+    const html = document.documentElement;
+    const dark = html.getAttribute('data-theme') === 'dark';
+    html.setAttribute('data-theme', dark ? 'light' : 'dark');
+    document.getElementById('theme-label').textContent = dark ? '🌙 Ночная мастерская' : '☀️ Дневной свет';
+  }
+</script>
+</body>
+</html>

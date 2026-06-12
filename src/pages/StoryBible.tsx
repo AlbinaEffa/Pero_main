@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
-  ArrowLeft, BookOpen, User, Plus, Check, AlertTriangle,
+  ArrowLeft, BookOpen, User, Check, AlertTriangle,
   Sparkles, ChevronLeft, FileText, BarChart2, ChevronUp, X, Bell,
-  Users, MapPin, Box, Globe,
+  Users, MapPin, Box, Globe, Pencil,
 } from 'lucide-react';
 import { api } from '../services/api';
-import { Entity, Chapter } from '../components/editor/types';
+import { Entity, EntitySignificance, EntityLink, EntityEvent, Chapter } from '../components/editor/types';
+import {
+  significanceLabel, significanceColor, groupBySignificance,
+  ATTRIBUTE_LABELS,
+  EntityAttributesBlock, EntityConnectionsBlock, EntityTimelineBlock, FirstAppearanceLine,
+} from '../components/editor/entityDisplay';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -19,6 +24,21 @@ const TABS = [
 ] as const;
 
 type TabId = typeof TABS[number]['id'];
+
+const TYPE_TO_TAB: Record<string, TabId> = {
+  character: 'characters',
+  location:  'locations',
+  item:      'items',
+  rule:      'rules',
+};
+
+/** Editable attribute keys per entity type (порядок = порядок полей в форме). */
+const EDITABLE_ATTRIBUTES: Record<string, string[]> = {
+  character: ['aliases', 'appearance', 'personality', 'role', 'background', 'motivations', 'speech', 'secrets', 'plotRelevance'],
+  location:  ['region', 'physicalDetails', 'mood'],
+  item:      ['properties', 'origin', 'owner'],
+  rule:      ['scope', 'exceptions'],
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -33,9 +53,16 @@ function typeLabel(type: string) {
 }
 
 function statusBadge(status?: string) {
-  if (status === 'pending')  return <span className="inline-block px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-[#FFF4E5] text-[#B86B11] border border-[#FFE0B2]">Ожидает</span>;
-  if (status === 'rejected') return <span className="inline-block px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-[#FFF0F0] text-[#C0392B] border border-[#FFCDD2]">Отклонено</span>;
+  if (status === 'pending')  return <span className="inline-block px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-amber-100 text-amber-700 border border-amber-200">Ожидает</span>;
+  if (status === 'rejected') return <span className="inline-block px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-red-100 text-red-700 border border-red-200">Отклонено</span>;
   return null;
+}
+
+/** Attribute value → form string (aliases array joins with ', '). */
+function attrToString(v: unknown): string {
+  if (Array.isArray(v)) return v.join(', ');
+  if (v == null) return '';
+  return String(v);
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -46,21 +73,25 @@ export default function StoryBible() {
 
   const [activeTab, setActiveTab] = useState<TabId>('inbox');
   const [entities, setEntities] = useState<Entity[]>([]);
+  const [links, setLinks] = useState<EntityLink[]>([]);
+  const [events, setEvents] = useState<EntityEvent[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // Load entities + chapters together
+  // Load entities + links + events + chapters together
   useEffect(() => {
     if (!id) return;
     setIsLoading(true);
     Promise.all([
-      api.get<{ entities: Entity[] }>(`/bible/${id}`),
+      api.get<{ entities: Entity[]; links?: EntityLink[]; events?: EntityEvent[] }>(`/bible/${id}`),
       api.get<{ chapters: Chapter[] }>(`/projects/${id}/chapters`),
     ])
       .then(([bibleData, chaptersData]) => {
         const ents = bibleData.entities ?? [];
         setEntities(ents);
+        setLinks(bibleData.links ?? []);
+        setEvents(bibleData.events ?? []);
         setChapters(chaptersData.chapters ?? []);
         // Pre-select first entity in current tab
         const firstInTab = ents.filter(e => e.status === 'pending')[0];
@@ -76,12 +107,22 @@ export default function StoryBible() {
     ? entities.filter(e => e.status === 'pending')
     : entities.filter(e => e.type === tabCfg.type && e.status === 'approved');
 
+  const approvedEntities = entities.filter(e => e.status === 'approved');
   const pendingCount = entities.filter(e => e.status === 'pending').length;
   const selected = tabEntities.find(e => e.id === selectedId) ?? tabEntities[0] ?? null;
+  const chapterRefs = chapters.map(c => ({ id: c.id, title: c.title, order: c.order }));
 
   function switchTab(tab: TabId) {
     setActiveTab(tab);
     setSelectedId(null);
+  }
+
+  /** Follow a connection link: jump to the entity on the other end. */
+  function openEntity(entity: Entity) {
+    const tab = TYPE_TO_TAB[entity.type];
+    if (!tab) return;
+    setActiveTab(tab);
+    setSelectedId(entity.id);
   }
 
   // Approve / reject
@@ -99,6 +140,31 @@ export default function StoryBible() {
     } catch (e) { console.error(e); }
   }
 
+  /** Manual edit by the author — авторская правка перезаписывает поля. */
+  async function handleSaveEntity(entityId: string, patch: {
+    name: string;
+    description: string;
+    significance: EntitySignificance | null;
+    attributes: Record<string, unknown> | null;
+  }) {
+    const data = await api.patch<{ entity: Entity }>(`/bible/${entityId}`, patch);
+    setEntities(prev => prev.map(e => e.id === entityId ? data.entity : e));
+  }
+
+  async function handleDeleteLink(linkId: string) {
+    try {
+      await api.delete(`/bible/links/${linkId}`);
+      setLinks(prev => prev.filter(l => l.id !== linkId));
+    } catch (e) { console.error(e); }
+  }
+
+  async function handleDeleteEvent(eventId: string) {
+    try {
+      await api.delete(`/bible/events/${eventId}`);
+      setEvents(prev => prev.filter(ev => ev.id !== eventId));
+    } catch (e) { console.error(e); }
+  }
+
   const editorPath = id && chapters[0]
     ? `/editor/${id}/${chapters[0].id}`
     : id ? `/editor/${id}` : '/dashboard';
@@ -107,7 +173,7 @@ export default function StoryBible() {
     <div className="flex h-screen w-full bg-[#F9FAFB] font-sans overflow-hidden text-[#1a1a1a]">
 
       {/* ── Left Sidebar ──────────────────────────────────────────────────── */}
-      <aside className="w-[220px] bg-[#1e2d1f] text-white/80 flex flex-col flex-shrink-0 shadow-xl z-20">
+      <aside className="w-[220px] bg-[#1e2d1f] text-white/80 flex-col flex-shrink-0 shadow-xl z-20 hidden md:flex">
         {/* Logo */}
         <div className="p-4 flex items-center gap-3 border-b border-white/10">
           <Link to="/dashboard" className="p-1.5 rounded-md hover:bg-white/10 transition-colors text-white/60 hover:text-white">
@@ -159,7 +225,7 @@ export default function StoryBible() {
 
         {/* Stats stub */}
         <div className="p-4 border-t border-white/10">
-          <div className="flex items-center justify-between border-2 border-[#1a56db] rounded-md px-3 py-2.5 text-white">
+          <div className="flex items-center justify-between border border-white/20 rounded-md px-3 py-2.5 text-white">
             <div className="flex items-center gap-2.5">
               <BarChart2 size={18} strokeWidth={2} />
               <span className="font-semibold text-[15px] tracking-wide">Statistics</span>
@@ -189,8 +255,8 @@ export default function StoryBible() {
         </header>
 
         {/* Tabs */}
-        <div className="px-8 pt-6 border-b border-black/5 bg-white flex-shrink-0">
-          <div className="flex gap-8">
+        <div className="px-8 max-md:px-4 pt-6 border-b border-black/5 bg-white flex-shrink-0 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+          <div className="flex gap-8 max-md:gap-5 whitespace-nowrap">
             {TABS.map(tab => (
               <button
                 key={tab.id}
@@ -203,7 +269,7 @@ export default function StoryBible() {
               >
                 {tab.label}
                 {tab.id === 'inbox' && pendingCount > 0 && (
-                  <span className="ml-2 inline-flex items-center justify-center w-4 h-4 bg-[#D35400] text-white text-[9px] font-bold rounded-full">
+                  <span className="ml-2 inline-flex items-center justify-center w-4 h-4 bg-rose-500 text-white text-[9px] font-bold rounded-full">
                     {pendingCount}
                   </span>
                 )}
@@ -219,7 +285,7 @@ export default function StoryBible() {
           <div className="flex-1 flex overflow-hidden">
 
             {/* List column */}
-            <div className={`overflow-y-auto p-8 bg-white ${selected && activeTab !== 'inbox' ? 'flex-1 border-r border-black/5' : 'flex-1'}`}>
+            <div className={`overflow-y-auto p-8 max-md:p-4 bg-white ${selected && activeTab !== 'inbox' ? 'flex-1 border-r border-black/5' : 'flex-1'}`}>
               {activeTab === 'inbox' ? (
                 // ── Inbox ──────────────────────────────────────────────────
                 <>
@@ -237,9 +303,14 @@ export default function StoryBible() {
                       {tabEntities.map(entity => (
                         <div key={entity.id} className="bg-white border border-black/8 rounded-2xl p-5 flex items-start gap-4 shadow-sm hover:shadow-md transition-shadow">
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <span className="font-bold text-[16px] text-[#1a1a1a]">{entity.name}</span>
                               <span className="text-[10px] font-bold text-black/40 uppercase tracking-wider">{typeLabel(entity.type)}</span>
+                              {entity.significance && (
+                                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${significanceColor(entity.significance)}`}>
+                                  {significanceLabel(entity.significance)}
+                                </span>
+                              )}
                             </div>
                             {entity.description && (
                               <p className="text-[13px] text-black/60 leading-relaxed line-clamp-2">{entity.description}</p>
@@ -279,84 +350,309 @@ export default function StoryBible() {
                       <p className="text-sm mt-1">Добавьте записи через ИИ-извлечение в редакторе</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {tabEntities.map(entity => {
-                        const isSelected = entity.id === selected?.id;
-                        return (
-                          <div
-                            key={entity.id}
-                            onClick={() => setSelectedId(entity.id)}
-                            className={`cursor-pointer rounded-2xl p-4 transition-all border-2 ${
-                              isSelected
-                                ? 'border-[#1a1a1a] bg-white shadow-sm'
-                                : 'border-transparent bg-black/[0.02] hover:bg-black/[0.05]'
-                            }`}
-                          >
-                            {/* Icon avatar */}
-                            <div className="aspect-square rounded-xl bg-[#F0F0EB] flex items-center justify-center mb-3 relative">
-                              <tabCfg.icon size={32} className="text-black/20" />
-                              {isSelected && (
-                                <div className="absolute top-2 right-2 w-5 h-5 bg-[#2C3E2D] rounded-full flex items-center justify-center text-white shadow-md border-2 border-white">
-                                  <Check size={12} strokeWidth={3} />
-                                </div>
-                              )}
-                            </div>
-                            <h3 className="font-bold text-[15px] text-[#1a1a1a] truncate">{entity.name}</h3>
-                            <p className="text-[11px] font-bold text-black/40 uppercase tracking-wider mt-0.5">
-                              {typeLabel(entity.type)}
-                            </p>
+                    <div className="space-y-8">
+                      {groupBySignificance(tabEntities).map(group => (
+                        <div key={group.key}>
+                          <div className="flex items-center gap-2 mb-4">
+                            <span className="text-[12px] font-bold uppercase tracking-wider text-black/35">{group.title}</span>
+                            <span className="text-[12px] text-black/25 font-medium">· {group.items.length}</span>
                           </div>
-                        );
-                      })}
+                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {group.items.map(entity => {
+                              const isSelected = entity.id === selected?.id;
+                              return (
+                                <div
+                                  key={entity.id}
+                                  onClick={() => setSelectedId(entity.id)}
+                                  className={`cursor-pointer rounded-2xl p-4 transition-all border-2 ${
+                                    isSelected
+                                      ? 'border-[#1a1a1a] bg-white shadow-sm'
+                                      : 'border-transparent bg-black/[0.02] hover:bg-black/[0.05]'
+                                  }`}
+                                >
+                                  {/* Icon avatar */}
+                                  <div className="aspect-square rounded-xl bg-[#F0F0EB] flex items-center justify-center mb-3 relative">
+                                    <tabCfg.icon size={32} className="text-black/20" />
+                                    {isSelected && (
+                                      <div className="absolute top-2 right-2 w-5 h-5 bg-[#2C3E2D] rounded-full flex items-center justify-center text-white shadow-md border-2 border-white">
+                                        <Check size={12} strokeWidth={3} />
+                                      </div>
+                                    )}
+                                  </div>
+                                  <h3 className="font-bold text-[15px] text-[#1a1a1a] truncate">{entity.name}</h3>
+                                  <p className="text-[11px] font-bold text-black/40 uppercase tracking-wider mt-0.5">
+                                    {typeLabel(entity.type)}
+                                  </p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </>
               )}
             </div>
 
-            {/* Detail panel */}
+            {/* Detail panel: на широких экранах — колонка справа; на узких —
+                оверлей, открывается явным тапом по карточке (selectedId) */}
+            {activeTab !== 'inbox' && selected && selectedId && (
+              <div className="fixed inset-0 bg-black/30 z-40 lg:hidden" onClick={() => setSelectedId(null)} />
+            )}
             {activeTab !== 'inbox' && selected && (
-              <div className="w-[400px] overflow-y-auto bg-[#F9FAFB] flex-shrink-0 flex flex-col border-l border-black/5">
-                {/* Header */}
-                <div className="p-10 flex flex-col items-center text-center border-b border-black/5 bg-white">
-                  <div className="w-24 h-24 rounded-2xl bg-[#F0F0EB] flex items-center justify-center mb-6 shadow-sm border border-black/5">
-                    <tabCfg.icon size={40} className="text-black/20" />
-                  </div>
-                  <h2 className="text-3xl font-bold text-[#1a1a1a] mb-2">{selected.name}</h2>
-                  <p className="text-[13px] font-bold text-[#4A90E2] uppercase tracking-wider mb-3">
-                    {typeLabel(selected.type)}
-                  </p>
-                  {statusBadge(selected.status)}
-                </div>
+              <EntityDetailPanel
+                key={selected.id}
+                entity={selected}
+                icon={tabCfg.icon}
+                links={links}
+                events={events}
+                approvedEntities={approvedEntities}
+                chapters={chapterRefs}
+                mobileOverlay={selectedId !== null}
+                onClose={() => setSelectedId(null)}
+                onSelectEntity={openEntity}
+                onDeleteLink={handleDeleteLink}
+                onDeleteEvent={handleDeleteEvent}
+                onSave={handleSaveEntity}
+              />
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
-                {/* Body */}
-                <div className="p-8 flex-1 flex flex-col gap-6">
-                  {selected.description ? (
-                    <div>
-                      <h4 className="text-[12px] font-bold text-black/40 uppercase tracking-wider mb-3 ml-1">
-                        Описание
-                      </h4>
-                      <div className="bg-white p-5 rounded-2xl border border-black/5 shadow-sm text-[14px] leading-relaxed text-black/80">
-                        {selected.description}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center py-6 text-black/30">
-                      <AlertTriangle size={24} className="mb-2" />
-                      <p className="text-sm">Описание отсутствует</p>
-                    </div>
-                  )}
+// ── EntityDetailPanel ─────────────────────────────────────────────────────────
 
-                  <div className="mt-auto pt-6 flex flex-col gap-4">
-                    <button className="w-full bg-[#2C3E2D] hover:bg-[#1e2b1f] text-white py-3.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors shadow-sm">
-                      <Sparkles size={18} />
-                      Спросить AI
-                    </button>
-                  </div>
+interface DetailProps {
+  entity: Entity;
+  icon: React.ComponentType<{ size?: number | string; className?: string }>;
+  links: EntityLink[];
+  events: EntityEvent[];
+  approvedEntities: Entity[];
+  chapters: { id: string; title: string; order: number }[];
+  /** true, когда сущность выбрана явно — на узких экранах панель становится оверлеем. */
+  mobileOverlay: boolean;
+  onClose: () => void;
+  onSelectEntity: (entity: Entity) => void;
+  onDeleteLink: (linkId: string) => void;
+  onDeleteEvent: (eventId: string) => void;
+  onSave: (entityId: string, patch: {
+    name: string;
+    description: string;
+    significance: EntitySignificance | null;
+    attributes: Record<string, unknown> | null;
+  }) => Promise<void>;
+}
+
+function EntityDetailPanel({
+  entity, icon: Icon, links, events, approvedEntities, chapters,
+  mobileOverlay, onClose,
+  onSelectEntity, onDeleteLink, onDeleteEvent, onSave,
+}: DetailProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [draftName, setDraftName] = useState(entity.name);
+  const [draftDescription, setDraftDescription] = useState(entity.description ?? '');
+  const [draftSignificance, setDraftSignificance] = useState<EntitySignificance | ''>(entity.significance ?? '');
+  const [draftAttrs, setDraftAttrs] = useState<Record<string, string>>({});
+
+  const editableKeys = EDITABLE_ATTRIBUTES[entity.type] ?? [];
+
+  function startEditing() {
+    const attrs = (entity.attributes ?? {}) as Record<string, unknown>;
+    setDraftName(entity.name);
+    setDraftDescription(entity.description ?? '');
+    setDraftSignificance(entity.significance ?? '');
+    setDraftAttrs(Object.fromEntries(editableKeys.map(k => [k, attrToString(attrs[k])])));
+    setIsEditing(true);
+  }
+
+  async function save() {
+    setIsSaving(true);
+    try {
+      // Preserve unknown attribute keys; overwrite/remove only the edited ones
+      const merged: Record<string, unknown> = { ...((entity.attributes ?? {}) as Record<string, unknown>) };
+      for (const key of editableKeys) {
+        const raw = (draftAttrs[key] ?? '').trim();
+        if (!raw) {
+          delete merged[key];
+        } else if (key === 'aliases') {
+          merged[key] = raw.split(',').map(s => s.trim()).filter(Boolean);
+        } else {
+          merged[key] = raw;
+        }
+      }
+      await onSave(entity.id, {
+        name: draftName.trim() || entity.name,
+        description: draftDescription,
+        significance: draftSignificance || null,
+        attributes: Object.keys(merged).length > 0 ? merged : null,
+      });
+      setIsEditing(false);
+    } catch (e) {
+      console.error('Failed to save entity:', e);
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <div className={`overflow-y-auto bg-[#F9FAFB] flex-shrink-0 flex-col border-l border-black/5 lg:flex lg:static lg:w-[400px] ${
+      mobileOverlay
+        ? 'flex max-lg:fixed max-lg:inset-y-0 max-lg:right-0 max-lg:z-50 max-lg:w-full max-lg:max-w-[440px] max-lg:shadow-2xl'
+        : 'max-lg:hidden'
+    }`}>
+      {/* Header */}
+      <div className="p-8 flex flex-col items-center text-center border-b border-black/5 bg-white relative">
+        <button
+          onClick={onClose}
+          className="lg:hidden absolute top-4 left-4 p-2 rounded-lg text-black/40 hover:text-black/70 hover:bg-black/5 transition-colors"
+          title="Закрыть"
+        >
+          <X size={18} />
+        </button>
+        {!isEditing && (
+          <button
+            onClick={startEditing}
+            className="absolute top-4 right-4 p-2 rounded-lg text-black/30 hover:text-black/70 hover:bg-black/5 transition-colors"
+            title="Редактировать"
+          >
+            <Pencil size={15} />
+          </button>
+        )}
+        <div className="w-24 h-24 rounded-2xl bg-[#F0F0EB] flex items-center justify-center mb-5 shadow-sm border border-black/5">
+          <Icon size={40} className="text-black/20" />
+        </div>
+        {isEditing ? (
+          <input
+            value={draftName}
+            onChange={e => setDraftName(e.target.value)}
+            className="text-2xl font-bold text-[#1a1a1a] mb-2 text-center border-b-2 border-black/15 focus:border-black/50 outline-none bg-transparent w-full"
+          />
+        ) : (
+          <h2 className="text-3xl font-bold text-[#1a1a1a] mb-2">{entity.name}</h2>
+        )}
+        <p className="text-[13px] font-bold text-blue-500 uppercase tracking-wider mb-2">
+          {typeLabel(entity.type)}
+        </p>
+        <div className="flex items-center justify-center gap-2 flex-wrap mb-1">
+          {isEditing ? (
+            <select
+              value={draftSignificance}
+              onChange={e => setDraftSignificance(e.target.value as EntitySignificance | '')}
+              className="text-[12px] border border-black/15 rounded-lg px-2 py-1 bg-white outline-none"
+            >
+              <option value="">Без категории</option>
+              <option value="major">Ключевой</option>
+              <option value="moderate">Важный</option>
+              <option value="minor">Эпизодический</option>
+            </select>
+          ) : (
+            entity.significance && (
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${significanceColor(entity.significance)}`}>
+                {significanceLabel(entity.significance)}
+              </span>
+            )
+          )}
+          {statusBadge(entity.status)}
+        </div>
+        {!isEditing && (
+          <div className="mt-2">
+            <FirstAppearanceLine entity={entity} chapters={chapters} />
+          </div>
+        )}
+      </div>
+
+      {/* Body */}
+      <div className="p-6 flex-1 flex flex-col gap-5">
+        {isEditing ? (
+          <>
+            <div>
+              <h4 className="text-[12px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">Описание</h4>
+              <textarea
+                value={draftDescription}
+                onChange={e => setDraftDescription(e.target.value)}
+                rows={4}
+                className="w-full bg-white p-4 rounded-2xl border border-black/10 focus:border-black/30 shadow-sm text-[14px] leading-relaxed text-black/80 outline-none resize-y"
+              />
+            </div>
+            {editableKeys.length > 0 && (
+              <div>
+                <h4 className="text-[12px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">Детали</h4>
+                <div className="bg-white rounded-2xl border border-black/10 shadow-sm overflow-hidden">
+                  {editableKeys.map((key, i) => (
+                    <div key={key} className={`px-4 py-3 ${i < editableKeys.length - 1 ? 'border-b border-black/5' : ''}`}>
+                      <label className="block text-[11px] font-semibold text-black/40 mb-1">
+                        {ATTRIBUTE_LABELS[key] ?? key}
+                        {key === 'aliases' && <span className="font-normal text-black/30"> (через запятую)</span>}
+                      </label>
+                      <textarea
+                        value={draftAttrs[key] ?? ''}
+                        onChange={e => setDraftAttrs(prev => ({ ...prev, [key]: e.target.value }))}
+                        rows={key === 'background' || key === 'motivations' ? 2 : 1}
+                        className="w-full text-[13px] text-black/80 leading-relaxed outline-none resize-none border-b border-transparent focus:border-black/20"
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
-          </div>
+            <div className="flex gap-2">
+              <button
+                onClick={save}
+                disabled={isSaving}
+                className="flex-1 bg-[#2C3E2D] hover:bg-[#1e2b1f] disabled:opacity-50 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors shadow-sm"
+              >
+                <Check size={16} />
+                {isSaving ? 'Сохранение...' : 'Сохранить'}
+              </button>
+              <button
+                onClick={() => setIsEditing(false)}
+                disabled={isSaving}
+                className="px-5 py-3 rounded-xl bg-black/5 hover:bg-black/10 text-black/60 font-medium transition-colors"
+              >
+                Отмена
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {entity.description ? (
+              <div>
+                <h4 className="text-[12px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">
+                  Описание
+                </h4>
+                <div className="bg-white p-4 rounded-2xl border border-black/5 shadow-sm text-[14px] leading-relaxed text-black/80">
+                  {entity.description}
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center py-6 text-black/30">
+                <AlertTriangle size={24} className="mb-2" />
+                <p className="text-sm">Описание отсутствует</p>
+              </div>
+            )}
+
+            <EntityAttributesBlock attributes={entity.attributes} />
+
+            <EntityConnectionsBlock
+              entity={entity}
+              links={links}
+              entities={approvedEntities}
+              onSelectEntity={onSelectEntity}
+              onDeleteLink={onDeleteLink}
+            />
+
+            <EntityTimelineBlock
+              entity={entity}
+              events={events}
+              chapters={chapters}
+              onDeleteEvent={onDeleteEvent}
+            />
+          </>
         )}
       </div>
     </div>

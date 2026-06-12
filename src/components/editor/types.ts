@@ -18,7 +18,23 @@ export type EntitySignificance = 'major' | 'moderate' | 'minor';
 
 /** Per-type structured attributes populated by AI. */
 export type EntityAttributes =
-  | { aliases?: string[]; appearance?: string; personality?: string; role?: string }   // character
+  | {
+      // character
+      aliases?: string[];
+      appearance?: string;
+      personality?: string;
+      role?: string;
+      /** Предыстория: ключевые факты биографии до текущих событий. */
+      background?: string;
+      /** Что движет персонажем — цели, желания, страхи. */
+      motivations?: string;
+      /** Манера речи и характерный голос (для консистентности диалогов). */
+      speech?: string;
+      /** Что персонаж скрывает от других. */
+      secrets?: string;
+      /** Одно предложение: зачем персонаж сюжету. */
+      plotRelevance?: string;
+    }
   | { region?: string; physicalDetails?: string; mood?: string }                       // location
   | { properties?: string; origin?: string; owner?: string }                           // item
   | { scope?: string; exceptions?: string };                                            // rule
@@ -32,6 +48,28 @@ export type Entity = {
   chapterId?: string | null;
   significance?: EntitySignificance | null;
   attributes?: EntityAttributes | null;
+};
+
+/** Связь между двумя сущностями. relation читается от source → target («мать», «соперник»). */
+export type EntityLink = {
+  id: string;
+  sourceEntityId: string;
+  targetEntityId: string;
+  relation: string;
+  chapterId?: string | null;
+};
+
+export type EntityEventType = 'conflict' | 'relationship' | 'status' | 'revelation' | 'other';
+
+/** Событие арки сущности, извлечённое из конкретной главы (таймлайн персонажа). */
+export type EntityEvent = {
+  id: string;
+  entityId: string;
+  chapterId?: string | null;
+  chapterTitle?: string | null;
+  title: string;
+  description?: string | null;
+  eventType?: EntityEventType | string | null;
 };
 
 export type ChatMessage = {

@@ -23,6 +23,10 @@ export const users = pgTable('users', {
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
   displayName: text('display_name'),
+  /** Тарифный план: 'free' | 'pro'. Определяет дневные квоты AI (см. lib/quota.ts). */
+  plan: text('plan').default('free').notNull(),
+  /** Когда истекает оплаченный план; NULL = бессрочно (free) */
+  planExpiresAt: timestamp('plan_expires_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -106,6 +110,32 @@ export const storyEntities = pgTable('story_entities', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// Entity Links — связи между сущностями («мать», «соперник», «живёт в»)
+// Извлекаются AI вместе с сущностями; relation читается от source → target.
+export const entityLinks = pgTable('entity_links', {
+  id:             uuid('id').primaryKey().defaultRandom(),
+  projectId:      uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }).notNull(),
+  sourceEntityId: uuid('source_entity_id').references(() => storyEntities.id, { onDelete: 'cascade' }).notNull(),
+  targetEntityId: uuid('target_entity_id').references(() => storyEntities.id, { onDelete: 'cascade' }).notNull(),
+  relation:       text('relation').notNull(),
+  chapterId:      uuid('chapter_id').references(() => chapters.id, { onDelete: 'set null' }),
+  createdAt:      timestamp('created_at').defaultNow().notNull(),
+});
+
+// Entity Events — события арки сущности по главам (таймлайн персонажа)
+// event_type: 'conflict' | 'relationship' | 'status' | 'revelation' | 'other'
+export const entityEvents = pgTable('entity_events', {
+  id:           uuid('id').primaryKey().defaultRandom(),
+  projectId:    uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }).notNull(),
+  entityId:     uuid('entity_id').references(() => storyEntities.id, { onDelete: 'cascade' }).notNull(),
+  chapterId:    uuid('chapter_id').references(() => chapters.id, { onDelete: 'set null' }),
+  chapterTitle: text('chapter_title'),
+  title:        text('title').notNull(),
+  description:  text('description'),
+  eventType:    text('event_type'),
+  createdAt:    timestamp('created_at').defaultNow().notNull(),
+});
+
 // Background Job Queue
 // Persisted in Postgres — survives server restarts. Worker polls every 5s.
 // Supported types: 'extract_entities' | 'embed_chapter'
@@ -154,6 +184,20 @@ export const bibleUpdateSuggestions = pgTable('bible_update_suggestions', {
   status:              text('status').notNull().default('pending'),
   createdAt:           timestamp('created_at').defaultNow().notNull(),
   updatedAt:           timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Платежи ЮKassa — история оплат Pro-подписки
+export const payments = pgTable('payments', {
+  id:                uuid('id').primaryKey().defaultRandom(),
+  userId:            uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  provider:          text('provider').default('yookassa').notNull(),
+  providerPaymentId: text('provider_payment_id').unique(),
+  amountRub:         numeric('amount_rub', { precision: 10, scale: 2 }).notNull(),
+  status:            text('status').default('pending').notNull(), // pending | succeeded | canceled
+  plan:              text('plan').default('pro').notNull(),
+  periodDays:        integer('period_days').default(30).notNull(),
+  createdAt:         timestamp('created_at').defaultNow().notNull(),
+  updatedAt:         timestamp('updated_at').defaultNow().notNull(),
 });
 
 // Beta feedback — submitted via the in-app floating "Отзыв" button

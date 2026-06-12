@@ -33,6 +33,56 @@ export function useBibleExtraction(
     });
   }
 
+  /**
+   * Batch recheck — sends up to N chapters to a single API call.
+   * Returns summary of what was found. Called from handleRecheckAllStale.
+   */
+  const recheckBatch = useCallback(async (chapterIds: string[]): Promise<{
+    processed: number;
+    skipped: number;
+    totalNew: number;
+    summarizedChapters: { chapterId: string; chapterSummary?: string | null }[];
+  }> => {
+    if (!projectId || chapterIds.length === 0) {
+      return { processed: 0, skipped: 0, totalNew: 0, summarizedChapters: [] };
+    }
+    try {
+      const data = await api.post<{
+        entities: Entity[];
+        updates: BibleUpdateSuggestion[];
+        total: number;
+        processed: number;
+        skipped: number;
+      }>('/bible/recheck/batch', { projectId, chapterIds });
+
+      const entities = data.entities ?? [];
+      const updates = data.updates ?? [];
+
+      setSuggestions(prev => {
+        const existingIds = new Set(prev.map(e => e.id));
+        return [...prev, ...entities.filter(e => !existingIds.has(e.id))];
+      });
+      mergeUpdateSuggestions(updates);
+
+      track('bible_batch_recheck', {
+        projectId,
+        processed: data.processed,
+        skipped: data.skipped,
+        totalNew: data.total,
+      });
+
+      return {
+        processed: data.processed ?? 0,
+        skipped: data.skipped ?? 0,
+        totalNew: data.total ?? 0,
+        summarizedChapters: [],
+      };
+    } catch (e) {
+      console.error('Batch recheck failed:', e);
+      return { processed: 0, skipped: 0, totalNew: 0, summarizedChapters: [] };
+    }
+  }, [projectId]);
+
   const handleExtract = async () => {
     if (!projectId || !chapterId) return;
     setIsExtracting(true);
@@ -187,6 +237,7 @@ export function useBibleExtraction(
     updateSuggestions,
     handleExtract,
     recheckChapter,
+    recheckBatch,
     approveSuggestion,
     rejectSuggestion,
     loadUpdateSuggestions,

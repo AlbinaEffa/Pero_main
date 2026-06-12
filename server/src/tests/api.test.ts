@@ -13,7 +13,7 @@ const { Pool } = pkg;
 import { eq } from 'drizzle-orm';
 
 import { app } from '../app.js';
-import { users, projects, chapters, storyEntities } from '../db/schema.js';
+import { users, projects, chapters, storyEntities, entityLinks, entityEvents } from '../db/schema.js';
 
 // ── Test state ──────────────────────────────────────────────────────────────
 
@@ -257,5 +257,129 @@ describe('Bible approve/reject', () => {
       .set('Authorization', `Bearer ${ctx.tokenB}`);
 
     expect(res.status).toBe(403);
+  });
+});
+
+// ── Bible profiles: manual edit, links, timeline events ──────────────────────
+
+describe('Bible profiles', () => {
+  let charId = '';
+  let locId = '';
+  let linkId = '';
+  let eventId = '';
+
+  beforeAll(async () => {
+    const char = (await db.insert(storyEntities).values({
+      projectId: ctx.projectId,
+      type: 'character',
+      name: `Maria-${RUN}`,
+      description: 'Молодая травница',
+      status: 'approved',
+      attributes: { appearance: 'рыжие волосы' },
+    }).returning())[0];
+
+    const loc = (await db.insert(storyEntities).values({
+      projectId: ctx.projectId,
+      type: 'location',
+      name: `Forest-${RUN}`,
+      description: 'Тёмный лес',
+      status: 'approved',
+    }).returning())[0];
+
+    charId = char.id;
+    locId = loc.id;
+
+    linkId = (await db.insert(entityLinks).values({
+      projectId: ctx.projectId,
+      sourceEntityId: charId,
+      targetEntityId: locId,
+      relation: 'живёт в',
+    }).returning())[0].id;
+
+    eventId = (await db.insert(entityEvents).values({
+      projectId: ctx.projectId,
+      entityId: charId,
+      title: 'Побег из деревни',
+      description: 'Мария бежит в лес.',
+      eventType: 'status',
+    }).returning())[0].id;
+  });
+
+  it('GET /bible/:projectId returns entities, links and events', async () => {
+    const res = await request(app)
+      .get(`/api/bible/${ctx.projectId}`)
+      .set('Authorization', `Bearer ${ctx.tokenA}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.links.some((l: any) => l.id === linkId)).toBe(true);
+    expect(res.body.events.some((e: any) => e.id === eventId)).toBe(true);
+  });
+
+  it('owner edits entity fields with PATCH /bible/:entityId', async () => {
+    const res = await request(app)
+      .patch(`/api/bible/${charId}`)
+      .set('Authorization', `Bearer ${ctx.tokenA}`)
+      .send({
+        description: 'Опытная травница из северной деревни',
+        significance: 'major',
+        attributes: { appearance: 'рыжие волосы', motivations: 'найти брата' },
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.entity.description).toBe('Опытная травница из северной деревни');
+    expect(res.body.entity.significance).toBe('major');
+    expect(res.body.entity.attributes.motivations).toBe('найти брата');
+  });
+
+  it('PATCH with empty body → 400', async () => {
+    const res = await request(app)
+      .patch(`/api/bible/${charId}`)
+      .set('Authorization', `Bearer ${ctx.tokenA}`)
+      .send({});
+
+    expect(res.status).toBe(400);
+  });
+
+  it('non-owner cannot edit entity → 403', async () => {
+    const res = await request(app)
+      .patch(`/api/bible/${charId}`)
+      .set('Authorization', `Bearer ${ctx.tokenB}`)
+      .send({ description: 'hacked' });
+
+    expect(res.status).toBe(403);
+  });
+
+  it('non-owner cannot delete a link → 403', async () => {
+    const res = await request(app)
+      .delete(`/api/bible/links/${linkId}`)
+      .set('Authorization', `Bearer ${ctx.tokenB}`);
+
+    expect(res.status).toBe(403);
+  });
+
+  it('owner deletes a link → 200 and it is gone', async () => {
+    const res = await request(app)
+      .delete(`/api/bible/links/${linkId}`)
+      .set('Authorization', `Bearer ${ctx.tokenA}`);
+
+    expect(res.status).toBe(200);
+
+    const after = await request(app)
+      .get(`/api/bible/${ctx.projectId}`)
+      .set('Authorization', `Bearer ${ctx.tokenA}`);
+    expect(after.body.links.some((l: any) => l.id === linkId)).toBe(false);
+  });
+
+  it('owner deletes a timeline event → 200 and it is gone', async () => {
+    const res = await request(app)
+      .delete(`/api/bible/events/${eventId}`)
+      .set('Authorization', `Bearer ${ctx.tokenA}`);
+
+    expect(res.status).toBe(200);
+
+    const after = await request(app)
+      .get(`/api/bible/${ctx.projectId}`)
+      .set('Authorization', `Bearer ${ctx.tokenA}`);
+    expect(after.body.events.some((e: any) => e.id === eventId)).toBe(false);
   });
 });

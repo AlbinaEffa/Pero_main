@@ -5,7 +5,11 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { BIBLE_MENU_ITEMS } from './constants';
-import { Entity, EntityAttributes, EntitySignificance, BibleUpdateSuggestion } from './types';
+import { Entity, EntityLink, EntityEvent, BibleUpdateSuggestion } from './types';
+import {
+  significanceLabel, significanceColor, groupBySignificance,
+  EntityAttributesBlock, EntityConnectionsBlock, EntityTimelineBlock, FirstAppearanceLine,
+} from './entityDisplay';
 import { wordDiff, DiffToken } from '../../lib/wordDiff';
 
 interface ChapterSummary {
@@ -21,6 +25,8 @@ interface Props {
   suggestions: Entity[];
   approvedEntities: Entity[];
   updateSuggestions: BibleUpdateSuggestion[];
+  entityLinks: EntityLink[];
+  entityEvents: EntityEvent[];
   chapters: ChapterSummary[];
   onExtract: () => void;
   chapterFreshnessStatus: 'fresh' | 'stale' | 'unknown';
@@ -37,44 +43,13 @@ interface Props {
   onClose: () => void;
 }
 
-function significanceLabel(s: EntitySignificance | null | undefined): string {
-  if (s === 'major')    return 'Ключевой';
-  if (s === 'moderate') return 'Важный';
-  if (s === 'minor')    return 'Эпизодический';
-  return '';
-}
-
-function significanceColor(s: EntitySignificance | null | undefined): string {
-  if (s === 'major')    return 'bg-violet-100 text-violet-700';
-  if (s === 'moderate') return 'bg-sky-100 text-sky-700';
-  if (s === 'minor')    return 'bg-stone-100 text-stone-500';
-  return '';
-}
-
-/** Flatten attributes object into displayable key-value pairs. */
-function attributeEntries(attrs: EntityAttributes | null | undefined): { label: string; value: string }[] {
-  if (!attrs) return [];
-  const labels: Record<string, string> = {
-    aliases:        'Псевдонимы',
-    appearance:     'Внешность',
-    personality:    'Характер',
-    role:           'Роль',
-    region:         'Регион',
-    physicalDetails:'Описание',
-    mood:           'Атмосфера',
-    properties:     'Свойства',
-    origin:         'Происхождение',
-    owner:          'Владелец',
-    scope:          'Область',
-    exceptions:     'Исключения',
-  };
-  return Object.entries(attrs)
-    .filter(([, v]) => v && (typeof v === 'string' ? v.trim() : (v as string[]).length > 0))
-    .map(([k, v]) => ({
-      label: labels[k] ?? k,
-      value: Array.isArray(v) ? v.join(', ') : String(v),
-    }));
-}
+/** Map entity type → панельная вкладка, used when following a connection link. */
+const TYPE_TO_TAB: Record<string, string> = {
+  character: 'characters',
+  location:  'locations',
+  item:      'items',
+  rule:      'rules',
+};
 
 function entityTypeLabel(type: string) {
   if (type === 'character') return 'ПЕРСОНАЖ';
@@ -92,7 +67,8 @@ function entityTypeColor(type: string) {
 
 export function StoryBiblePanel({
   activeBibleTab, onTabChange, isExtracting,
-  suggestions, approvedEntities, updateSuggestions, chapters,
+  suggestions, approvedEntities, updateSuggestions,
+  entityLinks, entityEvents, chapters,
   onExtract, chapterFreshnessStatus, onRecheck,
   onApproveSuggestion, onRejectSuggestion,
   onAcceptUpdate, onRejectUpdate, onDismissUpdate,
@@ -103,6 +79,17 @@ export function StoryBiblePanel({
   const [selectedLocId,  setSelectedLocId]    = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId]   = useState<string | null>(null);
   const [selectedRuleId, setSelectedRuleId]   = useState<string | null>(null);
+
+  /** Follow a connection: switch tab and select the entity on the other end. */
+  function openEntity(entity: Entity) {
+    const tab = TYPE_TO_TAB[entity.type];
+    if (!tab) return;
+    if (entity.type === 'character') setSelectedCharId(entity.id);
+    if (entity.type === 'location')  setSelectedLocId(entity.id);
+    if (entity.type === 'item')      setSelectedItemId(entity.id);
+    if (entity.type === 'rule')      setSelectedRuleId(entity.id);
+    onTabChange(tab);
+  }
 
   const pendingUpdates = updateSuggestions.filter(u => u.status === 'pending');
 
@@ -246,7 +233,12 @@ export function StoryBiblePanel({
               <div className="space-y-4">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-xs font-bold uppercase tracking-widest text-[#1e2d1f]/40">Найдено в тексте</span>
-                  <button className="text-xs font-medium text-[#1e2d1f]/60 hover:text-[#1e2d1f]">Одобрить все</button>
+                  <button
+                    onClick={() => suggestions.forEach(s => onApproveSuggestion(s.id))}
+                    className="text-xs font-medium text-[#1e2d1f]/60 hover:text-[#1e2d1f]"
+                  >
+                    Одобрить все
+                  </button>
                 </div>
                 {suggestions.map(suggestion => (
                   <div key={suggestion.id} className="bg-white rounded-2xl p-4 shadow-sm border border-[#1e2d1f]/5 relative group">
@@ -326,16 +318,16 @@ export function StoryBiblePanel({
           const chars = approvedEntities.filter(e => e.type === 'character');
           const selected = chars.find(c => c.id === selectedCharId);
           if (selected) return (
-            <div className="flex flex-col">
-              <button onClick={() => setSelectedCharId(null)} className="flex items-center gap-2 text-xs text-[#1e2d1f]/60 hover:text-[#1e2d1f] mb-6 transition-colors">
+            <div className="flex flex-col gap-4">
+              <button onClick={() => setSelectedCharId(null)} className="flex items-center gap-2 text-xs text-[#1e2d1f]/60 hover:text-[#1e2d1f] mb-2 transition-colors">
                 <ChevronLeft size={14} /> Назад к списку
               </button>
-              <div className="flex flex-col items-center text-center mb-6">
+              <div className="flex flex-col items-center text-center">
                 <div className="w-20 h-20 rounded-full bg-rose-100 flex items-center justify-center mb-4">
                   <Users size={32} className="text-rose-500" />
                 </div>
                 <h2 className="text-xl font-bold text-[#1a1a1a] mb-1">{selected.name}</h2>
-                <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                <div className="flex items-center justify-center gap-1.5 flex-wrap mb-2">
                   <span className="text-[9px] font-bold text-rose-500 uppercase tracking-wider">ПЕРСОНАЖ</span>
                   {selected.significance && (
                     <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${significanceColor(selected.significance)}`}>
@@ -343,12 +335,22 @@ export function StoryBiblePanel({
                     </span>
                   )}
                 </div>
+                <FirstAppearanceLine entity={selected} chapters={chapters} />
               </div>
-              <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">Описание</h4>
-              <div className="bg-white p-4 rounded-xl border border-black/5 shadow-sm text-[13px] leading-relaxed text-black/80 mb-4">
-                {selected.description}
+              <div>
+                <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">Описание</h4>
+                <div className="bg-white p-4 rounded-xl border border-black/5 shadow-sm text-[13px] leading-relaxed text-black/80">
+                  {selected.description}
+                </div>
               </div>
               <EntityAttributesBlock attributes={selected.attributes} />
+              <EntityConnectionsBlock
+                entity={selected}
+                links={entityLinks}
+                entities={approvedEntities}
+                onSelectEntity={openEntity}
+              />
+              <EntityTimelineBlock entity={selected} events={entityEvents} chapters={chapters} />
             </div>
           );
           if (chars.length === 0) return (
@@ -358,15 +360,25 @@ export function StoryBiblePanel({
             </div>
           );
           return (
-            <div className="grid grid-cols-2 gap-3">
-              {chars.map(char => (
-                <div key={char.id} onClick={() => setSelectedCharId(char.id)}
-                  className="cursor-pointer rounded-xl p-3 transition-all bg-white border border-transparent hover:border-black/10 hover:shadow-sm flex flex-col items-center text-center">
-                  <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center mb-3">
-                    <Users size={20} className="text-rose-500" />
+            <div className="space-y-5">
+              {groupBySignificance(chars).map(group => (
+                <div key={group.key}>
+                  <div className="flex items-center gap-1.5 mb-2 ml-1">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#1e2d1f]/40">{group.title}</span>
+                    <span className="text-[10px] text-[#1e2d1f]/30 font-medium">· {group.items.length}</span>
                   </div>
-                  <h3 className="font-bold text-[13px] text-[#1a1a1a] truncate w-full">{char.name}</h3>
-                  <p className="text-[9px] font-bold text-rose-400 uppercase tracking-wider">ПЕРСОНАЖ</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {group.items.map(char => (
+                      <div key={char.id} onClick={() => setSelectedCharId(char.id)}
+                        className="cursor-pointer rounded-xl p-3 transition-all bg-white border border-transparent hover:border-black/10 hover:shadow-sm flex flex-col items-center text-center">
+                        <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center mb-3">
+                          <Users size={20} className="text-rose-500" />
+                        </div>
+                        <h3 className="font-bold text-[13px] text-[#1a1a1a] truncate w-full">{char.name}</h3>
+                        <p className="text-[9px] font-bold text-rose-400 uppercase tracking-wider">ПЕРСОНАЖ</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
@@ -395,12 +407,18 @@ export function StoryBiblePanel({
                     </span>
                   )}
                 </div>
+                <div className="mt-2 flex justify-center">
+                  <FirstAppearanceLine entity={selected} chapters={chapters} />
+                </div>
               </div>
               <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">Описание</h4>
               <div className="bg-white p-4 rounded-xl border border-black/5 shadow-sm text-[13px] leading-relaxed text-black/80 mb-4">
                 {selected.description}
               </div>
-              <EntityAttributesBlock attributes={selected.attributes} />
+              <div className="space-y-4">
+                <EntityAttributesBlock attributes={selected.attributes} />
+                <EntityConnectionsBlock entity={selected} links={entityLinks} entities={approvedEntities} onSelectEntity={openEntity} />
+              </div>
             </div>
           );
           if (locs.length === 0) return (
@@ -447,12 +465,18 @@ export function StoryBiblePanel({
                     </span>
                   )}
                 </div>
+                <div className="mt-2 flex justify-center">
+                  <FirstAppearanceLine entity={selected} chapters={chapters} />
+                </div>
               </div>
               <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">Описание</h4>
               <div className="bg-white p-4 rounded-xl border border-black/5 shadow-sm text-[13px] leading-relaxed text-black/80 mb-4">
                 {selected.description}
               </div>
-              <EntityAttributesBlock attributes={selected.attributes} />
+              <div className="space-y-4">
+                <EntityAttributesBlock attributes={selected.attributes} />
+                <EntityConnectionsBlock entity={selected} links={entityLinks} entities={approvedEntities} onSelectEntity={openEntity} />
+              </div>
             </div>
           );
           if (items.length === 0) return (
@@ -504,7 +528,10 @@ export function StoryBiblePanel({
               <div className="bg-white p-4 rounded-xl border border-black/5 shadow-sm text-[13px] leading-relaxed text-black/80 italic font-serif mb-4">
                 {selected.description}
               </div>
-              <EntityAttributesBlock attributes={selected.attributes} />
+              <div className="space-y-4">
+                <EntityAttributesBlock attributes={selected.attributes} />
+                <EntityConnectionsBlock entity={selected} links={entityLinks} entities={approvedEntities} onSelectEntity={openEntity} />
+              </div>
             </div>
           );
           if (rules.length === 0) return (
@@ -530,29 +557,6 @@ export function StoryBiblePanel({
             </div>
           );
         })()}
-      </div>
-    </div>
-  );
-}
-
-// ── EntityAttributesBlock ─────────────────────────────────────────────────────
-
-function EntityAttributesBlock({ attributes }: { attributes?: EntityAttributes | null }) {
-  const entries = attributeEntries(attributes);
-  if (entries.length === 0) return null;
-  return (
-    <div>
-      <h4 className="text-[10px] font-bold text-black/40 uppercase tracking-wider mb-2 ml-1">Детали</h4>
-      <div className="bg-white rounded-xl border border-black/5 shadow-sm overflow-hidden">
-        {entries.map(({ label, value }, i) => (
-          <div
-            key={label}
-            className={`flex gap-3 px-4 py-2.5 ${i < entries.length - 1 ? 'border-b border-black/5' : ''}`}
-          >
-            <span className="text-[11px] font-semibold text-black/35 w-24 flex-shrink-0 pt-0.5">{label}</span>
-            <span className="text-[12px] text-black/75 leading-relaxed">{value}</span>
-          </div>
-        ))}
       </div>
     </div>
   );

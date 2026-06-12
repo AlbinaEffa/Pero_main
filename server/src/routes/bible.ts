@@ -1,20 +1,18 @@
 import express from 'express';
 import { createHash } from 'crypto';
 import { eq, and, ne, inArray } from 'drizzle-orm';
-import { GoogleGenAI } from '@google/genai';
 import * as schema from '../db/schema.js';
 import { db } from '../db/client.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rateLimiter.js';
 import { guardChat } from '../lib/aiGuard.js';
 import { stripHtml } from '../lib/html.js';
+import { getAIProvider } from '../lib/aiProvider.js';
+import { aiQuota } from '../lib/quota.js';
 
 const router = express.Router();
 
-let aiClient: GoogleGenAI | null = null;
-if (process.env.GEMINI_API_KEY) {
-  aiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-}
+const ai = getAIProvider();
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -149,11 +147,29 @@ significance — важность сущности для всего произ�
   "minor"    — упомянут с деталями, но роль эпизодическая
 
 attributes — структурированные поля по типу:
-  character: { "aliases": [...], "appearance": "...", "personality": "...", "role": "..." }
+  character: { "aliases": [...], "appearance": "...", "personality": "...", "role": "...",
+               "background": "...", "motivations": "...", "speech": "...", "secrets": "...",
+               "plotRelevance": "..." }
+    background    — предыстория: факты биографии до текущих событий
+    motivations   — что движет персонажем: цели, желания, страхи
+    speech        — манера речи: лексика, тон, характерные обороты (для консистентности диалогов)
+    secrets       — что персонаж скрывает от других
+    plotRelevance — одно предложение: зачем персонаж сюжету
   location:  { "region": "...", "physicalDetails": "...", "mood": "..." }
   item:      { "properties": "...", "origin": "...", "owner": "..." }
   rule:      { "scope": "...", "exceptions": "..." }
   Включай только поля, подтверждённые текстом. Пустые поля не добавляй.
+
+events — ТОЛЬКО для character: 0–3 сюжетно значимых события, произошедших с персонажем
+  В ЭТОЙ главе. Не пересказ сцены, а перелом: конфликт, перемена статуса, важное решение,
+  раскрытие тайны, сдвиг в отношениях.
+  Каждое событие: { "title": "2–4 слова", "description": "одно предложение",
+                    "eventType": "conflict" | "relationship" | "status" | "revelation" | "other" }
+
+relations — связи между сущностями ответа, ЯВНО подтверждённые текстом:
+  [{ "from": "Имя", "to": "Имя", "relation": "краткий тип" }]
+  relation читается от from к to: «мать», «наставник», «соперник», «владеет», «живёт в».
+  Не выдумывай связи и не включай неопределённые («знаком с»).
 
 Ответ — строго JSON, без markdown-обёртки:
 {
@@ -163,7 +179,10 @@ attributes — структурированные поля по типу:
       "name": "Каноническое имя",
       "description": "...",
       "significance": "major",
-      "attributes": { "appearance": "высокий, светловолосый", "role": "главный герой" }
+      "attributes": { "appearance": "высокий, светловолосый", "role": "главный герой", "motivations": "вернуть младшую сестру" },
+      "events": [
+        { "title": "Побег из крепости", "description": "Сбегает из крепости через подземный ход.", "eventType": "status" }
+      ]
     },
     {
       "type": "location",
@@ -172,6 +191,9 @@ attributes — структурированные поля по типу:
       "significance": "moderate",
       "attributes": { "physicalDetails": "каменные стены, низкие потолки", "mood": "мрачная" }
     }
+  ],
+  "relations": [
+    { "from": "Каноническое имя", "to": "Название", "relation": "скрывается в" }
   ],
   "chapterSummary": "Рабочее название главы (2–4 слова)"
 }`;
@@ -210,6 +232,12 @@ ${list}
 • Используй каноническое имя из списка при совпадении (не новую форму).
 • Если ничего нового нет — верни пустой массив entities.
 • Для каждой сущности добавь significance ("major"/"moderate"/"minor") и attributes (только подтверждённые текстом поля).
+  Для character доступны также: background (предыстория), motivations (мотивация),
+  speech (манера речи), secrets (тайны), plotRelevance (зачем сюжету).
+• Для character добавь events: 0–3 сюжетно значимых события персонажа В ЭТОЙ главе
+  ({ "title": "2–4 слова", "description": "одно предложение", "eventType": "conflict"|"relationship"|"status"|"revelation"|"other" }).
+• Добавь relations: связи между сущностями (из списка или новыми), ЯВНО подтверждённые текстом:
+  [{ "from": "Имя", "to": "Имя", "relation": "краткий тип («мать», «наставник», «живёт в»)" }].
 
 Ответ — строго JSON, без markdown:
 {
@@ -219,9 +247,11 @@ ${list}
       "name": "Имя из списка или новое",
       "description": "...",
       "significance": "major",
-      "attributes": { "appearance": "...", "role": "..." }
+      "attributes": { "appearance": "...", "role": "..." },
+      "events": [{ "title": "...", "description": "...", "eventType": "conflict" }]
     }
   ],
+  "relations": [{ "from": "Имя", "to": "Имя", "relation": "союзник" }],
   "chapterSummary": "Рабочее название главы (2–4 слова)"
 }`;
 }
@@ -258,6 +288,8 @@ ${list}
 
 НЕ анализируй то, что не изменилось. Описание — строго из текста.
 Для каждой сущности добавь significance ("major"/"moderate"/"minor") и attributes (только подтверждённые текстом поля).
+Для character добавь events (0–3 события персонажа в изменённых фрагментах) и
+relations (связи, явно подтверждённые текстом) — по общим правилам.
 
 Ответ — строго JSON, без markdown:
 {
@@ -267,9 +299,11 @@ ${list}
       "name": "Имя",
       "description": "...",
       "significance": "moderate",
-      "attributes": { "appearance": "..." }
+      "attributes": { "appearance": "..." },
+      "events": []
     }
   ],
+  "relations": [],
   "chapterSummary": null
 }`;
 }
@@ -305,6 +339,11 @@ ${list}
 • Не предлагай косметические переформулировки.
 • Для известных сущностей: включай ТОЛЬКО если есть новая информация.
 • Для каждой сущности добавь significance ("major"/"moderate"/"minor") и attributes (только подтверждённые текстом поля).
+  Для character доступны также: background, motivations, speech, secrets, plotRelevance.
+• Для character добавь events: 0–3 сюжетно значимых события персонажа в данной главе
+  ({ "title": "2–4 слова", "description": "одно предложение", "eventType": "conflict"|"relationship"|"status"|"revelation"|"other" }).
+• Для каждой главы добавь relations: связи между сущностями, ЯВНО подтверждённые текстом
+  ([{ "from": "Имя", "to": "Имя", "relation": "краткий тип" }]).
 
 ${chapterBlocks}
 
@@ -319,9 +358,11 @@ ${chapterBlocks}
           "name": "Имя",
           "description": "...",
           "significance": "major",
-          "attributes": { "appearance": "...", "role": "..." }
+          "attributes": { "appearance": "...", "role": "..." },
+          "events": [{ "title": "...", "description": "...", "eventType": "status" }]
         }
       ],
+      "relations": [{ "from": "Имя", "to": "Имя", "relation": "сестра" }],
       "chapterSummary": "2–4 слова или null"
     }
   ]
@@ -339,17 +380,66 @@ function cleanJsonResponse(raw: string): string {
 
 // ── shared: process AI extraction results ────────────────────────────────────
 
+interface AiEvent {
+  title?: string;
+  description?: string;
+  eventType?: string;
+}
+
 interface AiEntity {
   type: string;
   name: string;
   description: string;
   significance?: string;
   attributes?: Record<string, unknown>;
+  events?: AiEvent[];
+}
+
+interface AiRelation {
+  from?: string;
+  to?: string;
+  relation?: string;
 }
 
 interface ProcessResult {
   newSuggestions:    (typeof schema.storyEntities.$inferSelect)[];
   updateSuggestions: (typeof schema.bibleUpdateSuggestions.$inferSelect)[];
+  newLinks:  number;
+  newEvents: number;
+}
+
+const VALID_EVENT_TYPES = new Set(['conflict', 'relationship', 'status', 'revelation', 'other']);
+const MAX_EVENTS_PER_ENTITY = 3;
+
+/** True for null, '', whitespace-only strings and empty arrays. */
+function isEmptyValue(v: unknown): boolean {
+  if (v == null) return true;
+  if (typeof v === 'string') return !v.trim();
+  if (Array.isArray(v)) return v.length === 0;
+  return false;
+}
+
+/**
+ * Additive attribute merge: fills ONLY missing/empty fields of the existing
+ * attributes with AI-provided values. Author-visible values are never overwritten —
+ * description changes go through the update-suggestion flow instead.
+ * Returns the merged object, or null when nothing new was added.
+ */
+function mergeMissingAttributes(
+  existing: Record<string, unknown> | null,
+  incoming: Record<string, unknown> | null | undefined,
+): Record<string, unknown> | null {
+  if (!incoming || typeof incoming !== 'object') return null;
+  const merged: Record<string, unknown> = { ...(existing ?? {}) };
+  let changed = false;
+  for (const [key, value] of Object.entries(incoming)) {
+    if (isEmptyValue(value)) continue;
+    if (isEmptyValue(merged[key])) {
+      merged[key] = value;
+      changed = true;
+    }
+  }
+  return changed ? merged : null;
 }
 
 /**
@@ -365,17 +455,31 @@ interface ProcessResult {
  */
 async function processExtractionResults(
   entities: AiEntity[],
+  relations: AiRelation[],
   projectId: string,
   chapterId: string | null,
   chapterTitle: string | null,
   plainText: string | null,
 ): Promise<ProcessResult> {
-  const approved = await db
-    .select({ id: schema.storyEntities.id, name: schema.storyEntities.name, description: schema.storyEntities.description })
+  // All non-rejected entities: approved drive the update-suggestion flow,
+  // pending ones still resolve names for links/events.
+  const existingEntities = await db
+    .select({
+      id:           schema.storyEntities.id,
+      name:         schema.storyEntities.name,
+      status:       schema.storyEntities.status,
+      description:  schema.storyEntities.description,
+      significance: schema.storyEntities.significance,
+      attributes:   schema.storyEntities.attributes,
+    })
     .from(schema.storyEntities)
-    .where(and(eq(schema.storyEntities.projectId, projectId), eq(schema.storyEntities.status, 'approved')));
+    .where(and(eq(schema.storyEntities.projectId, projectId), ne(schema.storyEntities.status, 'rejected')));
 
-  const approvedMap = new Map(approved.map(e => [e.name.toLowerCase(), e]));
+  const approvedMap = new Map(
+    existingEntities.filter(e => e.status === 'approved').map(e => [e.name.toLowerCase(), e]),
+  );
+  /** Canonical name (lowercase) → entity id, for resolving relations and events. */
+  const nameToId = new Map(existingEntities.map(e => [e.name.toLowerCase(), e.id]));
   const newSuggestions: (typeof schema.storyEntities.$inferSelect)[] = [];
   const updateSuggestions: (typeof schema.bibleUpdateSuggestions.$inferSelect)[] = [];
   const safeChapterId = (chapterId && isValidUUID(chapterId)) ? chapterId : null;
@@ -386,6 +490,7 @@ async function processExtractionResults(
     const existing = approvedMap.get(key);
 
     if (!existing) {
+      if (nameToId.has(key)) continue; // already pending from an earlier extraction — don't duplicate
       const validSignificance = ['major', 'moderate', 'minor'].includes(entity.significance ?? '')
         ? entity.significance!
         : null;
@@ -400,7 +505,23 @@ async function processExtractionResults(
         attributes: entity.attributes ?? null,
       }).returning();
       newSuggestions.push(inserted);
+      nameToId.set(key, inserted.id);
       continue;
+    }
+
+    // Additive enrichment of approved entities: fill missing attributes and
+    // significance silently (never overwrites what the author already sees).
+    const enrichment: Record<string, unknown> = {};
+    const mergedAttrs = mergeMissingAttributes(
+      existing.attributes as Record<string, unknown> | null,
+      entity.attributes,
+    );
+    if (mergedAttrs) enrichment.attributes = mergedAttrs;
+    if (!existing.significance && ['major', 'moderate', 'minor'].includes(entity.significance ?? '')) {
+      enrichment.significance = entity.significance;
+    }
+    if (Object.keys(enrichment).length > 0) {
+      await db.update(schema.storyEntities).set(enrichment).where(eq(schema.storyEntities.id, existing.id));
     }
 
     if (!descriptionsDiffer(existing.description, entity.description)) continue;
@@ -439,7 +560,87 @@ async function processExtractionResults(
     // 'rejected' or 'accepted' → skip
   }
 
-  return { newSuggestions, updateSuggestions };
+  // ── Timeline events (характерные события арки персонажа) ──────────────────
+  let newEvents = 0;
+  const entityIdsWithEvents = entities
+    .filter(e => Array.isArray(e.events) && e.events.length > 0 && e.name?.trim())
+    .map(e => nameToId.get(e.name.trim().toLowerCase()))
+    .filter((id): id is string => Boolean(id));
+
+  if (entityIdsWithEvents.length > 0) {
+    const priorEvents = await db
+      .select({ entityId: schema.entityEvents.entityId, title: schema.entityEvents.title })
+      .from(schema.entityEvents)
+      .where(inArray(schema.entityEvents.entityId, entityIdsWithEvents));
+    const seenEvents = new Set(priorEvents.map(ev => `${ev.entityId}:${normalizeDesc(ev.title)}`));
+
+    for (const entity of entities) {
+      if (!Array.isArray(entity.events) || !entity.name?.trim()) continue;
+      const entityId = nameToId.get(entity.name.trim().toLowerCase());
+      if (!entityId) continue;
+
+      for (const ev of entity.events.slice(0, MAX_EVENTS_PER_ENTITY)) {
+        const title = (ev?.title ?? '').trim().slice(0, 120);
+        if (!title) continue;
+        const dedupeKey = `${entityId}:${normalizeDesc(title)}`;
+        if (seenEvents.has(dedupeKey)) continue;
+        seenEvents.add(dedupeKey);
+
+        await db.insert(schema.entityEvents).values({
+          projectId,
+          entityId,
+          chapterId: safeChapterId,
+          chapterTitle,
+          title,
+          description: (ev?.description ?? '').trim().slice(0, 500) || null,
+          eventType: VALID_EVENT_TYPES.has(ev?.eventType ?? '') ? ev!.eventType! : 'other',
+        });
+        newEvents++;
+      }
+    }
+  }
+
+  // ── Entity links (связи между сущностями) ─────────────────────────────────
+  let newLinks = 0;
+  const validRelations = (relations ?? []).filter(r => {
+    const fromId = r.from?.trim() ? nameToId.get(r.from.trim().toLowerCase()) : undefined;
+    const toId   = r.to?.trim()   ? nameToId.get(r.to.trim().toLowerCase())   : undefined;
+    return fromId && toId && fromId !== toId && r.relation?.trim();
+  });
+
+  if (validRelations.length > 0) {
+    const priorLinks = await db
+      .select({
+        sourceEntityId: schema.entityLinks.sourceEntityId,
+        targetEntityId: schema.entityLinks.targetEntityId,
+        relation:       schema.entityLinks.relation,
+      })
+      .from(schema.entityLinks)
+      .where(eq(schema.entityLinks.projectId, projectId));
+    const seenLinks = new Set(
+      priorLinks.map(l => `${l.sourceEntityId}:${l.targetEntityId}:${normalizeDesc(l.relation)}`),
+    );
+
+    for (const rel of validRelations) {
+      const sourceEntityId = nameToId.get(rel.from!.trim().toLowerCase())!;
+      const targetEntityId = nameToId.get(rel.to!.trim().toLowerCase())!;
+      const relation = rel.relation!.trim().slice(0, 80);
+      const dedupeKey = `${sourceEntityId}:${targetEntityId}:${normalizeDesc(relation)}`;
+      if (seenLinks.has(dedupeKey)) continue;
+      seenLinks.add(dedupeKey);
+
+      await db.insert(schema.entityLinks).values({
+        projectId,
+        sourceEntityId,
+        targetEntityId,
+        relation,
+        chapterId: safeChapterId,
+      });
+      newLinks++;
+    }
+  }
+
+  return { newSuggestions, updateSuggestions, newLinks, newEvents };
 }
 
 // ── POST /api/bible/extract ───────────────────────────────────────────────────
@@ -447,26 +648,33 @@ async function processExtractionResults(
 router.post('/extract',
   authenticateToken,
   rateLimit('bible:extract', 20, 60 * 60 * 1000),
+  aiQuota,
   async (req: any, res) => {
     try {
-      if (!aiClient) return res.status(503).json({ error: 'AI is not configured' });
+      if (!ai) return res.status(503).json({ error: 'AI is not configured' });
 
       const { chapterContent, projectId, chapterId } = req.body;
       if (!chapterContent) return res.status(400).json({ error: 'chapterContent is required' });
 
+      // Ownership check BEFORE the AI call — never burn tokens on unauthorized requests
+      const hasProject = Boolean(projectId && isValidUUID(projectId));
+      if (hasProject) {
+        const isOwner = await assertProjectOwnership(projectId, req.user.userId);
+        if (!isOwner) return res.status(403).json({ error: 'Access denied to this project' });
+      }
+
       const plainText = stripHtml(chapterContent);
 
       const response = await guardChat(
-        () => aiClient!.models.generateContent({
-          model: 'gemini-2.5-flash',
+        () => ai.generate({
           contents: `${BASE_EXTRACTION_PROMPT}\n\nТекст главы:\n"""\n${plainText}\n"""`,
-          config: { temperature: 0.15 },
+          temperature: 0.15,
         }),
         { userId: req.user.userId, projectId: projectId ?? null, route: 'bible:extract' }
       );
 
       const raw = response.text || '{"entities":[]}';
-      let parsed: { entities: AiEntity[]; chapterSummary?: string };
+      let parsed: { entities: AiEntity[]; relations?: AiRelation[]; chapterSummary?: string };
       try {
         parsed = JSON.parse(cleanJsonResponse(raw));
       } catch {
@@ -475,19 +683,17 @@ router.post('/extract',
       }
 
       const entities = Array.isArray(parsed) ? parsed : (parsed.entities || []);
+      const relations = Array.isArray(parsed) ? [] : (parsed.relations || []);
 
-      if (projectId && isValidUUID(projectId)) {
-        const isOwner = await assertProjectOwnership(projectId, req.user.userId);
-        if (!isOwner) return res.status(403).json({ error: 'Access denied to this project' });
-
+      if (hasProject) {
         let chapterTitle: string | null = null;
         if (chapterId && isValidUUID(chapterId)) {
           const rows = await db.select({ title: schema.chapters.title }).from(schema.chapters).where(eq(schema.chapters.id, chapterId));
           chapterTitle = rows[0]?.title ?? null;
         }
 
-        const { newSuggestions, updateSuggestions } = await processExtractionResults(
-          entities, projectId, chapterId ?? null, chapterTitle, plainText,
+        const { newSuggestions, updateSuggestions, newLinks, newEvents } = await processExtractionResults(
+          entities, relations, projectId, chapterId ?? null, chapterTitle, plainText,
         );
 
         if (chapterId && isValidUUID(chapterId)) {
@@ -509,6 +715,8 @@ router.post('/extract',
           entities: newSuggestions,
           updates:  updateSuggestions,
           total:    newSuggestions.length + updateSuggestions.length,
+          linksAdded:  newLinks,
+          eventsAdded: newEvents,
           chapterSummary: parsed.chapterSummary,
         });
       }
@@ -540,9 +748,10 @@ router.post('/extract',
 router.post('/recheck/chapter/:chapterId',
   authenticateToken,
   rateLimit('bible:extract', 20, 60 * 60 * 1000),
+  aiQuota,
   async (req: any, res) => {
     try {
-      if (!aiClient) return res.status(503).json({ error: 'AI is not configured' });
+      if (!ai) return res.status(503).json({ error: 'AI is not configured' });
 
       const { chapterId } = req.params;
       if (!isValidUUID(chapterId)) return res.status(400).json({ error: 'Invalid chapterId' });
@@ -599,25 +808,25 @@ router.post('/recheck/chapter/:chapterId',
       }
 
       const response = await guardChat(
-        () => aiClient!.models.generateContent({
-          model: 'gemini-2.5-flash',
+        () => ai.generate({
           contents: `${prompt}\n\nТекст главы:\n"""\n${plainText}\n"""`,
-          config: { temperature: 0.15 },
+          temperature: 0.15,
         }),
         { userId: req.user.userId, projectId, route: 'bible:recheck' }
       );
 
       const raw = response.text || '{"entities":[]}';
-      let parsed: { entities: AiEntity[]; chapterSummary?: string };
+      let parsed: { entities: AiEntity[]; relations?: AiRelation[]; chapterSummary?: string };
       try {
         parsed = JSON.parse(cleanJsonResponse(raw));
       } catch {
         return res.status(500).json({ error: 'AI returned invalid JSON' });
       }
       const entities = Array.isArray(parsed) ? parsed : (parsed.entities || []);
+      const relations = Array.isArray(parsed) ? [] : (parsed.relations || []);
 
-      const { newSuggestions, updateSuggestions } = await processExtractionResults(
-        entities, projectId, chapterId, chapterTitle, plainText,
+      const { newSuggestions, updateSuggestions, newLinks, newEvents } = await processExtractionResults(
+        entities, relations, projectId, chapterId, chapterTitle, plainText,
       );
 
       // Update freshness metadata
@@ -638,6 +847,8 @@ router.post('/recheck/chapter/:chapterId',
         entities: newSuggestions,
         updates:  updateSuggestions,
         total:    newSuggestions.length + updateSuggestions.length,
+        linksAdded:  newLinks,
+        eventsAdded: newEvents,
         chapterSummary: parsed.chapterSummary,
         mode: isIncremental ? 'incremental' : 'full',
       });
@@ -660,9 +871,10 @@ const BATCH_SIZE = 6; // chapters per API call — keeps prompt under ~40k token
 router.post('/recheck/batch',
   authenticateToken,
   rateLimit('bible:extract', 10, 60 * 60 * 1000),  // lower limit — each call is expensive
+  aiQuota,
   async (req: any, res) => {
     try {
-      if (!aiClient) return res.status(503).json({ error: 'AI is not configured' });
+      if (!ai) return res.status(503).json({ error: 'AI is not configured' });
 
       const { projectId, chapterIds } = req.body as { projectId: string; chapterIds: string[] };
       if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid projectId' });
@@ -727,11 +939,7 @@ router.post('/recheck/batch',
         let batchResponse;
         try {
           batchResponse = await guardChat(
-            () => aiClient!.models.generateContent({
-              model: 'gemini-2.5-flash',
-              contents: batchPrompt,
-              config: { temperature: 0.15 },
-            }),
+            () => ai.generate({ contents: batchPrompt, temperature: 0.15 }),
             { userId: req.user.userId, projectId, route: 'bible:recheck' }
           );
         } catch (err) {
@@ -740,7 +948,7 @@ router.post('/recheck/batch',
         }
 
         const raw = batchResponse.text || '{"chapters":[]}';
-        let batchParsed: { chapters: { chapterId: string; entities: AiEntity[]; chapterSummary?: string | null }[] };
+        let batchParsed: { chapters: { chapterId: string; entities: AiEntity[]; relations?: AiRelation[]; chapterSummary?: string | null }[] };
         try {
           batchParsed = JSON.parse(cleanJsonResponse(raw));
         } catch {
@@ -756,9 +964,10 @@ router.post('/recheck/batch',
           if (!chMeta) continue;
 
           const entities = Array.isArray(chResult.entities) ? chResult.entities : [];
+          const relations = Array.isArray(chResult.relations) ? chResult.relations : [];
 
           const { newSuggestions, updateSuggestions } = await processExtractionResults(
-            entities, projectId, chResult.chapterId, chMeta.title, chMeta.plainText,
+            entities, relations, projectId, chResult.chapterId, chMeta.title, chMeta.plainText,
           );
 
           allNewSuggestions.push(...newSuggestions);
@@ -999,7 +1208,7 @@ router.post('/updates/:updateId/dismiss', authenticateToken, async (req: any, re
   }
 });
 
-// ── GET /api/bible/:projectId — list entities for a project ──────────────────
+// ── GET /api/bible/:projectId — entities + links + timeline events ───────────
 
 router.get('/:projectId', authenticateToken, async (req: any, res) => {
   try {
@@ -1009,14 +1218,107 @@ router.get('/:projectId', authenticateToken, async (req: any, res) => {
     const isOwner = await assertProjectOwnership(projectId, req.user.userId);
     if (!isOwner) return res.status(403).json({ error: 'Access denied to this project' });
 
-    const entities = await db
-      .select()
-      .from(schema.storyEntities)
-      .where(eq(schema.storyEntities.projectId, projectId));
+    const [entities, links, events] = await Promise.all([
+      db.select().from(schema.storyEntities).where(eq(schema.storyEntities.projectId, projectId)),
+      db.select().from(schema.entityLinks).where(eq(schema.entityLinks.projectId, projectId)),
+      db.select().from(schema.entityEvents).where(eq(schema.entityEvents.projectId, projectId)),
+    ]);
 
-    res.json({ entities });
+    res.json({ entities, links, events });
   } catch (error) {
     console.error('Error fetching entities:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── PATCH /api/bible/:entityId — manual edit by the author ───────────────────
+//
+// Body: { name?, description?, significance?, attributes? }
+// Авторская правка — источник истины: перезаписывает поля целиком.
+
+router.patch('/:entityId', authenticateToken, async (req: any, res) => {
+  try {
+    const { entityId } = req.params;
+    if (!isValidUUID(entityId)) return res.status(400).json({ error: 'Invalid entity ID' });
+
+    const isOwner = await assertEntityOwnership(entityId, req.user.userId);
+    if (!isOwner) return res.status(403).json({ error: 'Access denied' });
+
+    const { name, description, significance, attributes } = req.body ?? {};
+    const patch: Record<string, unknown> = {};
+
+    if (typeof name === 'string' && name.trim()) patch.name = name.trim().slice(0, 200);
+    if (typeof description === 'string') patch.description = description.slice(0, 4000);
+    if (significance === null || ['major', 'moderate', 'minor'].includes(significance)) {
+      patch.significance = significance;
+    }
+    if (attributes !== undefined) {
+      if (attributes !== null && (typeof attributes !== 'object' || Array.isArray(attributes))) {
+        return res.status(400).json({ error: 'attributes must be an object or null' });
+      }
+      patch.attributes = attributes;
+    }
+
+    if (Object.keys(patch).length === 0) {
+      return res.status(400).json({ error: 'Nothing to update' });
+    }
+
+    const updated = await db
+      .update(schema.storyEntities)
+      .set(patch)
+      .where(eq(schema.storyEntities.id, entityId))
+      .returning();
+
+    if (!updated.length) return res.status(404).json({ error: 'Entity not found' });
+    res.json({ entity: updated[0] });
+  } catch (error) {
+    console.error('Error updating entity:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── DELETE /api/bible/links/:linkId — remove a wrong connection ──────────────
+
+router.delete('/links/:linkId', authenticateToken, async (req: any, res) => {
+  try {
+    const { linkId } = req.params;
+    if (!isValidUUID(linkId)) return res.status(400).json({ error: 'Invalid link ID' });
+
+    const rows = await db
+      .select({ id: schema.entityLinks.id })
+      .from(schema.entityLinks)
+      .innerJoin(schema.projects, eq(schema.entityLinks.projectId, schema.projects.id))
+      .where(and(eq(schema.entityLinks.id, linkId), eq(schema.projects.userId, req.user.userId)));
+
+    if (!rows.length) return res.status(403).json({ error: 'Not found or access denied' });
+
+    await db.delete(schema.entityLinks).where(eq(schema.entityLinks.id, linkId));
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Error deleting entity link:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── DELETE /api/bible/events/:eventId — remove a wrong timeline event ────────
+
+router.delete('/events/:eventId', authenticateToken, async (req: any, res) => {
+  try {
+    const { eventId } = req.params;
+    if (!isValidUUID(eventId)) return res.status(400).json({ error: 'Invalid event ID' });
+
+    const rows = await db
+      .select({ id: schema.entityEvents.id })
+      .from(schema.entityEvents)
+      .innerJoin(schema.projects, eq(schema.entityEvents.projectId, schema.projects.id))
+      .where(and(eq(schema.entityEvents.id, eventId), eq(schema.projects.userId, req.user.userId)));
+
+    if (!rows.length) return res.status(403).json({ error: 'Not found or access denied' });
+
+    await db.delete(schema.entityEvents).where(eq(schema.entityEvents.id, eventId));
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Error deleting entity event:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

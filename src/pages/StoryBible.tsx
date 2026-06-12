@@ -8,6 +8,7 @@ import {
 import { api } from '../services/api';
 import { track } from '../services/analytics';
 import { registerApproval, AhaCelebration } from '../components/AhaCelebration';
+import { PeroLogo } from '../components/Logo';
 import { Entity, EntitySignificance, EntityLink, EntityEvent, Chapter } from '../components/editor/types';
 import {
   significanceLabel, significanceColor, groupBySignificance,
@@ -184,7 +185,7 @@ export default function StoryBible() {
           <Link to="/dashboard" className="p-1.5 rounded-md hover:bg-white/10 transition-colors text-white/60 hover:text-white">
             <ChevronLeft size={18} />
           </Link>
-          <span className="font-serif font-medium text-white tracking-wide">Перо</span>
+          <span className="text-[#f5f0e8]"><PeroLogo size={20} /></span>
         </div>
 
         {/* Nav */}

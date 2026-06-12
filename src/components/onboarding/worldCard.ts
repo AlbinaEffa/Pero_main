@@ -31,10 +31,9 @@ export async function downloadWorldCard(data: WorldCardData): Promise<void> {
   ctx.strokeStyle = 'rgba(30,45,31,0.08)';
   ctx.strokeRect(36, 36, W - 72, H - 72);
 
-  // Перо-вензель
-  ctx.font = '44px serif';
+  // Фирменный знак (тот же путь, что в Logo.tsx / favicon.svg)
   ctx.textAlign = 'center';
-  ctx.fillText('🪶', W / 2, 116);
+  drawPeroMark(ctx, W / 2 - 28, 52, 56);
 
   // Название книги
   ctx.fillStyle = '#1E2D1F';
@@ -86,6 +85,30 @@ export async function downloadWorldCard(data: WorldCardData): Promise<void> {
   a.href = canvas.toDataURL('image/png');
   a.download = `${data.title.replace(/[^\wа-яё\- ]/gi, '').trim().replace(/\s+/g, '-') || 'karta-mira'}.png`;
   a.click();
+}
+
+/** Фирменный знак Перо на canvas — те же пути, что в Logo.tsx. */
+function drawPeroMark(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
+  const s = size / 64;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(s, s);
+  ctx.strokeStyle = '#1E2D1F';
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  const stroke = (d: string, w: number, alpha = 1) => {
+    ctx.globalAlpha = alpha;
+    ctx.lineWidth = w;
+    ctx.stroke(new Path2D(d));
+  };
+  stroke('M51 7 C41.5 9.5 33 15.5 26.5 24 C21 31 17 39.5 15.2 49', 3.2);
+  stroke('M51 7 C53.5 16.5 51.5 26.5 45.5 34.5 C40.5 41.2 33 46.8 25 48.8', 3.2);
+  stroke('M51 7 C43.5 17 35.5 28.5 28.5 38.5 C24 45 19.5 51.5 15.2 57.5', 3.2);
+  stroke('M33.5 31.5 C36.5 32.4 40.5 31.8 43.8 29.8', 2.4, 0.75);
+  stroke('M25 43 C28 43.8 31.5 43.3 34.6 41.6', 2.4, 0.75);
+  stroke('M14 61.5 C23 63.8 35 63.8 45.5 61', 2.6, 0.45);
+  ctx.restore();
+  ctx.globalAlpha = 1;
 }
 
 function plural(n: number, one: string, few: string, many: string): string {

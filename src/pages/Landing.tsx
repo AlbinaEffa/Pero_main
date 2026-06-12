@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { PenTool, BookOpen, Sparkles, MoveRight } from 'lucide-react';
+import { PeroMark } from '../components/Logo';
 
 export default function Landing() {
   return (
@@ -7,8 +8,8 @@ export default function Landing() {
       {/* Header */}
       <header className="flex items-center justify-between p-6 lg:px-12 border-b border-black/10">
         <div className="flex items-center gap-2">
-          <PenTool size={24} className="text-[var(--color-accent)]" />
-          <span className="text-3xl font-serif font-bold italic tracking-tighter">перо</span>
+          <PeroMark size={26} className="text-[var(--color-accent)]" />
+          <span className="text-3xl font-serif font-semibold tracking-wide">Перо</span>
         </div>
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
           <a href="#features" className="hover:text-[var(--color-accent)] transition-colors">Возможности</a>
@@ -75,7 +76,7 @@ export default function Landing() {
 
       {/* Footer */}
       <footer className="py-8 text-center text-sm text-black/40 border-t border-black/10">
-        &copy; {new Date().getFullYear()} перо Studio. Все права защищены.
+        &copy; {new Date().getFullYear()} Перо. Все права защищены.
       </footer>
     </div>
   );

@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Users, MapPin, Box, Globe, Feather, BookOpen, PenLine, Download,
+  Users, MapPin, Box, Globe, BookOpen, PenLine, Download,
   Link2, Activity, Sparkles,
 } from 'lucide-react';
+import { PeroMark } from '../Logo';
 import { api } from '../../services/api';
 import { track } from '../../services/analytics';
 import { Entity } from '../editor/types';
@@ -87,7 +88,7 @@ export function WorldMapStep({ projectId, projectTitle, firstChapterId, world }:
 
   return (
     <div className="flex flex-col items-center px-6 pt-14 pb-16 min-h-screen">
-      <Feather size={26} className="text-[#4A5D4E] mb-4" />
+      <PeroMark size={30} className="text-[#4A5D4E] mb-4" />
       <h1 className="font-serif text-3xl md:text-5xl font-semibold text-[#1e2d1f] mb-1 text-center">
         Карта вашего мира
       </h1>

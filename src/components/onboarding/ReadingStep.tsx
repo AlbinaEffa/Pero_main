@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Feather, Users, MapPin, Box, Globe, AlertTriangle, RefreshCw, ArrowRight } from 'lucide-react';
+import { Users, MapPin, Box, Globe, AlertTriangle, RefreshCw, ArrowRight } from 'lucide-react';
+import { PeroMark } from '../Logo';
 import { Entity } from '../editor/types';
 import { WorldBuildState } from './useWorldBuild';
 
@@ -52,7 +53,7 @@ export function ReadingStep({ world, quotes, onComplete }: Props) {
       {/* Перо «пишет» */}
       <div className="relative mb-6">
         <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center">
-          <Feather size={28} className="text-[#4A5D4E] animate-[quill_1.6s_ease-in-out_infinite]" />
+          <PeroMark size={30} className="text-[#4A5D4E] animate-[quill_1.6s_ease-in-out_infinite]" />
         </div>
         <style>{`@keyframes quill { 0%,100% { transform: rotate(-6deg) translateY(0); } 50% { transform: rotate(4deg) translateY(-3px); } }`}</style>
       </div>

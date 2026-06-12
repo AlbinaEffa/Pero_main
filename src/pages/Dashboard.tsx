@@ -10,6 +10,7 @@ import ImportModal from '../components/ImportModal';
 import { ProcessingStatusPanel } from '../components/ProcessingStatusPanel';
 import { OnboardingWizard, ONBOARDING_KEY } from '../components/OnboardingWizard';
 import { FeedbackButton } from '../components/FeedbackButton';
+import { PeroLogo } from '../components/Logo';
 import { ExportPanel } from '../components/ExportPanel';
 
 import { api } from '../services/api';
@@ -963,6 +964,9 @@ export default function Dashboard() {
           {/* Header */}
           <header className="dash-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px', gap: '16px' }}>
             <div>
+              <div style={{ color: '#4A5D4E', marginBottom: '10px' }}>
+                <PeroLogo size={20} />
+              </div>
               <h1 style={{
                 fontFamily: '"Cormorant Garamond", serif',
                 fontSize: 'clamp(40px, 5vw, 60px)',

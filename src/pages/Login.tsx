@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { PenTool, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import { PeroMark } from '../components/Logo';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { track, identifyUser } from '../services/analytics';
@@ -62,8 +63,8 @@ export default function Login() {
       <div className="w-full max-w-md bg-white p-10 rounded-3xl shadow-xl shadow-black/5 border border-black/5">
         <div className="flex justify-center mb-8">
           <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <PenTool size={32} className="text-[var(--color-accent)]" />
-            <span className="text-4xl font-serif font-bold italic tracking-tighter">перо</span>
+            <PeroMark size={34} className="text-[var(--color-accent)]" />
+            <span className="text-4xl font-serif font-semibold tracking-wide">Перо</span>
           </Link>
         </div>
 

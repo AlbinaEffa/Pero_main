@@ -6,6 +6,7 @@ import {
   FileText, FileCheck, AlertCircle, Trash2, ChevronDown, GripVertical,
 } from 'lucide-react';
 import { Chapter, ChapterType } from './types';
+import { PeroLogo } from '../Logo';
 
 interface Props {
   projectId: string;
@@ -186,7 +187,9 @@ export function ChapterSidebar({
         >
           <ChevronLeft size={18} />
         </Link>
-        <span className="font-serif font-medium text-white tracking-wide">Перо</span>
+        <span className="text-[#f5f0e8]">
+          <PeroLogo size={20} />
+        </span>
       </div>
 
       {/* Chapter list */}

@@ -1,0 +1,125 @@
+# Перо — контекст проекта для AI-ассистентов
+
+Этот файл автоматически загружается Claude Code (и другими агентами) в начале сессии.
+Обновляй его при крупных решениях.
+
+## Что это
+
+«Перо» — писательская студия с ИИ для русскоязычных авторов (Author.Today, Litnet).
+Цель — продакшен. Монорепо: фронтенд в корне (React 19 + Vite + Tiptap + Tailwind),
+бэкенд в `server/` (Express + PostgreSQL + pgvector + Drizzle).
+
+## Продуктовая стратегия (выбрана 12.06.2026)
+
+Вариант B «Умная библия истории»: позиционирование «загрузи рукопись → авто-библия →
+отчёт противоречий». Freemium: Free (лимиты) / Pro 599 ₽/мес (решено 12.06: ИП → ЮKassa).
+Бенчмарк — Mythril.io.
+Документы (папка выше):
+- `../Перо_PRD.md` — главный документ: требования P0/P1/P2 со статусами, тарифы, метрики, open questions, timeline
+- `../Перо_продуктовое_описание.md` — 3 варианта продукта, сравнение, почему выбран B
+- `../Перо_анализ_конкурентов.md` — разбор Mythril, сравнение рынка
+
+Roadmap 90 дней: ~~лимиты AI~~ ✓ → биллинг (ЮKassa) → онбординг «рукопись→библия» →
+углублённые профили персонажей + отчёт противоречий → шеринг-страницы библий →
+закрытая бета 20–30 авторов. Фичи «комбайна» (генерация изображений, серии книг) —
+только после первых 50 платящих.
+
+## Ключевые архитектурные решения
+
+### AI-провайдеры (12.06.2026)
+- Все AI-вызовы ТОЛЬКО через `server/src/lib/aiProvider.ts` (`getAIProvider()` /
+  `getEmbeddingProvider()`). НЕ импортировать SDK провайдеров напрямую в маршрутах.
+- Провайдеры: gemini (default) | openai (любой OpenAI-совместимый через AI_BASE_URL:
+  OpenRouter, DeepSeek, локальные) | anthropic. Конфиг — env, см. `server/.env.example`.
+- Эмбеддинги зафиксированы на 768 измерений (pgvector `vector(768)`):
+  Gemini text-embedding-004 или OpenAI text-embedding-3-small (dimensions=768).
+  У Anthropic эмбеддингов нет — нужен дополнительный ключ Gemini/OpenAI.
+- Обёртка вызовов: `guardChat`/`guardEmbed` из `server/src/lib/aiGuard.ts`
+  (timeout + circuit breaker + лог стоимости в `cost_logs`).
+
+### Квоты AI (12.06.2026)
+- `server/src/lib/quota.ts`: дневная квота интерактивных AI-действий per-user,
+  считается из `cost_logs` (отдельных счётчиков нет). Free 20 / Pro 300 в день
+  (env: QUOTA_FREE_AI_PER_DAY / QUOTA_PRO_AI_PER_DAY), сброс в полночь UTC.
+- Middleware `aiQuota` стоит на всех интерактивных AI-маршрутах (ai.ts, bible.ts,
+  revision.ts) ПОСЛЕ authenticateToken и rateLimit. Возвращает 429 + code AI_QUOTA_EXCEEDED.
+- НЕ считаются: фоновые джобы (`worker:%`) и эмбеддинги — извлечение библии при
+  импорте рукописи это aha-момент онбординга, его квотой не душим.
+- План пользователя: `users.plan` ('free'|'pro') + `users.plan_expires_at`
+  (миграция `server/drizzle/0013_user_plan.sql`). Эндпоинт `GET /api/ai/quota`.
+- Фронтенд: `src/hooks/useAiQuota.ts`, индикатор остатка в CoauthorPanel,
+  обработка 429 в useAiChat и InlineBubbleMenu.
+
+### Биллинг ЮKassa (12.06.2026, код готов — нужны ключи и тест)
+- `server/src/lib/yookassa.ts` — минимальный клиент API v3 (без SDK).
+- `server/src/routes/billing.ts`: POST /checkout (создать платёж 599₽/30дн →
+  confirmationUrl), POST /webhook (payment.succeeded → plan='pro', срок
+  прибавляется к остатку; статус ВСЕГДА перепроверяется в API ЮKassa, телу
+  вебхука не доверяем; идемпотентно), GET /status (+ подстраховка: доводит
+  pending-платежи, если вебхук не дошёл).
+- Таблица `payments` (миграция 0014). v1 без автопродления.
+- Env: YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY, PRO_PRICE_RUB, FRONTEND_URL.
+- Фронтенд: карточка «Тариф» в Settings.tsx (оформление/продление, поллинг
+  после возврата с оплаты через ?payment=pending).
+- Для запуска: ключи в server/.env + вебхук в кабинете ЮKassa
+  (URL https://<домен>/api/billing/webhook, события payment.succeeded/canceled).
+
+### Глубокие профили персонажей (12.06.2026, бенчмарк Mythril)
+- Расширенные атрибуты character в `story_entities.attributes` (jsonb, без миграции):
+  background, motivations, speech, secrets, plotRelevance — поверх старых
+  aliases/appearance/personality/role. Извлекаются AI, промпты в bible.ts.
+- Связи: таблица `entity_links` (source→target + relation, «мать», «владеет»);
+  события арки: `entity_events` (title/description/eventType по главам) —
+  миграция `0015_entity_links_events.sql`. Извлекаются в том же AI-вызове
+  (`relations` и `events` в JSON-ответе), дедуп по нормализованным ключам.
+- Принцип одобрения сохранён: новые сущности → pending inbox; изменения описаний →
+  update suggestions с diff. Атрибуты/significance одобренных сущностей обогащаются
+  ТОЛЬКО аддитивно (mergeMissingAttributes — пустые поля заполняются, ничего не
+  перезаписывается). Links/events авторитет не требуют, но удаляемы
+  (DELETE /api/bible/links/:id, /events/:id).
+- Ручная правка: PATCH /api/bible/:entityId (name/description/significance/attributes) —
+  авторская правка перезаписывает. UI: режим редактирования в StoryBible.tsx.
+- GET /api/bible/:projectId теперь возвращает { entities, links, events }.
+- UI: группировка по significance (Главные/Второстепенные/Эпизодические),
+  «Впервые: глава N», блоки «Связи» (кликабельные переходы) и «Таймлайн»
+  (типизированные иконки). Общие компоненты: `src/components/editor/entityDisplay.tsx`
+  (используют и StoryBiblePanel, и страница StoryBible).
+- AI-контекст (`buildStoryBibleContext` в ai.ts) включает speech/motivations/secrets
+  персонажей и блок СВЯЗИ — для чата и проверки консистентности.
+- В /extract проверка владельца проекта теперь ДО вызова AI (не жжём токены).
+
+### Прочее
+- Миграции: plain SQL в `server/drizzle/*.sql`, применяются автоматически при старте
+  сервера (`server/src/db/migrate.ts`), трекинг в `_pero_migrations`.
+- Rate limiting: in-memory per-user (`server/src/middleware/rateLimiter.ts`).
+- Фоновые джобы: таблица `jobs`, worker в том же процессе (`server/src/jobs/worker.ts`).
+
+## Команды
+
+- `npm run dev` — фронтенд (порт 3000); `cd server && npm run dev` — бэкенд (3001)
+- `npm run typecheck` — типы клиент + сервер (запускать после правок!)
+- `cd server && npm test` — vitest; `npm run test:e2e` — Playwright
+- `cd server && npm run maint:costs` — отчёт по расходам AI
+
+## Следующие шаги (на момент 12.06.2026)
+
+1. ~~Биллинг ЮKassa~~ ✓ код готов — осталось: ключи, вебхук в кабинете, тестовый платёж.
+2. Лимиты Free-тарифа (P0.5): 1 активный проект, библия до 30 глав, мягкий пейволл.
+3. **Онбординг P0.4 — 10x-версия «Перо читает книгу» (CEO-ревью 12.06)**: живая лента
+   находок (поллинг джоб) + цитаты из рукописи → «Карта мира» (тизер = update suggestions,
+   «письмо от Пера», PNG-карточка мира) + празднование 5-го одобрения. Полные acceptance
+   criteria — в Перо_PRD.md P0.4. Компоненты: onboarding/UploadStep|ReadingStep|WorldMapStep
+   + useWorldBuildStatus; за флагом ONBOARDING_ENABLED; воронка PostHog обязательна.
+4. ~~Углублённые профили персонажей~~ ✓ 12.06 → остался полный отчёт противоречий (P1.2).
+5. Шеринг-страницы библии (read-only публичная ссылка) — «Карта мира» из п.3 станет её основой.
+6. Лендинг + страница приватности; демо без регистрации — см. TODOS.md.
+
+Отложенное и долги — в `TODOS.md` (прод-хостинг P1 к неделе 8, worker, демо, автожанр).
+
+## Design System
+Always read DESIGN.md before making any visual or UI decisions.
+All font choices, colors, spacing, and aesthetic direction are defined there.
+Do not deviate without explicit user approval.
+In QA mode, flag any code that doesn't match DESIGN.md.
+Ключевое: палитра «пигментов» (никаких чистых Tailwind-цветов на пергаменте),
+кириллица обязательна для любых шрифтов, motion — minimal-functional.

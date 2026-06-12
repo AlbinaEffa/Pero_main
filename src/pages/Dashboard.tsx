@@ -40,6 +40,20 @@ function heightFromId(id: string): number {
   return 200 + Math.abs(hash % 120); // 200-320px
 }
 
+/**
+ * Переплётная палитра корешков — тёплые «книжные» тона в духе пигментов DESIGN.md.
+ * Применяется, когда автор не выбирал цвет сам: полка выглядит как настоящая,
+ * а не как тираж одной книги.
+ */
+const SPINE_COLORS = ['#3A4F41', '#7A4438', '#8B6B32', '#54627F', '#5E4A69', '#2B5248', '#6B3D2E', '#3E4F6B'];
+const DEFAULT_PROJECT_COLOR = '#3A4F41';
+
+function spineColorFromId(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 33 + id.charCodeAt(i)) & 0xffffffff;
+  return SPINE_COLORS[Math.abs(hash) % SPINE_COLORS.length];
+}
+
 function fromApiProject(p: any): Project {
   const updatedAtMs = new Date(p.updatedAt || p.createdAt).getTime();
   const elapsed = Date.now() - updatedAtMs;
@@ -60,7 +74,9 @@ function fromApiProject(p: any): Project {
   return {
     id:              p.id,
     title:           p.title,
-    color:           p.color || '#3A4F41',
+    // Дефолтный цвет считается «не выбранным» — корешок получает стабильный
+    // тон из переплётной палитры; выбранный автором цвет всегда в приоритете.
+    color:           (p.color && p.color !== DEFAULT_PROJECT_COLOR) ? p.color : spineColorFromId(p.id),
     height:          heightFromId(p.id),
     genre:           p.genre || 'Без жанра',
     wordCount:       p.wordCount       ?? 0,
@@ -80,7 +96,7 @@ function formatWords(n: number) {
   return n.toString();
 }
 
-const PRESET_COLORS = ['#3A4F41', '#C66B49', '#2C3E50', '#806B8A', '#2B7A6B', '#8B6B32', '#6B2B2B', '#2B4A8B'];
+const PRESET_COLORS = ['#41523F', '#C66B49', '#2C3E50', '#806B8A', '#2B7A6B', '#8B6B32', '#6B2B2B', '#2B4A8B'];
 
 function BookContextMenu({ project, position, onClose, onEdit, onOpen, onBible, onExport, onArchive, onDelete, onDuplicate, onChangeColor }: {
   project: Project;
@@ -274,7 +290,78 @@ function Book({ project, onOpen, onDelete, onEdit, onBible, onExport, onArchive,
   );
 }
 
-function Shelf({ projects, label, onOpen, onDelete, onEdit, onBible, onExport, onArchive, onDuplicate, onChangeColor, emptyLabel, getProcessing, onProcessingClick }: {
+/**
+ * «Призрачный корешок» — место на полке под новую книгу.
+ * Создание и импорт живут здесь, а не в шапке: действие там же, где результат.
+ */
+function ShelfSlot({ icon: Icon, label, height, onClick }: {
+  icon: typeof Plus; label: string; height: number; onClick: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        height: `${height}px`, width: '68px', flexShrink: 0, alignSelf: 'flex-end',
+        background: hovered ? 'rgba(255,255,255,0.75)' : 'rgba(30,45,31,0.025)',
+        border: `2px dashed ${hovered ? 'rgba(30,45,31,0.35)' : 'rgba(30,45,31,0.15)'}`,
+        borderRadius: '3px 6px 6px 3px', cursor: 'pointer',
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        paddingTop: '14px', gap: '10px',
+        transform: hovered ? 'translateY(-8px)' : 'none',
+        transition: 'all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
+      }}
+      title={label}
+    >
+      <Icon size={16} style={{ color: hovered ? 'rgba(30,45,31,0.7)' : 'rgba(30,45,31,0.35)', transition: 'color 0.2s' }} />
+      <span style={{
+        writingMode: 'vertical-rl', transform: 'rotate(180deg)',
+        fontFamily: '"Cormorant Garamond", serif', fontSize: '13px', fontWeight: 600,
+        letterSpacing: '0.08em', whiteSpace: 'nowrap',
+        color: hovered ? 'rgba(30,45,31,0.75)' : 'rgba(30,45,31,0.4)', transition: 'color 0.2s',
+      }}>
+        {label}
+      </span>
+    </button>
+  );
+}
+
+/** Блокнот идей, лежащий на полке: записная книжка рядом с книгами, а не кнопка в шапке. */
+function IdeasNotebook({ onClick }: { onClick: () => void }) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        alignSelf: 'flex-end', flexShrink: 0, marginLeft: '20px',
+        width: '150px', height: '36px',
+        background: '#8B6B32', border: 'none', borderRadius: '3px 5px 5px 3px',
+        boxShadow: hovered ? '3px 4px 14px rgba(139,107,50,0.45)' : '2px 2px 8px rgba(30,45,31,0.2)',
+        transform: hovered ? 'translateY(-6px)' : 'none',
+        transition: 'all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        cursor: 'pointer', position: 'relative',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
+      }}
+      title="Библиотека идей"
+    >
+      {/* Кромка страниц */}
+      <div style={{ position: 'absolute', top: '3px', bottom: '3px', right: '2px', width: '3px', background: 'rgba(245,240,232,0.85)', borderRadius: '1px' }} />
+      <BookOpen size={13} style={{ color: 'rgba(245,240,232,0.85)' }} />
+      <span style={{
+        fontFamily: '"Cormorant Garamond", serif', fontSize: '14px', fontWeight: 600,
+        letterSpacing: '0.1em', color: 'rgba(245,240,232,0.92)',
+      }}>
+        Идеи
+      </span>
+    </button>
+  );
+}
+
+function Shelf({ projects, label, onOpen, onDelete, onEdit, onBible, onExport, onArchive, onDuplicate, onChangeColor, emptyLabel, getProcessing, onProcessingClick, trailing }: {
   projects: Project[];
   label: string;
   onOpen: (id: string) => void;
@@ -288,6 +375,8 @@ function Shelf({ projects, label, onOpen, onDelete, onEdit, onBible, onExport, o
   emptyLabel?: string;
   getProcessing?: (id: string) => boolean;
   onProcessingClick?: (id: string) => void;
+  /** Элементы в конце полки: слоты создания/импорта, блокнот идей. */
+  trailing?: React.ReactNode;
 }) {
   return (
     <div className="mb-14">
@@ -311,7 +400,7 @@ function Shelf({ projects, label, onOpen, onDelete, onEdit, onBible, onExport, o
           className="overflow-x-auto hide-scrollbar"
           style={{ paddingBottom: 0 }}
         >
-          {projects.length === 0 ? (
+          {projects.length === 0 && !trailing ? (
             <div style={{
               height: '120px',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -337,12 +426,13 @@ function Shelf({ projects, label, onOpen, onDelete, onEdit, onBible, onExport, o
                   <Book project={p} onOpen={onOpen} onDelete={onDelete} onEdit={onEdit} onBible={onBible} onExport={onExport} onArchive={onArchive} onDuplicate={onDuplicate} onChangeColor={onChangeColor} isProcessing={getProcessing?.(p.id)} onProcessingClick={onProcessingClick} />
                 </div>
               ))}
+              {trailing}
             </div>
           )}
         </div>
 
         {/* Wooden shelf board */}
-        {projects.length > 0 && (
+        {(projects.length > 0 || trailing) && (
           <>
             <div style={{
               height: '14px',
@@ -425,7 +515,7 @@ function NewProjectModal({ onClose, onCreate }: { onClose: () => void; onCreate:
     try { return JSON.parse(localStorage.getItem('pero_custom_genres') || '[]'); } catch { return []; }
   });
 
-  const PRESET_COLORS = ['#3A4F41', '#C66B49', '#2C3E50', '#806B8A', '#2B7A6B', '#8B6B32', '#6B2B2B', '#2B4A8B'];
+  const PRESET_COLORS = ['#41523F', '#C66B49', '#2C3E50', '#806B8A', '#2B7A6B', '#8B6B32', '#6B2B2B', '#2B4A8B'];
   const GENRE_PRESETS = ['Фэнтези', 'Фантастика', 'Детектив', 'Роман', 'Ужасы', 'Приключения', 'Другое'];
 
   const saveCustomGenre = (value: string) => {
@@ -1003,65 +1093,8 @@ export default function Dashboard() {
                 />
               </div>
 
+              {/* Создание/импорт/идеи живут на полке — фокус действий в одном месте */}
               <button
-                onClick={() => navigate('/ideas')}
-                style={{
-                  background: 'rgba(30,45,31,0.05)', color: 'rgba(30,45,31,0.7)', border: 'none',
-                  borderRadius: '50px', padding: '9px 18px', fontSize: '13px',
-                  fontWeight: 600, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '6px',
-                  transition: 'all 0.2s', whiteSpace: 'nowrap',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = 'rgba(30,45,31,0.08)';
-                  e.currentTarget.style.color = 'rgba(30,45,31,0.9)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = 'rgba(30,45,31,0.05)';
-                  e.currentTarget.style.color = 'rgba(30,45,31,0.7)';
-                }}
-              >
-                <BookOpen size={16} /> Идеи
-              </button>
-
-              <button
-                onClick={() => setIsImportOpen(true)}
-                style={{
-                  background: 'rgba(30,45,31,0.05)', color: 'rgba(30,45,31,0.7)', border: 'none',
-                  borderRadius: '50px', padding: '9px 18px', fontSize: '13px',
-                  fontWeight: 600, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '6px',
-                  transition: 'all 0.2s', whiteSpace: 'nowrap',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(30,45,31,0.08)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(30,45,31,0.05)'; }}
-              >
-                <Upload size={16} /> Импорт
-              </button>
-
-              <button
-                onClick={() => setIsModalOpen(true)}
-                style={{
-                  background: '#3A4F41', color: '#fff', border: 'none',
-                  borderRadius: '50px', padding: '9px 18px', fontSize: '13px',
-                  fontWeight: 600, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '6px',
-                  boxShadow: '0 2px 8px rgba(58,79,65,0.3)',
-                  transition: 'all 0.2s', whiteSpace: 'nowrap',
-                }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)';
-                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 16px rgba(58,79,65,0.4)';
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)';
-                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 2px 8px rgba(58,79,65,0.3)';
-                }}
-              >
-                <Plus size={16} /> Новый проект
-              </button>
-
-              <button 
                 onClick={() => navigate('/settings')}
                 style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(30,45,31,0.06)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(30,45,31,0.5)', flexShrink: 0 }}
               >
@@ -1178,6 +1211,13 @@ export default function Dashboard() {
               <Shelf
                 projects={activeProjects}
                 label="Текущие"
+                trailing={
+                  <>
+                    <ShelfSlot icon={Plus} label="Новая книга" height={232} onClick={() => setIsModalOpen(true)} />
+                    <ShelfSlot icon={Upload} label="Импорт рукописи" height={208} onClick={() => setIsImportOpen(true)} />
+                    <IdeasNotebook onClick={() => navigate('/ideas')} />
+                  </>
+                }
                 onOpen={handleOpen}
                 onDelete={id => setDeletingProjectId(id)}
                 onEdit={id => setRenamingProjectId(id)}

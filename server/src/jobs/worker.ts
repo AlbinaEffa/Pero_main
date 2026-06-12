@@ -21,6 +21,10 @@ import { stripHtml } from '../lib/html.js';
 import { guardChat, guardEmbed } from '../lib/aiGuard.js';
 import { pool as sharedPool } from '../db/client.js';
 import { getAIProvider, getEmbeddingProvider, type AIProvider } from '../lib/aiProvider.js';
+import {
+  BASE_EXTRACTION_PROMPT, cleanJsonResponse, processExtractionResults,
+  type AiEntity, type AiRelation,
+} from '../lib/extraction.js';
 
 const POLL_INTERVAL_MS   = 5_000;  // check for new jobs every 5 seconds
 const STUCK_JOB_MINUTES  = 5;      // running jobs older than this are assumed crashed
@@ -68,43 +72,9 @@ function chunkText(text: string, chunkSize = 400, overlap = 60): string[] {
 }
 
 // ── Job handlers ─────────────────────────────────────────────────────────────
-
-/**
- * Extraction prompt for the background worker.
- * Kept in sync with the high-quality prompt in bible.ts so that
- * imported chapters produce the same quality as manually extracted ones.
- */
-const EXTRACTION_PROMPT = `Ты — литературный редактор, составляющий справочник к произведению.
-
-Извлеки из текста главы ТОЛЬКО значимые именованные сущности четырёх категорий:
-
-• character — персонаж с именем или устойчивым прозвищем (не «солдат», не «толпа»).
-  Включай только если о нём есть хотя бы одна конкретная деталь: внешность, характер, роль.
-  Описание: «[Кто он/она]. [Ключевая черта из текста]. [Роль в этой главе].»
-
-• location — конкретное, описанное место действия.
-  Описание: «[Что за место]. [Ключевые детали из текста].»
-
-• item — предмет, важный для сюжета или магической системы.
-  Описание: «[Что это]. [Физическое или магическое свойство из текста].»
-
-• rule — закон мира, магическая система, политический строй, религия мира.
-  Описание: «[В чём суть правила]. [Как оно работает согласно тексту].»
-
-ТРЕБОВАНИЯ:
-1. Не выдумывай ничего. Каждое слово описания должно быть подтверждено текстом.
-2. Не добавляй сущности, упомянутые лишь вскользь (одно-два слова без деталей).
-3. Используй каноническое имя. Не дублируй одну сущность под разными именами.
-4. Если сущностей нет — верни пустой массив entities.
-
-Ответ — строго JSON, без markdown-обёртки:
-{
-  "entities": [
-    {"type": "character", "name": "Имя", "description": "..."},
-    {"type": "location",  "name": "Название", "description": "..."}
-  ],
-  "chapterSummary": "Рабочее название главы (2–4 слова)"
-}`;
+// Extraction prompt и обработка результатов — ОБЩИЕ с bible.ts (lib/extraction.ts):
+// импортированные главы получают тот же богатый результат, что и интерактивный
+// анализ — significance, attributes, связи и события таймлайна.
 
 async function handleExtractEntities(
   payload: ExtractEntitiesPayload,
@@ -131,7 +101,7 @@ async function handleExtractEntities(
     response = await guardChat(
       () => aiClient!.generate({
         // No truncation — send full chapter content
-        contents: `${EXTRACTION_PROMPT}\n\n<chapter_content>\n${plainText}\n</chapter_content>`,
+        contents: `${BASE_EXTRACTION_PROMPT}\n\n<chapter_content>\n${plainText}\n</chapter_content>`,
         temperature: 0.15,
       }),
       { userId, projectId, route: 'worker:extract_entities', circuit: 'extract', timeoutMs: 60_000 }
@@ -151,14 +121,16 @@ async function handleExtractEntities(
   }
 
   const raw = response.text ?? '{"entities":[]}';
-  const cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+  const cleaned = cleanJsonResponse(raw);
 
-  let parsed: { entities?: { type: string; name: string; description: string }[] };
-  let entities: { type: string; name: string; description: string }[] = [];
+  let parsed: { entities?: AiEntity[]; relations?: AiRelation[] };
+  let entities: AiEntity[] = [];
+  let relations: AiRelation[] = [];
   try {
     parsed = JSON.parse(cleaned);
     // Handle both array format (legacy) and new object format
     entities = Array.isArray(parsed) ? parsed : (parsed.entities ?? []);
+    relations = Array.isArray(parsed) ? [] : (parsed.relations ?? []);
   } catch {
     // Malformed JSON from model — permanent failure, retrying won't help
     throw new WorkerHandlerError(
@@ -171,30 +143,23 @@ async function handleExtractEntities(
   }
   if (entities.length === 0) return; // Valid empty response — soft skip, mark succeeded
 
-  // Dedup against existing entities for this project (case-insensitive name check)
-  const existing = await db
-    .select({ name: schema.storyEntities.name })
-    .from(schema.storyEntities)
-    .where(eq(schema.storyEntities.projectId, projectId));
+  // Заголовок главы — для подписи update suggestions и событий таймлайна
+  const chapterRows = await db
+    .select({ title: schema.chapters.title })
+    .from(schema.chapters)
+    .where(eq(schema.chapters.id, payload.chapterId));
+  const chapterTitle = chapterRows[0]?.title ?? null;
 
-  const knownNames = new Set(existing.map(e => e.name.toLowerCase()));
-
-  const toInsert = entities.filter(
-    e => e.name && !knownNames.has(e.name.toLowerCase())
+  // Общий конвейер: pending-сущности, update suggestions для одобренных,
+  // аддитивное обогащение атрибутов, entity_links и entity_events — с дедупом.
+  await processExtractionResults(
+    entities, relations, projectId, payload.chapterId, chapterTitle, plainText,
   );
 
-  if (toInsert.length > 0) {
-    await db.insert(schema.storyEntities).values(
-      toInsert.map(e => ({
-        projectId,
-        chapterId: payload.chapterId,
-        type: e.type || 'character',
-        name: e.name,
-        description: e.description || '',
-        status: 'pending' as const,
-      }))
-    );
-  }
+  // Отметить главу как проанализированную — freshness для редактора
+  await db.update(schema.chapters)
+    .set({ lastExtractedAt: new Date() })
+    .where(eq(schema.chapters.id, payload.chapterId));
 }
 
 async function handleEmbedChapter(

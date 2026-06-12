@@ -39,6 +39,7 @@ import { ExportPanel } from '../components/ExportPanel';
 import Settings from './Settings';
 
 import { Chapter, Entity, EntityLink, EntityEvent } from '../components/editor/types';
+import { AhaCelebration } from '../components/AhaCelebration';
 import { Users, MapPin, Box, Scale, Bookmark, X, AlertTriangle, ChevronUp, ChevronDown } from 'lucide-react';
 
 type EditorFontName = 'cormorant' | 'literata' | 'source-serif';
@@ -1108,6 +1109,7 @@ export default function Editor() {
       `}</style>
 
       <div className="relative flex h-screen w-full bg-[#f5f0e8] overflow-hidden font-sans text-[#1e2d1f]">
+        <AhaCelebration />
         {/* Backdrop шторки глав (только < lg) */}
         {!isFocusMode && isChaptersDrawerOpen && (
           <div

@@ -17,6 +17,7 @@ const Editor     = React.lazy(() => import('./pages/Editor'));
 const StoryBible = React.lazy(() => import('./pages/StoryBible'));
 const Settings   = React.lazy(() => import('./pages/Settings'));
 const IdeaLibrary = React.lazy(() => import('./pages/IdeaLibrary'));
+const Onboarding = React.lazy(() => import('./pages/Onboarding'));
 
 // ── Page loading fallback ─────────────────────────────────────────────────────
 function PageLoader() {
@@ -84,6 +85,7 @@ export default function App() {
             <Route path="/editor/:projectId/:chapterId" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
             <Route path="/editor/:projectId"            element={<ProtectedRoute><Editor /></ProtectedRoute>} />
             <Route path="/bible/:id"                    element={<ProtectedRoute><StoryBible /></ProtectedRoute>} />
+            <Route path="/onboarding/:projectId"        element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           </Routes>
         </Suspense>
       </BrowserRouter>

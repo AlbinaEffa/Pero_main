@@ -105,11 +105,14 @@ Roadmap 90 дней: ~~лимиты AI~~ ✓ → биллинг (ЮKassa) → о
 
 1. ~~Биллинг ЮKassa~~ ✓ код готов — осталось: ключи, вебхук в кабинете, тестовый платёж.
 2. Лимиты Free-тарифа (P0.5): 1 активный проект, библия до 30 глав, мягкий пейволл.
-3. **Онбординг P0.4 — 10x-версия «Перо читает книгу» (CEO-ревью 12.06)**: живая лента
-   находок (поллинг джоб) + цитаты из рукописи → «Карта мира» (тизер = update suggestions,
-   «письмо от Пера», PNG-карточка мира) + празднование 5-го одобрения. Полные acceptance
-   criteria — в Перо_PRD.md P0.4. Компоненты: onboarding/UploadStep|ReadingStep|WorldMapStep
-   + useWorldBuildStatus; за флагом ONBOARDING_ENABLED; воронка PostHog обязательна.
+3. ~~Онбординг P0.4 — 10x «Перо читает книгу»~~ ✅ 12.06: маршрут /onboarding/:projectId
+   (за флагом VITE_ONBOARDING_ENABLED, по умолчанию вкл), ReadingStep (поллинг jobs+bible
+   2.5с, цитаты из рукописи, PARTIAL с ретраем) → WorldMapStep (письмо от Пера
+   POST /bible/:id/letter, счётчики, главные герои, тизер updates, PNG-карточка).
+   Extraction-конвейер ОБЩИЙ для worker и bible.ts — lib/extraction.ts (импортированные
+   главы получают значимость/атрибуты/связи/события). Празднование aha — AhaCelebration
+   (5-е одобрение). Воронка: onboarding_import_started → reading_viewed → extraction_done
+   → worldmap_viewed → first_entity_approved → aha_5_approved. Проверить на проде с живым AI.
 4. ~~Углублённые профили персонажей~~ ✓ 12.06 → остался полный отчёт противоречий (P1.2).
 5. Шеринг-страницы библии (read-only публичная ссылка) — «Карта мира» из п.3 станет её основой.
 6. Лендинг + страница приватности; демо без регистрации — см. TODOS.md.

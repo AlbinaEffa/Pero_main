@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { api } from '../services/api';
 import { track } from '../services/analytics';
+import { registerApproval } from '../components/AhaCelebration';
 import { Entity, BibleUpdateSuggestion } from '../components/editor/types';
 
 export function useBibleExtraction(
@@ -149,6 +150,7 @@ export function useBibleExtraction(
       if (entity) {
         setApprovedEntities(prev => [...prev, { ...entity, chapterId: chapterId ?? null }]);
         track('entity_approved', { projectId, type: entity.type });
+        registerApproval(projectId);
       }
       setSuggestions(prev => prev.filter(s => s.id !== entityId));
     } catch (e) {

@@ -183,6 +183,24 @@ describe('Ownership', () => {
   });
 });
 
+// ── Import safety caps ────────────────────────────────────────────────────────
+
+describe('Import caps', () => {
+  it('extracted text over 5MB → 413 (zip-bomb protection)', async () => {
+    // 6 МБ «текста» — под лимитом файла 20МБ, но над лимитом извлечённого текста
+    const bigText = ('Слово оборотня и тайна серебряного леса. '.repeat(40) + '\n\n').repeat(3600);
+    expect(Buffer.byteLength(bigText, 'utf8')).toBeGreaterThan(5 * 1024 * 1024);
+
+    const res = await request(app)
+      .post('/api/import/parse')
+      .set('Authorization', `Bearer ${ctx.tokenA}`)
+      .attach('file', Buffer.from(bigText, 'utf8'), 'huge-novel.txt');
+
+    expect(res.status).toBe(413);
+    expect(res.body.error).toContain('слишком большой');
+  });
+});
+
 // ── Bible extraction ──────────────────────────────────────────────────────────
 
 describe('Bible extraction', () => {
@@ -368,6 +386,34 @@ describe('Bible profiles', () => {
       .get(`/api/bible/${ctx.projectId}`)
       .set('Authorization', `Bearer ${ctx.tokenA}`);
     expect(after.body.links.some((l: any) => l.id === linkId)).toBe(false);
+  });
+
+  it('letter for empty bible → { letter: null } without AI call', async () => {
+    // Отдельный проект без сущностей
+    const resP = await request(app)
+      .post('/api/projects')
+      .set('Authorization', `Bearer ${ctx.tokenA}`)
+      .send({ title: `Empty-${RUN}` });
+    const emptyProjectId = resP.body.project.id;
+
+    const res = await request(app)
+      .post(`/api/bible/${emptyProjectId}/letter`)
+      .set('Authorization', `Bearer ${ctx.tokenA}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.letter).toBeNull();
+    expect(res.body.note).toBe('empty_bible');
+
+    await db.delete(chapters).where(eq(chapters.projectId, emptyProjectId)).catch(() => {});
+    await db.delete(projects).where(eq(projects.id, emptyProjectId)).catch(() => {});
+  });
+
+  it('non-owner cannot request letter → 403 (ownership before AI)', async () => {
+    const res = await request(app)
+      .post(`/api/bible/${ctx.projectId}/letter`)
+      .set('Authorization', `Bearer ${ctx.tokenB}`);
+
+    expect(res.status).toBe(403);
   });
 
   it('owner deletes a timeline event → 200 and it is gone', async () => {

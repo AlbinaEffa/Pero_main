@@ -267,6 +267,15 @@ router.post('/parse', authenticateToken, upload.single('file'), async (req: any,
 
     if (!text.trim()) return res.status(422).json({ error: 'Файл пустой или не содержит текста.' });
 
+    // Защита от zip-бомб: docx/epub/fb2 — архивы, файл в 1 МБ может распаковаться
+    // в гигабайты текста. Жёсткий потолок ИЗВЛЕЧЁННОГО текста — 5 МБ (~2.5 млн слов).
+    const MAX_EXTRACTED_TEXT_BYTES = 5 * 1024 * 1024;
+    if (Buffer.byteLength(text, 'utf8') > MAX_EXTRACTED_TEXT_BYTES) {
+      return res.status(413).json({
+        error: 'Текст рукописи слишком большой (более 5 МБ). Разбейте книгу на тома и импортируйте по частям.',
+      });
+    }
+
     const rawChapters = splitIntoChapters(text);
     const detectedTitle = detectTitle(text, originalname);
     const totalWords = rawChapters.reduce((s, c) => s + c.wordCount, 0);

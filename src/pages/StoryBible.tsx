@@ -6,6 +6,8 @@ import {
   Users, MapPin, Box, Globe, Pencil,
 } from 'lucide-react';
 import { api } from '../services/api';
+import { track } from '../services/analytics';
+import { registerApproval, AhaCelebration } from '../components/AhaCelebration';
 import { Entity, EntitySignificance, EntityLink, EntityEvent, Chapter } from '../components/editor/types';
 import {
   significanceLabel, significanceColor, groupBySignificance,
@@ -130,6 +132,8 @@ export default function StoryBible() {
     try {
       const data = await api.patch<{ entity: Entity }>(`/bible/${entityId}/approve`);
       setEntities(prev => prev.map(e => e.id === entityId ? data.entity : e));
+      track('entity_approved', { projectId: id, type: data.entity?.type });
+      registerApproval(id);
     } catch (e) { console.error(e); }
   }
 
@@ -171,6 +175,7 @@ export default function StoryBible() {
 
   return (
     <div className="flex h-screen w-full bg-[#F9FAFB] font-sans overflow-hidden text-[#1a1a1a]">
+      <AhaCelebration />
 
       {/* ── Left Sidebar ──────────────────────────────────────────────────── */}
       <aside className="w-[220px] bg-[#1e2d1f] text-white/80 flex-col flex-shrink-0 shadow-xl z-20 hidden md:flex">

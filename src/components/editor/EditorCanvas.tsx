@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { Editor as TiptapEditor } from '@tiptap/react';
 import { EditorContent } from '@tiptap/react';
+import { InlineBubbleMenu } from './InlineBubbleMenu';
+import { EditorFirstRunHints } from './EditorFirstRunHints';
 import {
   Bold, Italic, Underline, Strikethrough, List, ListOrdered, ListTodo,
-  Undo2, Redo2, User, Download, Search, ChevronDown,
+  Undo2, Redo2, User, Download, Search, ChevronDown, PanelLeft,
   Link2, AlignLeft, AlignCenter, AlignRight, AlignJustify, Code, ListIndentIncrease,
   CornerDownLeft, ExternalLink, Trash2, Highlighter, CircleOff, Quote
 } from 'lucide-react';
@@ -29,6 +31,9 @@ interface Props {
   onOpenSettings: () => void;
   onOpenSearch?: () => void;
   onOpenExport?: () => void;
+  /** Открыть шторку глав на узких экранах (< lg); кнопка-гамбургер видна только там. */
+  onOpenChapters?: () => void;
+  projectId?: string;
 }
 
 type InlineMarkName = 'bold' | 'italic' | 'underline' | 'strike' | 'code';
@@ -243,6 +248,8 @@ export function EditorCanvas({
   onOpenSettings,
   onOpenSearch,
   onOpenExport,
+  onOpenChapters,
+  projectId,
 }: Props) {
   const [isBlockMenuOpen, setIsBlockMenuOpen] = useState(false);
   const [isListMenuOpen, setIsListMenuOpen] = useState(false);
@@ -620,12 +627,12 @@ export function EditorCanvas({
   };
 
   return (
-    <main className="flex-1 flex flex-col relative bg-transparent shadow-[-10px_0_20px_rgba(0,0,0,0.02)] z-10 transition-all duration-300">
+    <main className="flex-1 min-w-0 flex flex-col relative bg-transparent shadow-[-10px_0_20px_rgba(0,0,0,0.02)] z-10 transition-all duration-300">
       {!isFocusMode && (
       <>
       {/* Top Formatting Toolbar */}
       <div
-        className="h-14 border-b border-[#1e2d1f]/10 bg-[#f5f0e8]/90 backdrop-blur-md flex items-center justify-between px-6 sticky top-0 z-30 shrink-0"
+        className="relative min-h-14 border-b border-[#1e2d1f]/10 bg-[#f5f0e8]/90 backdrop-blur-md flex items-center justify-between px-6 max-md:px-3 max-md:flex-wrap max-md:justify-center max-md:gap-y-1 max-md:py-2 max-md:pl-12 sticky top-0 z-30 shrink-0"
         onMouseEnter={() => {
           if (isLinkMenuOpen && linkSelectionRef.current && editor && !editor.isDestroyed) {
             editor.view.dispatch(
@@ -643,8 +650,18 @@ export function EditorCanvas({
           clearToolbarSelectionPreview(editor);
         }}
       >
-        <div className="w-8" />
-        <div className="flex items-center gap-4">
+        <div className="w-8 flex items-center max-md:absolute max-md:left-3 max-md:top-1/2 max-md:-translate-y-1/2 max-md:w-auto">
+          {onOpenChapters && (
+            <button
+              onClick={onOpenChapters}
+              title="Главы"
+              className="lg:hidden p-1.5 rounded-md text-[#1e2d1f]/60 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/5 transition-colors"
+            >
+              <PanelLeft size={20} strokeWidth={2.2} />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-4 max-md:flex-wrap max-md:justify-center max-md:gap-y-1">
           <div className="flex items-center gap-3">
             <button
               onClick={() => editor?.chain().focus().undo().run()}
@@ -666,7 +683,7 @@ export function EditorCanvas({
 
           <div className="w-px h-6 bg-[#1e2d1f]/10" />
 
-          <div ref={menuRef} className="flex items-center gap-3 relative">
+          <div ref={menuRef} className="flex items-center gap-3 relative max-md:flex-wrap max-md:justify-center max-md:gap-y-1">
             <div className="relative">
               <button
                 onMouseDown={(e) => e.preventDefault()}
@@ -1030,6 +1047,9 @@ export function EditorCanvas({
               </button>
               {isFontMenuOpen && (
                 <div className="absolute top-full mt-2 left-0 min-w-44 bg-[#f5f0e8] rounded-xl shadow-lg border border-[#1e2d1f]/10 p-1.5 z-[101]">
+                  <div className="px-2.5 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-[#1e2d1f]/35">
+                    Шрифт всего текста
+                  </div>
                   {([
                     { key: 'cormorant', label: 'Cormorant' },
                     { key: 'literata', label: 'Literata' },
@@ -1077,26 +1097,29 @@ export function EditorCanvas({
 
             <div className="w-px h-5 bg-[#1e2d1f]/10" />
 
-            <div className="flex items-center rounded-full border border-[#1e2d1f]/8 bg-[#f8f4ec] p-1 gap-1">
-              {([
-                { key: 'narrow', title: 'Узкая', label: 'S' },
-                { key: 'medium', title: 'Средняя', label: 'M' },
-                { key: 'wide', title: 'Широкая', label: 'L' },
-              ] as const).map((item) => (
-                <button
-                  key={item.key}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => handleWidthChange(item.key)}
-                  title={`Ширина страницы: ${item.title}`}
-                  className={`min-w-9 h-8 px-2 rounded-full flex items-center justify-center transition-colors text-[12px] font-medium tracking-[0.08em] ${
-                    textWidth === item.key
-                      ? 'bg-[#1e2d1f] text-white shadow-sm'
-                      : 'text-[#1e2d1f]/50 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/5'
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
+            <div className="flex flex-col items-center gap-0.5">
+              <div className="flex items-center rounded-full border border-[#1e2d1f]/8 bg-[#f8f4ec] p-1 gap-1">
+                {([
+                  { key: 'narrow', title: 'Узкая', label: 'S' },
+                  { key: 'medium', title: 'Средняя', label: 'M' },
+                  { key: 'wide', title: 'Широкая', label: 'L' },
+                ] as const).map((item) => (
+                  <button
+                    key={item.key}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => handleWidthChange(item.key)}
+                    title={`Ширина текстовой колонки: ${item.title}`}
+                    className={`min-w-9 h-8 px-2 rounded-full flex items-center justify-center transition-colors text-[12px] font-medium tracking-[0.08em] ${
+                      textWidth === item.key
+                        ? 'bg-[#1e2d1f] text-white shadow-sm'
+                        : 'text-[#1e2d1f]/50 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/5'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+              <span className="text-[9px] text-[#1e2d1f]/25 tracking-wide">Колонка</span>
             </div>
           </div>
 
@@ -1182,6 +1205,10 @@ export function EditorCanvas({
             />
           </div>
           <div className={`${indentParagraphs ? 'tiptap-indent' : ''} ${editorFontClass}`}>
+            {editor && (
+              <InlineBubbleMenu editor={editor} projectId={projectId} />
+            )}
+            <EditorFirstRunHints />
             <EditorContent editor={editor} />
             {(isDictating || interimTranscript) && (
               <div className={`${editorFontClass} text-[#1e2d1f]/50 italic text-lg leading-[1.8] mt-2 border-l-2 border-[#1e2d1f]/20 pl-4 py-1`}>

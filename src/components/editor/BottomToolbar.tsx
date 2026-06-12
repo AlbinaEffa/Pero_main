@@ -1,17 +1,16 @@
 import {
-  Mic, Sparkles, Headphones, Search, BookOpen, Bookmark,
-  SkipBack, Pause, SkipForward, X, GitBranch, Activity, Maximize2, Minimize2,
+  Mic, MicOff, Sparkles, BookOpen, Bookmark, X,
+  GitBranch, Activity, Maximize2, Minimize2, BarChart2,
 } from 'lucide-react';
 import { BIBLE_MENU_ITEMS } from './constants';
 
 interface Props {
   isDictating: boolean;
-  isSupported: boolean;
-  toggleListening: () => void;
+  isDictationProcessing: boolean;
+  isDictationSupported: boolean;
+  onToggleDictation: () => void;
   isCoauthoring: boolean;
   onToggleCoauthor: () => void;
-  isReading: boolean;
-  onToggleReading: () => void;
   isBibleOpen: boolean;
   isBibleMenuOpen: boolean;
   onSetBibleMenuOpen: (open: boolean) => void;
@@ -22,6 +21,8 @@ interface Props {
   onToggleRevision: () => void;
   isSyncOpen: boolean;
   onToggleSync: () => void;
+  isStatsOpen: boolean;
+  onToggleStats: () => void;
   isFocusMode: boolean;
   onToggleFocusMode: () => void;
   /** Badge count for the sync panel button (stale + unknown chapters) */
@@ -31,12 +32,11 @@ interface Props {
 
 export function BottomToolbar({
   isDictating,
-  isSupported,
-  toggleListening,
+  isDictationProcessing,
+  isDictationSupported,
+  onToggleDictation,
   isCoauthoring,
   onToggleCoauthor,
-  isReading,
-  onToggleReading,
   isBibleOpen,
   isBibleMenuOpen,
   onSetBibleMenuOpen,
@@ -47,42 +47,22 @@ export function BottomToolbar({
   onToggleRevision,
   isSyncOpen,
   onToggleSync,
+  isStatsOpen,
+  onToggleStats,
   isFocusMode,
   onToggleFocusMode,
   syncBadgeCount,
   onOpenSearch,
 }: Props) {
-  return (
-    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-stretch gap-3 z-40">
-      {/* Read Aloud Bar */}
-      {isReading && (
-        <div className="bg-[#1e2d1f] rounded-[16px] px-4 py-3 flex items-center justify-between shadow-lg animate-in slide-in-from-bottom-2 fade-in duration-200 relative overflow-hidden">
-          <div className="absolute bottom-0 left-0 w-full h-1 bg-[#f5f0e8]/10">
-            <div className="h-full bg-[#f5f0e8]/50 w-[45%]" />
-          </div>
-          <div className="flex-1 flex justify-center">
-            <span className="text-[#f5f0e8] text-sm italic font-medium mx-6">
-              Она нащупала его сквозь тонкую ткань — холодный металл.
-            </span>
-          </div>
-          <div className="flex items-center gap-3 text-white/80 relative z-10">
-            <button className="hover:text-white transition-colors">
-              <SkipBack size={16} fill="currentColor" />
-            </button>
-            <button className="hover:text-white transition-colors">
-              <Pause size={16} fill="currentColor" />
-            </button>
-            <button className="hover:text-white transition-colors">
-              <SkipForward size={16} fill="currentColor" />
-            </button>
-            <div className="w-px h-4 bg-white/20 mx-1" />
-            <button onClick={onToggleReading} className="hover:text-white transition-colors">
-              <X size={18} />
-            </button>
-          </div>
-        </div>
-      )}
+  // На < xl правые панели становятся оверлеем шириной 320px — сдвигаем тулбар
+  // влево, чтобы он центрировался в оставшемся пространстве, а не прятался под панель.
+  const isSidePanelOpen = isBibleOpen || isCoauthoring || isReferenceOpen
+    || isRevisionOpen || isSyncOpen || isStatsOpen;
 
+  return (
+    <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-stretch gap-3 z-40 transition-[left] duration-300 ease-in-out ${
+      isSidePanelOpen ? 'max-xl:left-[calc(50%-160px)]' : ''
+    }`}>
       {/* Main Toolbar */}
       <div className="relative">
         {isBibleMenuOpen && (
@@ -121,26 +101,43 @@ export function BottomToolbar({
           </div>
         )}
 
-        <div className="bg-white/95 backdrop-blur-md shadow-[0_4px_25px_rgba(0,0,0,0.06)] border border-[#1e2d1f]/5 rounded-2xl px-2 py-2 flex items-center gap-1 max-w-[calc(100vw-2rem)] overflow-x-auto hide-scrollbar">
-          <button
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => {
-              if (!isSupported) {
-                alert('Ваш браузер не поддерживает встроенное распознавание речи. Пожалуйста, используйте Google Chrome.');
-                return;
+        <div className={`bg-white/95 backdrop-blur-md shadow-[0_4px_25px_rgba(0,0,0,0.06)] border border-[#1e2d1f]/5 rounded-2xl px-2 py-2 flex items-center gap-1 overflow-x-auto hide-scrollbar max-w-[calc(100vw-2rem)] ${
+          isSidePanelOpen ? 'max-xl:max-w-[calc(100vw-320px-2rem)]' : ''
+        }`}>
+          {isDictationSupported ? (
+            <button
+              onClick={onToggleDictation}
+              title={isDictating ? 'Остановить диктовку' : 'Начать диктовку'}
+              className={`relative flex items-center justify-center w-auto h-[36px] whitespace-nowrap gap-2 px-3 sm:px-4 py-2 text-sm font-medium rounded-lg shrink-0 transition-all outline-none focus:outline-none focus:ring-0 ${
+                isDictating
+                  ? 'bg-red-500 text-white shadow-lg shadow-red-200'
+                  : isDictationProcessing
+                  ? 'bg-amber-50 text-amber-600 border border-amber-200'
+                  : 'bg-transparent text-[#6b7280] hover:bg-[#f5f0e8] hover:text-[#1e2d1f]'
+              }`}
+            >
+              {/* Pulsing ring when listening */}
+              {isDictating && (
+                <span className="absolute inset-0 rounded-lg animate-ping bg-red-400 opacity-30 pointer-events-none" />
+              )}
+              {isDictating
+                ? <MicOff size={16} className="flex-shrink-0" />
+                : <Mic size={16} className="flex-shrink-0" />
               }
-              toggleListening();
-            }}
-            className={`flex items-center justify-center w-auto sm:w-[130px] h-[36px] whitespace-nowrap gap-2 px-3 sm:px-4 py-2 transition-colors text-sm font-medium rounded-lg outline-none focus:outline-none focus:ring-0 shrink-0 ${
-              isDictating
-                ? 'bg-[#ef4444] text-white shadow-inner animate-[pulse_2s_ease-in-out_infinite]'
-                : 'bg-transparent text-[#6b7280] hover:bg-[#f5f0e8] hover:text-[#1e2d1f]'
-            }`}
-          >
-            <Mic size={16} />
-            <span className="hidden sm:inline">{isDictating ? 'Слушаю...' : 'Диктовка'}</span>
-            <span className="sm:hidden">Дикт.</span>
-          </button>
+              <span className="hidden sm:inline">
+                {isDictating ? 'Стоп' : isDictationProcessing ? 'Обработка…' : 'Диктовка'}
+              </span>
+            </button>
+          ) : (
+            <div
+              className="flex items-center justify-center h-[36px] whitespace-nowrap gap-2 px-3 sm:px-4 py-2 text-sm font-medium rounded-lg shrink-0 text-[#9ca3af] cursor-not-allowed select-none"
+              title="Диктовка недоступна в этом браузере. Используйте Chrome или Safari."
+            >
+              <Mic size={16} />
+              <span className="hidden sm:inline">Диктовка</span>
+              <span className="hidden sm:inline text-[10px] font-semibold uppercase tracking-wide text-[#9ca3af]/70 bg-[#f3f4f6] rounded px-1 py-0.5 leading-none">—</span>
+            </div>
+          )}
 
           <button
             onClick={onToggleCoauthor}
@@ -151,17 +148,6 @@ export function BottomToolbar({
             }`}
           >
             <Sparkles size={16} /> Соавтор
-          </button>
-
-          <button
-            onClick={onToggleReading}
-            className={`flex items-center justify-center w-auto sm:w-[130px] h-[36px] whitespace-nowrap gap-2 px-3 sm:px-4 py-2 transition-colors text-sm font-medium rounded-lg outline-none focus:outline-none focus:ring-0 shrink-0 ${
-              isReading
-                ? 'bg-[#1e2d1f] text-white'
-                : 'bg-transparent text-[#6b7280] hover:bg-[#f5f0e8] hover:text-[#1e2d1f]'
-            }`}
-          >
-            <Headphones size={16} /> Слушать
           </button>
 
           <div className="w-px h-6 bg-[#1e2d1f]/10 mx-1 shrink-0" />
@@ -218,6 +204,18 @@ export function BottomToolbar({
                 {syncBadgeCount > 9 ? '9+' : syncBadgeCount}
               </span>
             )}
+          </button>
+
+          <button
+            onClick={onToggleStats}
+            className={`p-2 transition-colors rounded-lg outline-none focus:outline-none focus:ring-0 flex items-center justify-center shrink-0 ${
+              isStatsOpen
+                ? 'bg-emerald-600 text-white'
+                : 'bg-transparent text-[#6b7280] hover:bg-[#f5f0e8] hover:text-[#1e2d1f]'
+            }`}
+            title="Статистика написанного"
+          >
+            <BarChart2 size={18} />
           </button>
 
           <button

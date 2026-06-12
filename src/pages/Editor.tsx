@@ -13,6 +13,7 @@ import { track } from '../services/analytics';
 import { useDictation } from '../hooks/useDictation';
 import { useAutosave } from '../hooks/useAutosave';
 import { useEmbedding } from '../hooks/useEmbedding';
+import { useWritingStats } from '../hooks/useWritingStats';
 import { useAiChat } from '../hooks/useAiChat';
 import { useBibleExtraction } from '../hooks/useBibleExtraction';
 import { useRevision } from '../hooks/useRevision';
@@ -24,6 +25,7 @@ import { StoryBiblePanel } from '../components/editor/StoryBiblePanel';
 import { CoauthorPanel } from '../components/editor/CoauthorPanel';
 import { RevisionPanel } from '../components/editor/RevisionPanel';
 import { ProjectSyncPanel } from '../components/editor/ProjectSyncPanel';
+import { WritingStatsPanel } from '../components/editor/WritingStatsPanel';
 import { FindReplacePopup } from '../components/FindReplacePopup';
 import { SearchPanel } from '../components/editor/SearchPanel';
 import { SearchHighlightExtension, searchHighlightKey } from '../components/editor/searchHighlightExtension';
@@ -36,7 +38,7 @@ import { SceneBreakExtension } from '../components/editor/SceneBreakExtension';
 import { ExportPanel } from '../components/ExportPanel';
 import Settings from './Settings';
 
-import { Chapter, Entity } from '../components/editor/types';
+import { Chapter, Entity, EntityLink, EntityEvent } from '../components/editor/types';
 import { Users, MapPin, Box, Scale, Bookmark, X, AlertTriangle, ChevronUp, ChevronDown } from 'lucide-react';
 
 type EditorFontName = 'cormorant' | 'literata' | 'source-serif';
@@ -297,9 +299,13 @@ export default function Editor() {
   const [isLoadingChapters, setIsLoadingChapters] = useState(false);
   const [projectTitle, setProjectTitle] = useState('');
   const [bibleEntities, setBibleEntities] = useState<Entity[]>([]);
+  const [entityLinks, setEntityLinks] = useState<EntityLink[]>([]);
+  const [entityEvents, setEntityEvents] = useState<EntityEvent[]>([]);
   const [referenceScope, setReferenceScope] = useState<'project' | 'chapter'>('project');
 
   const [isBibleOpen, setIsBibleOpen] = useState(false);
+  /** Шторка списка глав на узких экранах (< lg); на широких сайдбар всегда в потоке. */
+  const [isChaptersDrawerOpen, setIsChaptersDrawerOpen] = useState(false);
   const [isReferenceOpen, setIsReferenceOpen] = useState(false);
   const [isBibleMenuOpen, setIsBibleMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -308,6 +314,8 @@ export default function Editor() {
   const [isRevisionOpen, setIsRevisionOpen] = useState(false);
   const [isSyncOpen, setIsSyncOpen] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
+  const [isStatsOpen, setIsStatsOpen] = useState(false);
+  const [totalProjectWords, setTotalProjectWords] = useState(0);
   const [isRecheckingAll, setIsRecheckingAll] = useState(false);
   const [isReading, setIsReading] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -328,7 +336,9 @@ export default function Editor() {
     return stored !== null ? stored === 'true' : false;
   });
   const [editorFont, setEditorFont] = useState<EditorFontName>(() => {
-    return (localStorage.getItem('pero_editorFont') as EditorFontName) || 'cormorant';
+    // Дефолт — Literata (DESIGN.md): спроектирована для длинного чтения.
+    // Сохранённый выбор автора всегда в приоритете.
+    return (localStorage.getItem('pero_editorFont') as EditorFontName) || 'literata';
   });
   const [chapterTitleDraft, setChapterTitleDraft] = useState('');
   const [chapterTitleDraftChapterId, setChapterTitleDraftChapterId] = useState<string | null>(null);
@@ -341,7 +351,10 @@ export default function Editor() {
   currentChapterRef.current = chapters.find(ch => ch.id === chapterId) ?? null;
   const chapterTitleSaveTimerRef = useRef<number | null>(null);
 
+  const writingStats = useWritingStats(projectId);
+
   // Combined update handler: autosave (1s debounce) + background embedding (45s debounce)
+  // + writing stats tracking (records word count delta on every update)
   const onUpdate = useCallback(
     ({ editor }: { editor: import('@tiptap/react').Editor }) => {
       autosaveUpdate({ editor });
@@ -349,8 +362,13 @@ export default function Editor() {
       // Any content edit makes existing match positions stale — dismiss the nav bar.
       // setMatchNav is a stable React setter, so it doesn't need to be in deps.
       setMatchNav(null);
+      // Record word count delta for writing statistics (localStorage, very fast)
+      if (chapterId) {
+        const words = editor.storage.characterCount?.words?.() ?? 0;
+        writingStats.recordChapterWords(chapterId, words);
+      }
     },
-    [autosaveUpdate, scheduleEmbed]
+    [autosaveUpdate, scheduleEmbed, chapterId, writingStats.recordChapterWords]
   );
 
   const editor = useEditor({
@@ -439,11 +457,25 @@ export default function Editor() {
     updateSuggestions,
     handleExtract: rawHandleExtract,
     recheckChapter: rawRecheckChapter,
+    recheckBatch,
     approveSuggestion, rejectSuggestion,
     loadUpdateSuggestions,
     acceptUpdate, rejectUpdate, dismissUpdate,
     bulkDismissChapter, bulkRejectChapter,
   } = useBibleExtraction(projectId, chapterId, getContent);
+
+  // Load approved entities + links + timeline events for the bible/reference panels.
+  // Re-fetched after every extract/recheck — extraction adds links/events server-side.
+  const loadBibleData = useCallback(() => {
+    if (!projectId) return;
+    api.get<{ entities: Entity[]; links?: EntityLink[]; events?: EntityEvent[] }>(`/bible/${projectId}`)
+      .then(data => {
+        setBibleEntities((data.entities ?? []).filter(e => e.status === 'approved'));
+        setEntityLinks(data.links ?? []);
+        setEntityEvents(data.events ?? []);
+      })
+      .catch(e => console.error('Failed to load bible entities:', e));
+  }, [projectId]);
 
   // Wrap rawHandleExtract to also optimistically mark the chapter as freshly extracted.
   const handleExtract = useCallback(async () => {
@@ -458,7 +490,8 @@ export default function Editor() {
         return { ...c, title, lastExtractedAt: new Date().toISOString() };
       }));
     }
-  }, [rawHandleExtract, chapterId]);
+    loadBibleData();
+  }, [rawHandleExtract, chapterId, loadBibleData]);
 
   // Server-side recheck wrapper — updates local freshness after the API responds.
   const handleRecheckChapter = useCallback(async () => {
@@ -473,7 +506,8 @@ export default function Editor() {
         return { ...c, title, lastExtractedAt: new Date().toISOString() };
       }));
     }
-  }, [rawRecheckChapter, chapterId]);
+    loadBibleData();
+  }, [rawRecheckChapter, chapterId, loadBibleData]);
 
   // Load pending update suggestions when Bible or Sync panel is opened.
   // Sync panel needs the count for the "updates" tile; Bible panel needs full list.
@@ -694,15 +728,23 @@ export default function Editor() {
     return () => window.removeEventListener('keydown', handler);
   }, [matchNav, handleMatchNavGo, handleMatchNavClose]);
 
-  // Load approved entities for the reference panel
-  useEffect(() => {
-    if (!projectId) return;
-    api.get<{ entities: Entity[] }>(`/bible/${projectId}`)
-      .then(data => {
-        setBibleEntities((data.entities ?? []).filter(e => e.status === 'approved'));
-      })
-      .catch(e => console.error('Failed to load bible entities:', e));
-  }, [projectId]);
+  useEffect(() => { loadBibleData(); }, [loadBibleData]);
+
+  // Закрыть шторку глав после перехода к другой главе (узкие экраны)
+  useEffect(() => { setIsChaptersDrawerOpen(false); }, [chapterId]);
+
+  const isAnySidePanelOpen = isBibleOpen || isCoauthoring || isReferenceOpen
+    || isRevisionOpen || isSyncOpen || isStatsOpen;
+
+  /** Закрыть все правые панели (тап по затемнению на телефонах). */
+  const closeAllSidePanels = useCallback(() => {
+    setIsBibleOpen(false);
+    setIsCoauthoring(false);
+    setIsReferenceOpen(false);
+    setIsRevisionOpen(false);
+    setIsSyncOpen(false);
+    setIsStatsOpen(false);
+  }, []);
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
   useEffect(() => {
@@ -719,6 +761,7 @@ export default function Editor() {
         if (isBibleOpen)     { setIsBibleOpen(false);     return; }
         if (isRevisionOpen)  { setIsRevisionOpen(false);  return; }
         if (isReferenceOpen) { setIsReferenceOpen(false); return; }
+        if (isStatsOpen)     { setIsStatsOpen(false);     return; }
         if (isSearchOpen)    { setIsSearchOpen(false);    return; }
         if (isBibleMenuOpen) { setIsBibleMenuOpen(false); return; }
       }
@@ -747,7 +790,7 @@ export default function Editor() {
   }, [
     isGlobalSearchOpen,
     isExportOpen, isSettingsOpen, isCoauthoring, isBibleOpen,
-    isRevisionOpen, isReferenceOpen, isSearchOpen, isBibleMenuOpen,
+    isRevisionOpen, isReferenceOpen, isStatsOpen, isSearchOpen, isBibleMenuOpen,
     editor, forceSave,
   ]);
 
@@ -816,17 +859,42 @@ export default function Editor() {
     return flagged;
   }, [allApprovedEntities]);
 
-  const handleCreateChapter = async () => {
-    if (!projectId) return;
+  const isCreatingChapterRef = useRef(false);
+
+  const handleCreateChapter = async (type: import('../components/editor/types').ChapterType = 'chapter') => {
+    if (!projectId || isCreatingChapterRef.current) return;
+    isCreatingChapterRef.current = true;
     try {
+      const chapterCount = chapters.filter(c => (c.chapterType ?? 'chapter') === 'chapter').length;
+      const titleMap: Record<string, string> = {
+        chapter: `Глава ${chapterCount + 1}`,
+        prologue: 'Пролог',
+        epilogue: 'Эпилог',
+        interlude: 'Интермедия',
+      };
       const data = await api.post<{ chapter: Chapter }>(
         `/projects/${projectId}/chapters`,
-        { title: `Глава ${chapters.length + 1}` }
+        { title: titleMap[type], chapterType: type }
       );
       setChapters(prev => [...prev, data.chapter]);
       navigate(`/editor/${projectId}/${data.chapter.id}`);
     } catch (e) {
       console.error('Failed to create chapter:', e);
+    } finally {
+      isCreatingChapterRef.current = false;
+    }
+  };
+
+  const handleDeleteChapter = async (id: string) => {
+    await api.delete(`/chapters/${id}`);
+    setChapters(prev => prev.filter(c => c.id !== id));
+    if (chapterId === id) {
+      const remaining = chapters.filter(c => c.id !== id);
+      if (remaining.length > 0) {
+        navigate(`/editor/${projectId}/${remaining[0].id}`);
+      } else {
+        navigate(`/dashboard`);
+      }
     }
   };
 
@@ -877,40 +945,66 @@ export default function Editor() {
   const handleToggleCoauthor = () => {
     const next = !isCoauthoring;
     setIsCoauthoring(next);
-    if (next) { setIsBibleOpen(false); setIsReferenceOpen(false); setIsRevisionOpen(false); setIsSyncOpen(false); }
+    if (next) { setIsBibleOpen(false); setIsReferenceOpen(false); setIsRevisionOpen(false); setIsSyncOpen(false); setIsStatsOpen(false); }
   };
 
   const handleToggleRevision = () => {
     const next = !isRevisionOpen;
     setIsRevisionOpen(next);
-    if (next) { setIsBibleOpen(false); setIsCoauthoring(false); setIsReferenceOpen(false); setIsSyncOpen(false); }
+    if (next) { setIsBibleOpen(false); setIsCoauthoring(false); setIsReferenceOpen(false); setIsSyncOpen(false); setIsStatsOpen(false); }
   };
 
   const handleToggleSync = () => {
     const next = !isSyncOpen;
     setIsSyncOpen(next);
-    if (next) { setIsBibleOpen(false); setIsCoauthoring(false); setIsReferenceOpen(false); setIsRevisionOpen(false); }
+    if (next) { setIsBibleOpen(false); setIsCoauthoring(false); setIsReferenceOpen(false); setIsRevisionOpen(false); setIsStatsOpen(false); }
   };
 
-  /** Sequentially recheck every stale chapter via the bible/recheck API. */
+  const handleToggleStats = () => {
+    const next = !isStatsOpen;
+    setIsStatsOpen(next);
+    if (next) {
+      setIsBibleOpen(false);
+      setIsCoauthoring(false);
+      setIsReferenceOpen(false);
+      setIsRevisionOpen(false);
+      setIsSyncOpen(false);
+      writingStats.refresh();
+      // Fetch current project word count from the server
+      if (projectId) {
+        api.get<{ project: { wordCount?: number } }>(`/projects/${projectId}`)
+          .then(data => { setTotalProjectWords(data.project?.wordCount ?? 0); })
+          .catch(() => {});
+      }
+    }
+  };
+
+  /**
+   * Batch-recheck all stale chapters in one (or a few) API calls instead of N sequential calls.
+   * Chapters whose content hasn't changed since last extraction are skipped server-side for free.
+   */
   const handleRecheckAllStale = async () => {
     if (isRecheckingAll) return;
     setIsRecheckingAll(true);
-    const stale = chapters.filter(ch => {
-      if (!ch.lastExtractedAt) return false; // unknown, not stale
-      return new Date(ch.updatedAt).getTime() > new Date(ch.lastExtractedAt).getTime();
-    });
-    for (const ch of stale) {
-      try {
-        await api.post(`/bible/recheck/chapter/${ch.id}`, {});
-        setChapters(prev => prev.map(c =>
-          c.id === ch.id ? { ...c, lastExtractedAt: new Date().toISOString() } : c
-        ));
-      } catch (e) {
-        console.error(`Recheck failed for chapter ${ch.id}:`, e);
-      }
+    try {
+      const stale = chapters.filter(ch => {
+        if (!ch.lastExtractedAt) return false; // never extracted — not "stale", let user trigger manually
+        return new Date(ch.updatedAt).getTime() > new Date(ch.lastExtractedAt).getTime();
+      });
+      if (stale.length === 0) return;
+
+      await recheckBatch(stale.map(ch => ch.id));
+
+      // Mark all stale chapters as freshly extracted optimistically
+      const staleIds = new Set(stale.map(ch => ch.id));
+      setChapters(prev => prev.map(c =>
+        staleIds.has(c.id) ? { ...c, lastExtractedAt: new Date().toISOString() } : c
+      ));
+    } catch (e) {
+      console.error('Batch recheck failed:', e);
+    } finally {
+      setIsRecheckingAll(false);
     }
-    setIsRecheckingAll(false);
   };
 
   const handleBibleMenuClick = (tabId: string) => {
@@ -920,6 +1014,7 @@ export default function Editor() {
     setIsReferenceOpen(false);
     setIsRevisionOpen(false);
     setIsSyncOpen(false);
+    setIsStatsOpen(false);
     if (isDictating) toggleListening();
     setIsReading(false);
   };
@@ -938,6 +1033,7 @@ export default function Editor() {
       setIsCoauthoring(false);
       setIsRevisionOpen(false);
       setIsSyncOpen(false);
+      setIsStatsOpen(false);
       if (isDictating) toggleListening();
       setIsReading(false);
     }
@@ -954,6 +1050,7 @@ export default function Editor() {
       setIsCoauthoring(false);
       setIsRevisionOpen(false);
       setIsSyncOpen(false);
+      setIsStatsOpen(false);
       setIsSettingsOpen(false);
       setIsExportOpen(false);
       setIsSearchOpen(false);
@@ -1010,8 +1107,18 @@ export default function Editor() {
         }
       `}</style>
 
-      <div className="flex h-screen w-full bg-[#f5f0e8] overflow-hidden font-sans text-[#1e2d1f]">
+      <div className="relative flex h-screen w-full bg-[#f5f0e8] overflow-hidden font-sans text-[#1e2d1f]">
+        {/* Backdrop шторки глав (только < lg) */}
+        {!isFocusMode && isChaptersDrawerOpen && (
+          <div
+            className="fixed inset-0 bg-black/30 z-40 lg:hidden"
+            onClick={() => setIsChaptersDrawerOpen(false)}
+          />
+        )}
         {!isFocusMode && (
+          <div className={`flex h-full max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-50 max-lg:transition-transform max-lg:duration-300 max-lg:ease-in-out ${
+            isChaptersDrawerOpen ? 'max-lg:translate-x-0 max-lg:shadow-2xl' : 'max-lg:-translate-x-full'
+          }`}>
           <ChapterSidebar
             projectId={projectId!}
             chapterId={chapterId}
@@ -1020,6 +1127,8 @@ export default function Editor() {
             isCoauthoring={isCoauthoring}
             onToggleCoauthor={handleToggleCoauthor}
             onCreateChapter={handleCreateChapter}
+            onDeleteChapter={handleDeleteChapter}
+            onReorderChapters={handleReorderChapters}
             onToggleChapterStatus={handleToggleChapterStatus}
             wordCount={editor?.storage.characterCount.words() ?? 0}
             showWordCount={showWordCount}
@@ -1029,9 +1138,10 @@ export default function Editor() {
             saveError={saveError}
             editorFont={editorFont}
           />
+          </div>
         )}
 
-        <div className="flex-1 flex flex-col relative">
+        <div className="flex-1 min-w-0 flex flex-col relative">
           <EditorCanvas
             editor={editor}
             isSaving={isSaving}
@@ -1051,6 +1161,8 @@ export default function Editor() {
             onOpenSettings={() => setIsSettingsOpen(true)}
             onOpenSearch={() => setIsSearchOpen(true)}
             onOpenExport={() => setIsExportOpen(true)}
+            onOpenChapters={() => setIsChaptersDrawerOpen(true)}
+            projectId={projectId}
           />
 
           {isBibleMenuOpen && (
@@ -1059,12 +1171,11 @@ export default function Editor() {
 
           <BottomToolbar
             isDictating={isDictating}
-            isSupported={isSupported}
-            toggleListening={toggleListening}
+            isDictationProcessing={isDictationProcessing}
+            isDictationSupported={isSupported}
+            onToggleDictation={toggleListening}
             isCoauthoring={isCoauthoring}
             onToggleCoauthor={handleToggleCoauthor}
-            isReading={isReading}
-            onToggleReading={handleToggleReading}
             isBibleOpen={isBibleOpen}
             isBibleMenuOpen={isBibleMenuOpen}
             onSetBibleMenuOpen={setIsBibleMenuOpen}
@@ -1075,6 +1186,8 @@ export default function Editor() {
             onToggleRevision={handleToggleRevision}
             isSyncOpen={isSyncOpen}
             onToggleSync={handleToggleSync}
+            isStatsOpen={isStatsOpen}
+            onToggleStats={handleToggleStats}
             isFocusMode={isFocusMode}
             onToggleFocusMode={handleToggleFocusMode}
             syncBadgeCount={chapters.reduce((acc, ch) => {
@@ -1171,10 +1284,18 @@ export default function Editor() {
           )}
         </div>
 
+        {/* Затемнение под панелью на телефонах: панель занимает почти весь экран,
+            тап по остатку закрывает её. На md+ затемнения нет — текст читаем. */}
+        {!isFocusMode && isAnySidePanelOpen && (
+          <div
+            className="absolute inset-0 bg-black/30 z-40 md:hidden"
+            onClick={closeAllSidePanels}
+          />
+        )}
         <aside
-          className={`bg-[#f5f0e8] border-[#1e2d1f]/10 flex-shrink-0 transition-all duration-300 ease-in-out z-20 overflow-hidden relative ${
-            (!isFocusMode && (isBibleOpen || isCoauthoring || isReferenceOpen || isRevisionOpen || isSyncOpen))
-              ? 'w-[320px] border-l opacity-100'
+          className={`bg-[#f5f0e8] border-[#1e2d1f]/10 flex-shrink-0 transition-all duration-300 ease-in-out z-20 overflow-hidden relative max-xl:absolute max-xl:right-0 max-xl:bottom-0 max-xl:top-14 max-md:top-0 max-xl:z-40 max-xl:border-t max-md:border-t-0 ${
+            (!isFocusMode && isAnySidePanelOpen)
+              ? 'w-[320px] border-l opacity-100 max-xl:shadow-2xl'
               : 'w-0 border-l-0 opacity-0'
           }`}
         >
@@ -1185,8 +1306,10 @@ export default function Editor() {
               onTabChange={setActiveBibleTab}
               isExtracting={isExtracting}
               suggestions={suggestions}
-              approvedEntities={approvedEntities}
+              approvedEntities={allApprovedEntities}
               updateSuggestions={updateSuggestions}
+              entityLinks={entityLinks}
+              entityEvents={entityEvents}
               chapters={chapters.map(c => ({ id: c.id, title: c.title, order: c.order }))}
               onExtract={handleExtract}
               chapterFreshnessStatus={currentChapterFreshness}
@@ -1233,7 +1356,17 @@ export default function Editor() {
               onNavigateToChapter={(id) => navigate(`/editor/${projectId}/${id}`)}
               onRecheckAllStale={handleRecheckAllStale}
               onOpenBibleUpdates={() => { handleBibleMenuClick('updates'); }}
+              onCreateBible={() => { handleBibleMenuClick('characters'); setIsSyncOpen(false); }}
               onClose={() => setIsSyncOpen(false)}
+            />
+          )}
+
+          {isStatsOpen && (
+            <WritingStatsPanel
+              {...writingStats}
+              totalProjectWords={totalProjectWords}
+              chapterWords={editor?.storage.characterCount?.words?.() ?? 0}
+              onClose={() => setIsStatsOpen(false)}
             />
           )}
 
@@ -1245,11 +1378,18 @@ export default function Editor() {
               onChatInputChange={setChatInput}
               isAiLoading={isAiLoading}
               isCheckingConsistency={isCheckingConsistency}
+              isExtracting={isExtracting}
               chatEndRef={chatEndRef}
               selectedText={selectedText}
               onSendMessage={handleSendMessage}
               onSendPrompt={handleSendPrompt}
               onCheckConsistency={handleCheckConsistency}
+              onExtractBible={async () => {
+                await handleExtract();
+                setIsBibleOpen(true);
+                setIsCoauthoring(false);
+                setActiveBibleTab('inbox');
+              }}
               onInsertText={handleInsertText}
               onClose={() => setIsCoauthoring(false)}
             />
@@ -1386,24 +1526,7 @@ export default function Editor() {
       <FindReplacePopup
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
-        editorText={editor?.getText() || ''}
-        onReplace={newText => {
-          editor?.commands.setContent(`<p>${newText.split(/\n\n+/).join('</p><p>')}</p>`);
-          setIsBibleOpen(true);
-          setIsReferenceOpen(false);
-          setIsCoauthoring(false);
-          setActiveBibleTab('inbox');
-          handleExtract();
-        }}
-        onNavigate={(type, _id) => {
-          setIsSearchOpen(false);
-          if (type === 'lore') {
-            setIsBibleOpen(true);
-            setIsReferenceOpen(false);
-            setIsCoauthoring(false);
-            setActiveBibleTab('characters');
-          }
-        }}
+        editor={editor}
       />
 
       {isGlobalSearchOpen && projectId && (

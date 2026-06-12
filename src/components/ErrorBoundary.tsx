@@ -1,4 +1,5 @@
 import { Component, ReactNode, ErrorInfo } from 'react';
+import { PeroMark } from './Logo';
 
 interface Props { children: ReactNode; }
 interface State { error: Error | null; }
@@ -34,7 +35,7 @@ export class ErrorBoundary extends Component<Props, State> {
     return (
       <div className="min-h-screen bg-[#f5f0e8] flex items-center justify-center p-8">
         <div className="max-w-md w-full bg-white/80 rounded-3xl shadow-lg p-8 text-center">
-          <div className="text-5xl mb-4">🪶</div>
+          <div className="mb-4 flex justify-center text-[#4A5D4E]"><PeroMark size={44} /></div>
           <h1 className="font-serif text-2xl font-bold text-[#1e2d1f] mb-2">
             Что-то пошло не так
           </h1>

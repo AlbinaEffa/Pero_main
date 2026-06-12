@@ -7,28 +7,28 @@
  */
 
 import { useState, useEffect } from 'react';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Mic, WandSparkles, MessageSquareText, SquareSlash } from 'lucide-react';
 
 export const HINTS_DONE_KEY = 'pero_editor_hints_done';
 
 const HINTS = [
   {
-    emoji: '🎙️',
+    icon: Mic,
     title: 'Диктуйте голосом',
     body: 'Нажмите «Диктовка» в панели снизу — говорите, AI расставит знаки препинания и подставит имена из вашей истории.',
   },
   {
-    emoji: '✨',
+    icon: WandSparkles,
     title: 'Выделите текст — появится AI-меню',
     body: 'Выделите любой фрагмент — над ним всплывёт панель: Сократи, Плотнее, Диалог живее, Конфликт и другие.',
   },
   {
-    emoji: '🤖',
+    icon: MessageSquareText,
     title: 'ИИ-Соавтор знает вашу историю',
-    body: 'Кнопка «Соавтор» ✨ открывает чат. AI читал вашу рукопись и Библию истории — спрашивайте про сюжет, персонажей, стиль.',
+    body: 'Кнопка «Соавтор» открывает чат. AI читал вашу рукопись и Библию истории — спрашивайте про сюжет, персонажей, стиль.',
   },
   {
-    emoji: '/',
+    icon: SquareSlash,
     title: 'Слэш-команды',
     body: 'Начните строку с / — откроется меню блоков: заголовки, цитаты, списки, разрыв сцены, AI-вставки.',
   },
@@ -99,7 +99,9 @@ export function EditorFirstRunHints({ isNewChapter }: Props) {
           {/* Header */}
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-2.5">
-              <span className="text-2xl leading-none">{hint.emoji}</span>
+              <span className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                <hint.icon size={15} className="text-[#9DB5A1]" />
+              </span>
               <h3 className="font-bold text-[15px] text-white leading-tight">{hint.title}</h3>
             </div>
             <button

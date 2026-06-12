@@ -7,17 +7,17 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Loader2, CheckCircle2 } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, CheckCircle2, Bug, Lightbulb, Heart } from 'lucide-react';
 import { api } from '../services/api';
 import { track } from '../services/analytics';
 import { useLocation } from 'react-router-dom';
 
 type FeedbackType = 'bug' | 'idea' | 'praise';
 
-const TYPES: { id: FeedbackType; label: string; emoji: string }[] = [
-  { id: 'bug',   label: 'Что-то сломалось', emoji: '🐛' },
-  { id: 'idea',  label: 'Идея',             emoji: '💡' },
-  { id: 'praise', label: 'Всё нравится!',   emoji: '❤️' },
+const TYPES: { id: FeedbackType; label: string; icon: typeof Bug }[] = [
+  { id: 'bug',    label: 'Что-то сломалось', icon: Bug },
+  { id: 'idea',   label: 'Идея',             icon: Lightbulb },
+  { id: 'praise', label: 'Всё нравится!',    icon: Heart },
 ];
 
 // Prevent spam: one submission per 5 minutes (localStorage timestamp)
@@ -207,7 +207,7 @@ export function FeedbackButton() {
                         alignItems: 'center', gap: '3px',
                       }}
                     >
-                      <span style={{ fontSize: '16px' }}>{t.emoji}</span>
+                      <t.icon size={16} style={{ color: '#4A5D4E' }} />
                       <span>{t.label}</span>
                     </button>
                   ))}

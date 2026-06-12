@@ -203,8 +203,8 @@
 <div class="wrap">
 
   <header>
-    <button class="theme-toggle" onclick="toggleTheme()"><span id="theme-label">🌙 Ночная мастерская</span></button>
-    <span class="feather">🪶</span>
+    <button class="theme-toggle" onclick="toggleTheme()"><span id="theme-label">Ночная мастерская</span></button>
+    <svg width="40" height="42" viewBox="0 0 64 68" fill="none" stroke="#4A5D4E" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:12px"><path d="M51 7 C41.5 9.5 33 15.5 26.5 24 C21 31 17 39.5 15.2 49"/><path d="M51 7 C53.5 16.5 51.5 26.5 45.5 34.5 C40.5 41.2 33 46.8 25 48.8"/><path d="M51 7 C43.5 17 35.5 28.5 28.5 38.5 C24 45 19.5 51.5 15.2 57.5"/><path d="M33.5 31.5 C36.5 32.4 40.5 31.8 43.8 29.8" stroke-width="2.4" opacity="0.75"/><path d="M25 43 C28 43.8 31.5 43.3 34.6 41.6" stroke-width="2.4" opacity="0.75"/><path d="M14 61.5 C23 63.8 35 63.8 45.5 61" stroke-width="2.6" opacity="0.45"/></svg>
     <h1>Перо</h1>
     <p class="tagline">Перо помнит — автор пишет</p>
     <span class="sys-label">Дизайн-система · Тёплая литературная мастерская</span>
@@ -338,7 +338,7 @@
     const html = document.documentElement;
     const dark = html.getAttribute('data-theme') === 'dark';
     html.setAttribute('data-theme', dark ? 'light' : 'dark');
-    document.getElementById('theme-label').textContent = dark ? '🌙 Ночная мастерская' : '☀️ Дневной свет';
+    document.getElementById('theme-label').textContent = dark ? 'Ночная мастерская' : 'Дневной свет';
   }
 </script>
 </body>

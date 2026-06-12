@@ -200,7 +200,7 @@ export function WritingStatsPanel({
 
               {pct >= 100 && (
                 <div className="mt-1.5 text-[10px] font-semibold text-green-600">
-                  🎉 Цель достигнута!
+                  Цель достигнута!
                 </div>
               )}
               {pct < 100 && wordGoal - totalProjectWords > 0 && (

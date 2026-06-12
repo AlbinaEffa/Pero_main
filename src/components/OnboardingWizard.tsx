@@ -9,7 +9,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Upload, BookOpen, Pen, ArrowRight, Loader2, CheckCircle2, X } from 'lucide-react';
+import { Upload, BookOpen, Pen, ArrowRight, Loader2, CheckCircle2, X, PenLine, FolderOpen, Compass, Sparkles, Search, Brain } from 'lucide-react';
+import { PeroMark } from './Logo';
 import { api } from '../services/api';
 import { track } from '../services/analytics';
 
@@ -19,11 +20,11 @@ type Step = 'welcome' | 'start' | 'loading' | 'ready';
 
 type WriterType = 'novel' | 'short' | 'nonfiction' | 'exploring';
 
-const WRITER_TYPES: { id: WriterType; label: string; emoji: string }[] = [
-  { id: 'novel',       label: 'Роман или повесть',      emoji: '📖' },
-  { id: 'short',       label: 'Рассказы и короткая проза', emoji: '✍️' },
-  { id: 'nonfiction',  label: 'Нон-фикшн, мемуары',     emoji: '🗂️' },
-  { id: 'exploring',   label: 'Просто пробую',           emoji: '🪶' },
+const WRITER_TYPES: { id: WriterType; label: string; icon: typeof BookOpen }[] = [
+  { id: 'novel',       label: 'Роман или повесть',      icon: BookOpen },
+  { id: 'short',       label: 'Рассказы и короткая проза', icon: PenLine },
+  { id: 'nonfiction',  label: 'Нон-фикшн, мемуары',     icon: FolderOpen },
+  { id: 'exploring',   label: 'Просто пробую',           icon: Compass },
 ];
 
 interface Props {
@@ -148,7 +149,7 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
         {step === 'welcome' && (
           <>
             <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-              <div style={{ fontSize: '40px', marginBottom: '12px' }}>🪶</div>
+              <div style={{ marginBottom: '12px', color: '#4A5D4E', display: 'flex', justifyContent: 'center' }}><PeroMark size={40} /></div>
               <h2 style={{
                 fontFamily: '"Cormorant Garamond", serif',
                 fontSize: '28px', fontWeight: 700, fontStyle: 'italic',
@@ -179,7 +180,7 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
                     transition: 'all 0.15s',
                   }}
                 >
-                  <span style={{ fontSize: '20px' }}>{wt.emoji}</span>
+                  <wt.icon size={20} style={{ color: '#4A5D4E', flexShrink: 0 }} />
                   <span style={{
                     fontSize: '14px', fontWeight: 500,
                     color: writerType === wt.id ? '#2a3d2e' : 'rgba(30,45,31,0.7)',
@@ -351,7 +352,7 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
         {step === 'loading' && (
           <>
             <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-              <div style={{ fontSize: '40px', marginBottom: '12px' }}>✨</div>
+              <div style={{ marginBottom: '12px', color: '#4A5D4E', display: 'flex', justifyContent: 'center' }}><Sparkles size={34} /></div>
               <h2 style={{
                 fontFamily: '"Cormorant Garamond", serif',
                 fontSize: '26px', fontWeight: 700, fontStyle: 'italic',
@@ -366,9 +367,9 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
               {[
-                { icon: '🔍', label: 'Загружаем главы рукописи' },
-                { icon: '📚', label: 'Извлекаем персонажей, места и предметы' },
-                { icon: '🧠', label: 'Формируем семантическую память соавтора' },
+                { icon: Search, label: 'Загружаем главы рукописи' },
+                { icon: BookOpen, label: 'Извлекаем персонажей, места и предметы' },
+                { icon: Brain, label: 'Формируем семантическую память соавтора' },
               ].map((item, i) => {
                 const done = checkedItems.includes(i);
                 return (
@@ -378,7 +379,7 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
                     background: done ? 'rgba(58,79,65,0.08)' : 'rgba(30,45,31,0.03)',
                     transition: 'background 0.4s ease',
                   }}>
-                    <span style={{ fontSize: '18px' }}>{item.icon}</span>
+                    <item.icon size={18} style={{ color: '#4A5D4E', flexShrink: 0 }} />
                     <span style={{
                       fontSize: '13px', flex: 1,
                       color: done ? 'rgba(30,45,31,0.75)' : 'rgba(30,45,31,0.4)',
@@ -407,7 +408,7 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
         {step === 'ready' && (
           <>
             <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-              <div style={{ fontSize: '40px', marginBottom: '12px' }}>✨</div>
+              <div style={{ marginBottom: '12px', color: '#4A5D4E', display: 'flex', justifyContent: 'center' }}><Sparkles size={34} /></div>
               <h2 style={{
                 fontFamily: '"Cormorant Garamond", serif',
                 fontSize: '26px', fontWeight: 700, fontStyle: 'italic',
@@ -422,16 +423,16 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '28px' }}>
               {[
-                { icon: '🔍', label: 'Извлекаем персонажей, места и предметы' },
-                { icon: '📚', label: 'Строим Библию истории' },
-                { icon: '🧠', label: 'Формируем семантическую память соавтора' },
+                { icon: Search, label: 'Извлекаем персонажей, места и предметы' },
+                { icon: BookOpen, label: 'Строим Библию истории' },
+                { icon: Brain, label: 'Формируем семантическую память соавтора' },
               ].map((item, i) => (
                 <div key={i} style={{
                   display: 'flex', alignItems: 'center', gap: '12px',
                   padding: '12px 16px', borderRadius: '14px',
                   background: 'rgba(58,79,65,0.06)',
                 }}>
-                  <span style={{ fontSize: '18px' }}>{item.icon}</span>
+                  <item.icon size={18} style={{ color: '#4A5D4E', flexShrink: 0 }} />
                   <span style={{ fontSize: '13px', color: 'rgba(30,45,31,0.7)', flex: 1 }}>
                     {item.label}
                   </span>

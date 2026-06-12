@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { track } from '../services/analytics';
+import { PeroMark } from './Logo';
 
 /**
  * Празднование aha-момента: пятое одобренное предложение библии — событие,
@@ -67,15 +68,14 @@ export function AhaCelebration() {
       {feathers.map(f => (
         <span
           key={f.id}
-          className="absolute top-[-40px]"
+          className="absolute top-[-40px] text-[#4A5D4E]"
           style={{
             left: `${f.left}%`,
-            fontSize: f.size,
             animation: `featherFall ${f.duration}s ease-in ${f.delay}s forwards`,
             ['--drift' as string]: `${f.drift}px`,
           }}
         >
-          🪶
+          <PeroMark size={f.size} />
         </span>
       ))}
       <div className="absolute left-1/2 top-[20%] -translate-x-1/2 animate-[ahaToast_3s_ease_forwards]">

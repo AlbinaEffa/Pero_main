@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, RefObject } from 'react';
 import {
-  X, Sparkles, Send, ShieldCheck, FileText, TrendingUp, BookOpen,
+  X, Sparkles, Send, ShieldCheck, FileText, TrendingUp, BookOpen, MessageCircle,
   Minimize2, MessageSquare, Zap, Scissors, Copy, CornerDownLeft,
   MousePointer2,
 } from 'lucide-react';
@@ -373,10 +373,10 @@ export function CoauthorPanel({
         {/* Context pills */}
         <div className="flex items-center gap-1.5 mb-2.5">
           <span className="text-[9px] text-[#1e2d1f]/30 font-medium uppercase tracking-widest">Контекст:</span>
-          <span className="text-[9px] text-[#1e2d1f]/45 bg-[#1e2d1f]/5 rounded px-1.5 py-0.5">📖 Библия</span>
-          <span className="text-[9px] text-[#1e2d1f]/45 bg-[#1e2d1f]/5 rounded px-1.5 py-0.5">📄 Глава</span>
+          <span className="text-[9px] text-[#1e2d1f]/45 bg-[#1e2d1f]/5 rounded px-1.5 py-0.5" style={{ display: "inline-flex", alignItems: "center", gap: "3px" }}><BookOpen size={9} /> Библия</span>
+          <span className="text-[9px] text-[#1e2d1f]/45 bg-[#1e2d1f]/5 rounded px-1.5 py-0.5" style={{ display: "inline-flex", alignItems: "center", gap: "3px" }}><FileText size={9} /> Глава</span>
           {chatMessages.length > 2 && (
-            <span className="text-[9px] text-[#1e2d1f]/45 bg-[#1e2d1f]/5 rounded px-1.5 py-0.5">💬 История</span>
+            <span className="text-[9px] text-[#1e2d1f]/45 bg-[#1e2d1f]/5 rounded px-1.5 py-0.5" style={{ display: "inline-flex", alignItems: "center", gap: "3px" }}><MessageCircle size={9} /> История</span>
           )}
         </div>
 

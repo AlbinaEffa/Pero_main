@@ -174,7 +174,7 @@ export function useAiChat({ projectId, chapterId, getContent }: UseAiChatArgs) {
     setIsCheckingConsistency(true);
     setChatMessages(prev => [
       ...prev,
-      { role: 'ai', text: '🔍 Проверяю главу на противоречия с Библией истории...' },
+      { role: 'ai', text: 'Проверяю главу на противоречия с Библией истории…' },
     ]);
 
     try {
@@ -190,12 +190,12 @@ export function useAiChat({ projectId, chapterId, getContent }: UseAiChatArgs) {
       if (data.note) {
         resultText = data.note;
       } else if (!data.issues || data.issues.length === 0) {
-        resultText = '✅ Противоречий не найдено. Глава консистентна с Библией истории.';
+        resultText = 'Противоречий не найдено. Глава консистентна с Библией истории.';
       } else {
         const lines = data.issues.map(issue => {
           const icon =
-            issue.severity === 'high'   ? '🔴' :
-            issue.severity === 'medium' ? '🟡' : '🟢';
+            issue.severity === 'high'   ? 'Высокая:' :
+            issue.severity === 'medium' ? 'Средняя:' : 'Низкая:';
           return `${icon} **${issue.entity}**: ${issue.issue}`;
         });
         resultText = `Обнаружены потенциальные противоречия:\n\n${lines.join('\n')}`;

@@ -18,6 +18,7 @@ const StoryBible = React.lazy(() => import('./pages/StoryBible'));
 const Settings   = React.lazy(() => import('./pages/Settings'));
 const IdeaLibrary = React.lazy(() => import('./pages/IdeaLibrary'));
 const Onboarding = React.lazy(() => import('./pages/Onboarding'));
+const Privacy    = React.lazy(() => import('./pages/Privacy'));
 
 // ── Page loading fallback ─────────────────────────────────────────────────────
 function PageLoader() {
@@ -75,8 +76,9 @@ export default function App() {
         <RoutePersister />
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            <Route path="/"      element={<Landing />} />
-            <Route path="/login" element={<Login />} />
+            <Route path="/"        element={<Landing />} />
+            <Route path="/login"   element={<Login />} />
+            <Route path="/privacy" element={<Privacy />} />
 
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/ideas"     element={<ProtectedRoute><IdeaLibrary /></ProtectedRoute>} />

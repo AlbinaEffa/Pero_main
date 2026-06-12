@@ -248,7 +248,10 @@ export default function Landing() {
               <h3 className="font-serif text-2xl font-semibold mb-1.5">Ваши тексты — ваши</h3>
               <p className="text-[#f5f0e8]/70 leading-relaxed text-[15px]">
                 Рукописи не используются для обучения моделей. Все права остаются у автора.
-                Удалили проект — он удалён безвозвратно.
+                Удалили проект — он удалён безвозвратно.{' '}
+                <Link to="/privacy" className="underline underline-offset-2 text-[#f5f0e8]/90 hover:text-white transition-colors">
+                  Подробнее о приватности
+                </Link>
               </p>
             </div>
           </div>
@@ -272,7 +275,10 @@ export default function Landing() {
       <footer className="border-t border-ink/8 py-8">
         <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-ink/40">
           <span className="text-ink/60"><PeroLogo size={16} /></span>
-          <span>&copy; {new Date().getFullYear()} Перо · Тексты авторов не используются для обучения моделей</span>
+          <span>
+            &copy; {new Date().getFullYear()} Перо ·{' '}
+            <Link to="/privacy" className="hover:text-ink/70 underline underline-offset-2 transition-colors">Приватность и права на тексты</Link>
+          </span>
         </div>
       </footer>
     </div>

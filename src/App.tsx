@@ -19,6 +19,7 @@ const Settings   = React.lazy(() => import('./pages/Settings'));
 const IdeaLibrary = React.lazy(() => import('./pages/IdeaLibrary'));
 const Onboarding = React.lazy(() => import('./pages/Onboarding'));
 const Privacy    = React.lazy(() => import('./pages/Privacy'));
+const Demo       = React.lazy(() => import('./pages/Demo'));
 
 // ── Page loading fallback ─────────────────────────────────────────────────────
 function PageLoader() {
@@ -79,6 +80,7 @@ export default function App() {
             <Route path="/"        element={<Landing />} />
             <Route path="/login"   element={<Login />} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/demo"    element={<Demo />} />
 
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/ideas"     element={<ProtectedRoute><IdeaLibrary /></ProtectedRoute>} />

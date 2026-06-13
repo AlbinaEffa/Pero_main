@@ -3,7 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { PeroMark } from '../components/Logo';
 import { useAuth } from '../contexts/AuthContext';
-import { api } from '../services/api';
+import { api, getApiBaseUrl } from '../services/api';
+import { takePendingManuscript } from '../services/demoCarry';
 import { track, identifyUser } from '../services/analytics';
 
 export default function Login() {
@@ -48,6 +49,12 @@ export default function Login() {
       } else {
         track('user_logged_in');
       }
+
+      // Перенос рукописи из демо без регистрации: достроить библию всей книги
+      const pendingFile = takePendingManuscript();
+      if (pendingFile && await importPendingManuscript(pendingFile, data.token)) {
+        return; // навигация на онбординг произошла внутри
+      }
       navigate('/dashboard');
 
     } catch (err: any) {
@@ -55,6 +62,47 @@ export default function Login() {
       setError(err.message || 'Произошла ошибка. Попробуйте еще раз.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  /**
+   * Достраивает библию из рукописи, загруженной в демо без регистрации.
+   * Парсит файл и создаёт проект под новым аккаунтом, затем ведёт в онбординг.
+   * Любая ошибка → false (вызывающий уведёт на дашборд).
+   */
+  const importPendingManuscript = async (file: File, token: string): Promise<boolean> => {
+    const base = getApiBaseUrl();
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const pr = await fetch(`${base}/import/parse`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      if (!pr.ok) return false;
+      const parsed = await pr.json();
+      if (!parsed?.chapters?.length) return false;
+
+      const cr = await fetch(`${base}/import/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          title: parsed.title?.trim() || 'Моя рукопись',
+          genre: null,
+          color: '#3A4F41',
+          chapters: parsed.chapters.map((c: any) => ({ title: c.title, content: c.content })),
+        }),
+      });
+      if (!cr.ok) return false;
+      const created = await cr.json();
+      if (!created?.project?.id) return false;
+
+      track('demo_manuscript_imported', { chapters: parsed.chapters.length });
+      navigate(`/onboarding/${created.project.id}`);
+      return true;
+    } catch {
+      return false;
     }
   };
 

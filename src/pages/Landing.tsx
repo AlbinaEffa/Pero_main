@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import {
   MoveRight, Check, Minus, Upload, BookOpen, Sparkles, Mic,
-  ShieldCheck, Link2, Activity, PenLine, Clock,
+  ShieldCheck, Link2, Activity, Clock,
 } from 'lucide-react';
 import { PeroMark, PeroLogo } from '../components/Logo';
 
@@ -13,6 +13,8 @@ import { PeroMark, PeroLogo } from '../components/Logo';
  */
 
 const CTA_TO = '/login';
+// Загрузка рукописи ведёт в демо без регистрации (не в стену логина)
+const DEMO_TO = '/demo';
 
 // ── Сравнение с конкурентами (по публичным данным, июнь 2026) ────────────────
 type Cell = 'yes' | 'no' | 'partial';
@@ -47,7 +49,7 @@ export default function Landing() {
           <a href="#pricing" className="hover:text-[var(--color-accent)] transition-colors">Цены</a>
           <Link to={CTA_TO} className="hover:text-[var(--color-accent)] transition-colors">Войти</Link>
         </nav>
-        <Link to={CTA_TO} className="bg-ink text-[#f5f0e8] px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-ink/85 transition-colors">
+        <Link to={DEMO_TO} className="bg-ink text-[#f5f0e8] px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-ink/85 transition-colors">
           Загрузить рукопись
         </Link>
       </header>
@@ -75,7 +77,7 @@ export default function Landing() {
               связи, таймлайны. Вы пишете дальше — Перо помнит и ловит противоречия.
             </p>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
-              <Link to={CTA_TO} className="flex items-center gap-2.5 bg-ink text-[#f5f0e8] px-8 py-4 rounded-2xl text-lg font-medium hover:bg-ink/85 transition-colors shadow-sm">
+              <Link to={DEMO_TO} className="flex items-center gap-2.5 bg-ink text-[#f5f0e8] px-8 py-4 rounded-2xl text-lg font-medium hover:bg-ink/85 transition-colors shadow-sm">
                 Загрузить рукопись бесплатно
                 <MoveRight size={20} />
               </Link>
@@ -231,7 +233,7 @@ export default function Landing() {
 
         {/* ── От автора / бета ── */}
         <section className="max-w-3xl mx-auto px-6 py-16 text-center">
-          <PenLine size={26} className="text-[var(--color-accent)] mx-auto mb-5" />
+          <PeroMark size={28} className="text-[var(--color-accent)] mx-auto mb-5" />
           <p className="font-serif text-2xl md:text-3xl font-semibold leading-snug mb-4">
             Перо делает автор — для авторов, которые устали терять собственный мир
           </p>
@@ -256,7 +258,7 @@ export default function Landing() {
                     <li key={f} className="flex gap-2.5"><Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />{f}</li>
                   ))}
                 </ul>
-                <Link to={CTA_TO} className="block text-center border border-ink/15 rounded-xl py-3 font-medium hover:bg-[#E8E2D5]/50 transition-colors">
+                <Link to={DEMO_TO} className="block text-center border border-ink/15 rounded-xl py-3 font-medium hover:bg-[#E8E2D5]/50 transition-colors">
                   Загрузить рукопись
                 </Link>
               </div>
@@ -336,7 +338,7 @@ export default function Landing() {
             Загрузите рукопись — через две минуты увидите карту своего мира
           </h2>
           <p className="text-ink/55 mb-9">Бесплатно, без карты. Перо помнит — автор пишет.</p>
-          <Link to={CTA_TO} className="inline-flex items-center gap-2.5 bg-ink text-[#f5f0e8] px-9 py-4 rounded-2xl text-lg font-medium hover:bg-ink/85 transition-colors shadow-sm">
+          <Link to={DEMO_TO} className="inline-flex items-center gap-2.5 bg-ink text-[#f5f0e8] px-9 py-4 rounded-2xl text-lg font-medium hover:bg-ink/85 transition-colors shadow-sm">
             Загрузить рукопись бесплатно
             <MoveRight size={20} />
           </Link>

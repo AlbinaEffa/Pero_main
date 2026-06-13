@@ -19,7 +19,7 @@ import { idempotency } from '../middleware/idempotency.js';
 
 const router = express.Router();
 
-const upload = multer({
+export const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
 });
@@ -241,6 +241,66 @@ function detectTitle(text: string, filename: string): string {
 // Background extraction is now handled by the job worker (src/jobs/worker.ts)
 // This route just enqueues jobs and returns immediately.
 
+// ─── Shared manuscript parser ─────────────────────────────────────────────────
+// Used by POST /import/parse (authed) and POST /demo/extract-first (public).
+// Throws Error with a numeric `.status` for client-mappable failures.
+
+export interface ParsedManuscript {
+  title: string;
+  totalWords: number;
+  chapters: ParsedChapter[];
+}
+
+function httpError(message: string, status: number): Error {
+  return Object.assign(new Error(message), { status });
+}
+
+export async function parseManuscript(originalname: string, buffer: Buffer): Promise<ParsedManuscript> {
+  const ext = (originalname.split('.').pop() ?? '').toLowerCase();
+
+  let text = '';
+  try {
+    if (ext === 'txt')       text = await extractTxt(buffer);
+    else if (ext === 'docx') text = await extractDocx(buffer);
+    else if (ext === 'pdf')  text = await extractPdf(buffer);
+    else if (ext === 'epub') text = await extractEpub(buffer);
+    else if (ext === 'fb2')  text = await extractFb2(buffer);
+    else throw httpError(`Формат .${ext} не поддерживается`, 400);
+  } catch (e: any) {
+    if (e?.status) throw e;
+    console.error(`Parse error for .${ext}:`, e);
+    throw httpError('Не удалось прочитать файл. Убедитесь, что он не повреждён.', 422);
+  }
+
+  if (!text.trim()) throw httpError('Файл пустой или не содержит текста.', 422);
+
+  // Защита от zip-бомб: docx/epub/fb2 — архивы, файл в 1 МБ может распаковаться
+  // в гигабайты текста. Жёсткий потолок ИЗВЛЕЧЁННОГО текста — 5 МБ (~2.5 млн слов).
+  const MAX_EXTRACTED_TEXT_BYTES = 5 * 1024 * 1024;
+  if (Buffer.byteLength(text, 'utf8') > MAX_EXTRACTED_TEXT_BYTES) {
+    throw httpError(
+      'Текст рукописи слишком большой (более 5 МБ). Разбейте книгу на тома и импортируйте по частям.',
+      413,
+    );
+  }
+
+  const rawChapters = splitIntoChapters(text);
+  const detectedTitle = detectTitle(text, originalname);
+  const totalWords = rawChapters.reduce((s, c) => s + c.wordCount, 0);
+
+  return {
+    title: detectedTitle,
+    totalWords,
+    chapters: rawChapters.map((c, i) => ({
+      index: i,
+      title: c.title,
+      content: c.content,
+      wordCount: c.wordCount,
+      preview: c.content.slice(0, 220).trimEnd() + (c.content.length > 220 ? '…' : ''),
+    })),
+  };
+}
+
 // ─── POST /api/import/parse ───────────────────────────────────────────────────
 // Accepts multipart/form-data with a `file` field.
 // Returns { title, totalWords, chapters: ParsedChapter[] }
@@ -248,50 +308,10 @@ function detectTitle(text: string, filename: string): string {
 router.post('/parse', authenticateToken, upload.single('file'), async (req: any, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-
-    const { originalname, buffer } = req.file;
-    const ext = (originalname.split('.').pop() ?? '').toLowerCase();
-
-    let text = '';
-    try {
-      if (ext === 'txt')       text = await extractTxt(buffer);
-      else if (ext === 'docx') text = await extractDocx(buffer);
-      else if (ext === 'pdf')  text = await extractPdf(buffer);
-      else if (ext === 'epub') text = await extractEpub(buffer);
-      else if (ext === 'fb2')  text = await extractFb2(buffer);
-      else return res.status(400).json({ error: `Формат .${ext} не поддерживается` });
-    } catch (e) {
-      console.error(`Parse error for .${ext}:`, e);
-      return res.status(422).json({ error: `Не удалось прочитать файл. Убедитесь, что он не повреждён.` });
-    }
-
-    if (!text.trim()) return res.status(422).json({ error: 'Файл пустой или не содержит текста.' });
-
-    // Защита от zip-бомб: docx/epub/fb2 — архивы, файл в 1 МБ может распаковаться
-    // в гигабайты текста. Жёсткий потолок ИЗВЛЕЧЁННОГО текста — 5 МБ (~2.5 млн слов).
-    const MAX_EXTRACTED_TEXT_BYTES = 5 * 1024 * 1024;
-    if (Buffer.byteLength(text, 'utf8') > MAX_EXTRACTED_TEXT_BYTES) {
-      return res.status(413).json({
-        error: 'Текст рукописи слишком большой (более 5 МБ). Разбейте книгу на тома и импортируйте по частям.',
-      });
-    }
-
-    const rawChapters = splitIntoChapters(text);
-    const detectedTitle = detectTitle(text, originalname);
-    const totalWords = rawChapters.reduce((s, c) => s + c.wordCount, 0);
-
-    res.json({
-      title: detectedTitle,
-      totalWords,
-      chapters: rawChapters.map((c, i) => ({
-        index: i,
-        title: c.title,
-        content: c.content,
-        wordCount: c.wordCount,
-        preview: c.content.slice(0, 220).trimEnd() + (c.content.length > 220 ? '…' : ''),
-      })),
-    });
-  } catch (error) {
+    const result = await parseManuscript(req.file.originalname, req.file.buffer);
+    res.json(result);
+  } catch (error: any) {
+    if (error?.status) return res.status(error.status).json({ error: error.message });
     console.error('Error in POST /import/parse:', error);
     res.status(500).json({ error: 'Internal server error' });
   }

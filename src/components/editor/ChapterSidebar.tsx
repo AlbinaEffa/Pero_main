@@ -192,7 +192,7 @@ export function ChapterSidebar({
 
       {/* Chapter list */}
       <div className="flex-1 overflow-y-auto p-3 space-y-0.5">
-        <div className="flex items-center justify-between px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1 mt-2">
+        <div className="flex items-center justify-between px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-white/40 mb-1 mt-2">
           <span>Главы</span>
           <div className="relative">
             <button
@@ -322,14 +322,14 @@ export function ChapterSidebar({
       <div className="p-3 border-t border-white/10 space-y-1">
         <Link
           to={`/bible/${projectId}`}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-white/10"
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-white/10"
         >
           <BookOpen size={16} className="text-white/50" />
           Библия истории
         </Link>
         <button
           onClick={onToggleCoauthor}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
             isCoauthoring ? 'bg-white/15 text-white' : 'hover:bg-white/10'
           }`}
         >
@@ -338,7 +338,7 @@ export function ChapterSidebar({
         </button>
         <Link
           to="/ideas"
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-white/10"
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-white/10"
         >
           <Lightbulb size={16} className="text-white/50" />
           Идеи

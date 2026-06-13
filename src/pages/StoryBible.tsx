@@ -193,14 +193,14 @@ export default function StoryBible() {
         <div className="p-3 space-y-1 border-b border-white/10">
           <Link
             to={`/bible/${id}`}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm bg-white/15 text-white"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium bg-white/15 text-white"
           >
             <BookOpen size={16} className="text-white/50" />
             Библия истории
           </Link>
           <Link
             to={editorPath}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-white/10 transition-colors"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-white/10 transition-colors"
           >
             <Sparkles size={16} className="text-white/50" />
             ИИ-Соавтор
@@ -209,7 +209,7 @@ export default function StoryBible() {
 
         {/* Chapter list */}
         <div className="flex-1 overflow-y-auto p-3 space-y-0.5">
-          <div className="flex items-center justify-between px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1 mt-2">
+          <div className="flex items-center justify-between px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-white/40 mb-1 mt-2">
             <span>Главы</span>
           </div>
           {isLoading && (
@@ -235,7 +235,7 @@ export default function StoryBible() {
           <div className="flex items-center justify-between border border-white/20 rounded-md px-3 py-2.5 text-white">
             <div className="flex items-center gap-2.5">
               <BarChart2 size={18} strokeWidth={2} />
-              <span className="font-semibold text-[15px] tracking-wide">Статистика</span>
+              <span className="font-semibold text-sm tracking-wide">Статистика</span>
             </div>
             <ChevronUp size={16} className="text-white/60" strokeWidth={2} />
           </div>
@@ -251,7 +251,7 @@ export default function StoryBible() {
             <button onClick={() => navigate(-1)} className="text-ink/60 hover:text-ink transition-colors">
               <ArrowLeft size={20} />
             </button>
-            <h1 className="text-[17px] font-semibold text-[#1E2D1F]">Библия истории — {tabCfg.label}</h1>
+            <h1 className="font-sans text-base font-semibold text-[#1E2D1F]">Библия истории — {tabCfg.label}</h1>
           </div>
           <button
             onClick={() => navigate('/settings')}
@@ -268,10 +268,10 @@ export default function StoryBible() {
               <button
                 key={tab.id}
                 onClick={() => switchTab(tab.id)}
-                className={`pb-4 text-[15px] font-medium border-b-2 transition-colors ${
+                className={`pb-4 text-sm border-b-2 transition-colors ${
                   activeTab === tab.id
-                    ? 'border-ink text-ink'
-                    : 'border-transparent text-ink/50 hover:text-ink/80'
+                    ? 'border-ink text-ink font-semibold'
+                    : 'border-transparent text-ink/50 hover:text-ink/80 font-medium'
                 }`}
               >
                 {tab.label}

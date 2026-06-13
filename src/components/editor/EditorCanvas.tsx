@@ -7,7 +7,7 @@ import {
   Bold, Italic, Underline, Strikethrough, List, ListOrdered, ListTodo,
   Undo2, Redo2, User, Download, Search, ChevronDown, PanelLeft,
   Link2, AlignLeft, AlignCenter, AlignRight, AlignJustify, Code, ListIndentIncrease,
-  CornerDownLeft, ExternalLink, Trash2, Highlighter, CircleOff, Quote
+  CornerDownLeft, ExternalLink, Trash2, Highlighter, CircleOff, Quote, StretchHorizontal
 } from 'lucide-react';
 import type { HighlightColor } from './HighlightMarkExtension';
 import { toolbarSelectionKey } from './toolbarSelectionExtension';
@@ -256,30 +256,36 @@ export function EditorCanvas({
   const [isFontMenuOpen, setIsFontMenuOpen] = useState(false);
   const [isLinkMenuOpen, setIsLinkMenuOpen] = useState(false);
   const [isHighlightMenuOpen, setIsHighlightMenuOpen] = useState(false);
+  const [isColumnMenuOpen, setIsColumnMenuOpen] = useState(false);
   const [activeHighlightColor, setActiveHighlightColor] = useState<HighlightColor | null>(null);
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
   const [slashIndex, setSlashIndex] = useState(0);
   const [linkValue, setLinkValue] = useState('https://');
   const menuRef = useRef<HTMLDivElement>(null);
+  const columnMenuRef = useRef<HTMLDivElement>(null);
   const linkInputRef = useRef<HTMLInputElement>(null);
   const chapterTitleInputRef = useRef<HTMLInputElement>(null);
   const linkSelectionRef = useRef<{ from: number; to: number } | null>(null);
   const isApplyingHighlightRef = useRef(false);
 
   useEffect(() => {
-    if (!isBlockMenuOpen && !isListMenuOpen && !isFontMenuOpen && !isLinkMenuOpen && !isHighlightMenuOpen) return;
+    if (!isBlockMenuOpen && !isListMenuOpen && !isFontMenuOpen && !isLinkMenuOpen && !isHighlightMenuOpen && !isColumnMenuOpen) return;
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const inCenter = menuRef.current?.contains(target);
+      const inColumn = columnMenuRef.current?.contains(target);
+      if (!inCenter && !inColumn) {
         setIsBlockMenuOpen(false);
         setIsListMenuOpen(false);
         setIsFontMenuOpen(false);
         setIsLinkMenuOpen(false);
         setIsHighlightMenuOpen(false);
+        setIsColumnMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isBlockMenuOpen, isListMenuOpen, isFontMenuOpen, isLinkMenuOpen, isHighlightMenuOpen]);
+  }, [isBlockMenuOpen, isListMenuOpen, isFontMenuOpen, isLinkMenuOpen, isHighlightMenuOpen, isColumnMenuOpen]);
 
   useEffect(() => {
     if (!isLinkMenuOpen) return;
@@ -667,7 +673,7 @@ export function EditorCanvas({
               onClick={() => editor?.chain().focus().undo().run()}
               disabled={!editor?.can().undo()}
               title="Отменить (Cmd+Z)"
-              className={`transition-colors ${editor?.can().undo() ? 'text-[#1e2d1f] hover:text-[#1e2d1f]/70' : 'text-[#a1a1aa] cursor-not-allowed'}`}
+              className={`transition-colors ${editor?.can().undo() ? 'text-[#1e2d1f] hover:text-[#1e2d1f]/70' : 'text-ink/45 cursor-not-allowed'}`}
             >
               <Undo2 size={20} strokeWidth={2.5} />
             </button>
@@ -675,7 +681,7 @@ export function EditorCanvas({
               onClick={() => editor?.chain().focus().redo().run()}
               disabled={!editor?.can().redo()}
               title="Повторить (Cmd+Shift+Z)"
-              className={`transition-colors ${editor?.can().redo() ? 'text-[#1e2d1f] hover:text-[#1e2d1f]/70' : 'text-[#a1a1aa] cursor-not-allowed'}`}
+              className={`transition-colors ${editor?.can().redo() ? 'text-[#1e2d1f] hover:text-[#1e2d1f]/70' : 'text-ink/45 cursor-not-allowed'}`}
             >
               <Redo2 size={20} strokeWidth={2.5} />
             </button>
@@ -798,7 +804,7 @@ export function EditorCanvas({
               className={`p-1 rounded-md transition-colors ${
                 editor?.isActive('blockquote')
                   ? 'text-[#1e2d1f] bg-[#1e2d1f]/6'
-                  : 'text-[#a1a1aa] hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'
+                  : 'text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'
               }`}
             >
               <Quote size={19} strokeWidth={2.2} />
@@ -808,7 +814,7 @@ export function EditorCanvas({
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => applyInlineMark(editor, 'bold')}
               title="Жирный (Cmd+B)"
-              className={`p-1 rounded-md transition-colors ${editor?.isActive('bold') ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-[#a1a1aa] hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'}`}
+              className={`p-1 rounded-md transition-colors ${editor?.isActive('bold') ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'}`}
             >
               <Bold size={20} strokeWidth={2.5} />
             </button>
@@ -816,7 +822,7 @@ export function EditorCanvas({
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => applyInlineMark(editor, 'italic')}
               title="Курсив (Cmd+I)"
-              className={`p-1 rounded-md transition-colors ${editor?.isActive('italic') ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-[#a1a1aa] hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'}`}
+              className={`p-1 rounded-md transition-colors ${editor?.isActive('italic') ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'}`}
             >
               <Italic size={20} strokeWidth={2.5} />
             </button>
@@ -824,7 +830,7 @@ export function EditorCanvas({
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => applyInlineMark(editor, 'strike')}
               title="Зачёркнутый"
-              className={`p-1 rounded-md transition-colors ${editor?.isActive('strike') ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-[#a1a1aa] hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'}`}
+              className={`p-1 rounded-md transition-colors ${editor?.isActive('strike') ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'}`}
             >
               <Strikethrough size={20} strokeWidth={2.5} />
             </button>
@@ -832,7 +838,7 @@ export function EditorCanvas({
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => applyInlineMark(editor, 'code')}
               title="Код (Cmd+E)"
-              className={`p-1 rounded-md transition-colors ${editor?.isActive('code') ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-[#a1a1aa] hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'}`}
+              className={`p-1 rounded-md transition-colors ${editor?.isActive('code') ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'}`}
             >
               <Code size={19} strokeWidth={2.3} />
             </button>
@@ -840,7 +846,7 @@ export function EditorCanvas({
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => applyInlineMark(editor, 'underline')}
               title="Подчёркнутый (Cmd+U)"
-              className={`p-1 rounded-md transition-colors ${editor?.isActive('underline') ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-[#a1a1aa] hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'}`}
+              className={`p-1 rounded-md transition-colors ${editor?.isActive('underline') ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'}`}
             >
               <Underline size={20} strokeWidth={2.5} />
             </button>
@@ -862,7 +868,7 @@ export function EditorCanvas({
                 className={`p-1 rounded-md transition-colors ${
                   activeHighlightColor || editor?.isActive('textHighlight') || isHighlightMenuOpen
                     ? 'text-[#7d6adf] bg-[#7d6adf]/10'
-                    : 'text-[#a1a1aa] hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'
+                    : 'text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'
                 }`}
               >
                 <Highlighter size={19} strokeWidth={2.2} />
@@ -919,7 +925,7 @@ export function EditorCanvas({
                   handleLinkAction();
                 }}
                 title={editor?.isActive('link') ? 'Изменить ссылку' : 'Добавить ссылку'}
-                className={`p-1 rounded-md transition-colors ${editor?.isActive('link') || isLinkMenuOpen ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-[#a1a1aa] hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'}`}
+                className={`p-1 rounded-md transition-colors ${editor?.isActive('link') || isLinkMenuOpen ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'}`}
               >
                 <Link2 size={20} strokeWidth={2.3} />
               </button>
@@ -950,7 +956,7 @@ export function EditorCanvas({
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={applyLink}
                     title="Применить ссылку"
-                    className="p-2 rounded-xl text-[#8e8e97] hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4 transition-colors"
+                    className="p-2 rounded-xl text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4 transition-colors"
                   >
                     <CornerDownLeft size={18} strokeWidth={2.1} />
                   </button>
@@ -958,7 +964,7 @@ export function EditorCanvas({
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={openLinkInNewTab}
                     title="Открыть ссылку"
-                    className="p-2 rounded-xl text-[#8e8e97] hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4 transition-colors"
+                    className="p-2 rounded-xl text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4 transition-colors"
                   >
                     <ExternalLink size={18} strokeWidth={2.1} />
                   </button>
@@ -966,7 +972,7 @@ export function EditorCanvas({
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={removeLink}
                     title="Удалить ссылку"
-                    className="p-2 rounded-xl text-[#8e8e97] hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4 transition-colors"
+                    className="p-2 rounded-xl text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4 transition-colors"
                   >
                     <Trash2 size={18} strokeWidth={2.1} />
                   </button>
@@ -981,7 +987,7 @@ export function EditorCanvas({
               onClick={() => applyScriptMark(editor, 'superscript')}
               title="Верхний индекс"
               className={`px-1 py-1 rounded-md transition-colors text-[20px] leading-none ${
-                editor?.isActive('superscript') ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-[#a1a1aa] hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'
+                editor?.isActive('superscript') ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'
               }`}
             >
               x²
@@ -991,7 +997,7 @@ export function EditorCanvas({
               onClick={() => applyScriptMark(editor, 'subscript')}
               title="Нижний индекс"
               className={`px-1 py-1 rounded-md transition-colors text-[20px] leading-none ${
-                editor?.isActive('subscript') ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-[#a1a1aa] hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'
+                editor?.isActive('subscript') ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'
               }`}
             >
               x₂
@@ -1019,13 +1025,27 @@ export function EditorCanvas({
                       ? editor?.chain().focus().unsetTextAlign().run()
                       : editor?.chain().focus().setTextAlign(item.key).run()}
                     title={item.title}
-                    className={`p-1 rounded-md transition-colors ${isActive ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-[#a1a1aa] hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'}`}
+                    className={`p-1 rounded-md transition-colors ${isActive ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'}`}
                   >
                     <Icon size={20} strokeWidth={2.2} />
                   </button>
                 );
               })}
             </div>
+
+            <button
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => onIndentParagraphsChange(!indentParagraphs)}
+              title="Красная строка (абзацный отступ)"
+              aria-label="Красная строка"
+              className={`p-1 rounded-md transition-colors ${
+                indentParagraphs
+                  ? 'text-[#1e2d1f] bg-[#1e2d1f]/6'
+                  : 'text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'
+              }`}
+            >
+              <ListIndentIncrease size={20} strokeWidth={2.2} />
+            </button>
 
             <div className="w-px h-6 bg-[#1e2d1f]/10" />
 
@@ -1042,7 +1062,7 @@ export function EditorCanvas({
                 } ${editorFontClass}`}
                 title="Шрифт рукописи"
               >
-                <span className="text-[18px] leading-none tracking-tight">{currentFontLabel}</span>
+                <span className="text-[15px] leading-none tracking-tight">{currentFontLabel}</span>
                 <ChevronDown size={14} className="opacity-55" />
               </button>
               {isFontMenuOpen && (
@@ -1080,47 +1100,53 @@ export function EditorCanvas({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 rounded-full border border-[#1e2d1f]/8 bg-[#f8f4ec]/92 px-2 py-1">
+        <div className="flex items-center gap-3">
+          {/* Ширина колонки — выпадающее меню (нативный паттерн Tiptap, как заголовок/списки) */}
+          <div ref={columnMenuRef} className="relative">
             <button
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => onIndentParagraphsChange(!indentParagraphs)}
-              title="Красная строка"
-              className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-                indentParagraphs
-                  ? 'text-[#1e2d1f] bg-[#1e2d1f]/8'
-                  : 'text-[#a1a1aa] hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'
+              onClick={() => {
+                setIsColumnMenuOpen(v => !v);
+                setIsBlockMenuOpen(false);
+                setIsListMenuOpen(false);
+                setIsFontMenuOpen(false);
+                setIsHighlightMenuOpen(false);
+              }}
+              title="Ширина колонки"
+              aria-label="Ширина колонки"
+              className={`px-2 py-1.5 rounded-md transition-colors flex items-center gap-1 ${
+                isColumnMenuOpen ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'
               }`}
             >
-              <ListIndentIncrease size={18} strokeWidth={2.2} />
+              <StretchHorizontal size={18} strokeWidth={2.1} />
+              <ChevronDown size={14} className="opacity-55" />
             </button>
-
-            <div className="w-px h-5 bg-[#1e2d1f]/10" />
-
-            <div className="flex flex-col items-center gap-0.5">
-              <div className="flex items-center rounded-full border border-[#1e2d1f]/8 bg-[#f8f4ec] p-1 gap-1">
+            {isColumnMenuOpen && (
+              <div className="absolute top-full mt-2 right-0 min-w-44 bg-[#f5f0e8] rounded-xl shadow-lg border border-[#1e2d1f]/10 p-1.5 z-[101]">
+                <div className="px-2.5 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-[#1e2d1f]/55">
+                  Ширина колонки
+                </div>
                 {([
-                  { key: 'narrow', title: 'Узкая', label: 'S' },
-                  { key: 'medium', title: 'Средняя', label: 'M' },
-                  { key: 'wide', title: 'Широкая', label: 'L' },
+                  { key: 'narrow', label: 'Узкая',   hint: 'S' },
+                  { key: 'medium', label: 'Средняя', hint: 'M' },
+                  { key: 'wide',   label: 'Широкая', hint: 'L' },
                 ] as const).map((item) => (
                   <button
                     key={item.key}
                     onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => handleWidthChange(item.key)}
-                    title={`Ширина текстовой колонки: ${item.title}`}
-                    className={`min-w-9 h-8 px-2 rounded-full flex items-center justify-center transition-colors text-[12px] font-medium tracking-[0.08em] ${
+                    onClick={() => { handleWidthChange(item.key); setIsColumnMenuOpen(false); }}
+                    className={`w-full rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors flex items-center justify-between gap-3 ${
                       textWidth === item.key
-                        ? 'bg-[#1e2d1f] text-white shadow-sm'
-                        : 'text-[#1e2d1f]/50 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/5'
+                        ? 'bg-[#1e2d1f] text-white'
+                        : 'text-[#1e2d1f]/75 hover:bg-[#1e2d1f]/6'
                     }`}
                   >
-                    {item.label}
+                    <span className="font-medium">{item.label}</span>
+                    <span className={`text-[11px] ${textWidth === item.key ? 'text-white/60' : 'text-[#1e2d1f]/55'}`}>{item.hint}</span>
                   </button>
                 ))}
               </div>
-              <span className="text-[9px] text-[#1e2d1f]/25 tracking-wide">Колонка</span>
-            </div>
+            )}
           </div>
 
           <div className="w-px h-6 bg-[#1e2d1f]/10" />
@@ -1129,26 +1155,26 @@ export function EditorCanvas({
             <button
               onClick={onOpenSearch}
               title="Поиск по тексту (Cmd+F)"
-              className="w-8 h-8 rounded-full bg-ink/5 hover:bg-ink/10 border-none cursor-pointer flex items-center justify-center text-ink/50 hover:text-ink/80 transition-colors flex-shrink-0"
+              className="p-1.5 rounded-md text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4 transition-colors flex items-center justify-center"
             >
-              <Search size={15} />
+              <Search size={18} />
             </button>
           )}
           {onOpenExport && (
             <button
               onClick={onOpenExport}
               title="Экспорт и резервная копия"
-              className="w-8 h-8 rounded-full bg-ink/5 hover:bg-ink/10 border-none cursor-pointer flex items-center justify-center text-ink/50 hover:text-ink/80 transition-colors flex-shrink-0"
+              className="p-1.5 rounded-md text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4 transition-colors flex items-center justify-center"
             >
-              <Download size={15} />
+              <Download size={18} />
             </button>
           )}
           <button
             onClick={onOpenSettings}
             title="Настройки профиля"
-            className="w-8 h-8 rounded-full bg-ink/5 hover:bg-ink/10 border-none cursor-pointer flex items-center justify-center text-ink/50 hover:text-ink/80 transition-colors flex-shrink-0"
+            className="p-1.5 rounded-md text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4 transition-colors flex items-center justify-center"
           >
-            <User size={16} />
+            <User size={18} />
           </button>
         </div>
       </div>

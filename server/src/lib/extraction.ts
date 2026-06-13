@@ -47,6 +47,105 @@ export function cleanJsonResponse(raw: string): string {
     .trim();
 }
 
+// ── Story-bible context (shared: ai.ts chat/consistency + worker contradictions) ──
+
+/** Key character attributes worth surfacing to the AI (token-capped). */
+const CONTEXT_ATTRIBUTE_LABELS: Record<string, string> = {
+  speech:      'Речь',
+  motivations: 'Мотивация',
+  secrets:     'Секреты',
+};
+const CONTEXT_ATTRIBUTE_MAX_CHARS = 160;
+
+/** Build a compact story-bible block from approved entities (+ optional relations). */
+export function buildStoryBibleContext(
+  entities: (typeof schema.storyEntities.$inferSelect)[],
+  links: (typeof schema.entityLinks.$inferSelect)[] = [],
+): string {
+  if (entities.length === 0) return '';
+
+  const sections: Record<string, string[]> = {
+    character: [],
+    location: [],
+    item: [],
+    rule: [],
+  };
+
+  for (const e of entities) {
+    let line = e.description ? `- ${e.name}: ${e.description}` : `- ${e.name}`;
+    // Для персонажей добавляем поля, критичные для консистентности текста
+    if (e.type === 'character' && e.attributes && typeof e.attributes === 'object') {
+      const attrs = e.attributes as Record<string, unknown>;
+      for (const [key, label] of Object.entries(CONTEXT_ATTRIBUTE_LABELS)) {
+        const value = attrs[key];
+        if (typeof value === 'string' && value.trim()) {
+          line += `\n  · ${label}: ${value.trim().slice(0, CONTEXT_ATTRIBUTE_MAX_CHARS)}`;
+        }
+      }
+    }
+    if (sections[e.type]) sections[e.type].push(line);
+  }
+
+  const parts: string[] = [];
+  if (sections.character.length) parts.push(`ПЕРСОНАЖИ:\n${sections.character.join('\n')}`);
+  if (sections.location.length)  parts.push(`ЛОКАЦИИ:\n${sections.location.join('\n')}`);
+  if (sections.item.length)      parts.push(`ПРЕДМЕТЫ:\n${sections.item.join('\n')}`);
+  if (sections.rule.length)      parts.push(`ПРАВИЛА МИРА:\n${sections.rule.join('\n')}`);
+
+  // Связи между сущностями («Имя → тип связи → Имя»)
+  if (links.length > 0) {
+    const nameById = new Map(entities.map(e => [e.id, e.name]));
+    const relLines = links
+      .map(l => {
+        const from = nameById.get(l.sourceEntityId);
+        const to   = nameById.get(l.targetEntityId);
+        return from && to ? `- ${from} → ${l.relation} → ${to}` : null;
+      })
+      .filter((s): s is string => Boolean(s));
+    if (relLines.length) parts.push(`СВЯЗИ:\n${relLines.join('\n')}`);
+  }
+
+  return parts.length
+    ? `=== БИБЛИЯ ИСТОРИИ (установленные факты) ===\n${parts.join('\n\n')}`
+    : '';
+}
+
+// ── Contradiction scan (PRD P1.2, full-book) ──────────────────────────────────
+
+export interface RawContradiction {
+  entity: string;
+  issue: string;
+  severity: string;
+}
+
+/**
+ * Промпт проверки одной главы на противоречия с библией.
+ * Тот же критерий, что и в интерактивной /ai/consistency — только факты,
+ * не стиль и не сюжет. Используется фоновой джобой scan_contradictions.
+ */
+export function buildContradictionPrompt(storyBible: string, chapterTitle: string, plainText: string): string {
+  return `Ты — редактор, проверяющий консистентность текста.
+
+${storyBible}
+
+=== ТЕКСТ ГЛАВЫ: «${chapterTitle}» ===
+<chapter_content>
+${plainText.trim()}
+</chapter_content>
+
+=== ЗАДАЧА ===
+Найди ТОЛЬКО фактические противоречия между текстом главы и Библией истории.
+Ищи: несоответствия в описании персонажей, локаций, предметов; нарушение правил мира;
+конфликты с уже установленными фактами и связями.
+НЕ комментируй стиль, орфографию, сюжетные решения или то, чего нет в Библии.
+Если противоречий нет — верни пустой массив.
+
+Верни ТОЛЬКО валидный JSON-массив без markdown-обёртки:
+[
+  { "entity": "Имя сущности из Библии", "issue": "Краткое описание противоречия", "severity": "low|medium|high" }
+]`;
+}
+
 // ── AI prompt ─────────────────────────────────────────────────────────────────
 
 /**

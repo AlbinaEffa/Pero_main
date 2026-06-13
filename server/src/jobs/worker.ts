@@ -14,15 +14,16 @@
  */
 
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, asc } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
-import type { ExtractEntitiesPayload, EmbedChapterPayload } from './queue.js';
+import type { ExtractEntitiesPayload, EmbedChapterPayload, ScanContradictionsPayload } from './queue.js';
 import { stripHtml } from '../lib/html.js';
 import { guardChat, guardEmbed } from '../lib/aiGuard.js';
 import { pool as sharedPool } from '../db/client.js';
 import { getAIProvider, getEmbeddingProvider, type AIProvider } from '../lib/aiProvider.js';
 import {
   BASE_EXTRACTION_PROMPT, cleanJsonResponse, processExtractionResults,
+  buildStoryBibleContext, buildContradictionPrompt, type RawContradiction,
   type AiEntity, type AiRelation,
 } from '../lib/extraction.js';
 
@@ -233,6 +234,113 @@ async function handleEmbedChapter(
   }
 }
 
+// ── scan_contradictions (PRD P1.2, full-book) ─────────────────────────────────
+//
+// Гонит ВСЕ главы проекта через промпт консистентности с полным контекстом
+// библии, пишет найденные противоречия в contradiction_issues и обновляет
+// прогресс в contradiction_reports (поллится с фронта). Главы по одной — каждая
+// проверяется на весь свод фактов; устойчиво к сбою отдельной главы.
+
+const CONTRADICTION_CHAPTER_CHAR_CAP = 12_000; // ~весь текст средней главы
+
+const VALID_SEVERITY = new Set(['low', 'medium', 'high']);
+
+async function handleScanContradictions(
+  payload: ScanContradictionsPayload,
+  projectId: string,
+  userId: string,
+): Promise<void> {
+  if (!aiClient) throw new Error('AI client not configured (no API key for AI provider)');
+  const db = drizzle(sharedPool, { schema });
+  const { reportId } = payload;
+
+  // Контекст библии — один раз на весь прогон
+  const [entities, links] = await Promise.all([
+    db.select().from(schema.storyEntities)
+      .where(and(eq(schema.storyEntities.projectId, projectId), eq(schema.storyEntities.status, 'approved'))),
+    db.select().from(schema.entityLinks).where(eq(schema.entityLinks.projectId, projectId)),
+  ]);
+
+  if (entities.length === 0) {
+    await db.update(schema.contradictionReports)
+      .set({ status: 'done', error: 'Нет одобренных сущностей — нечего проверять.', updatedAt: new Date() })
+      .where(eq(schema.contradictionReports.id, reportId));
+    return;
+  }
+
+  const storyBible = buildStoryBibleContext(entities, links);
+
+  const chapters = await db.select({
+      id: schema.chapters.id, title: schema.chapters.title, content: schema.chapters.content,
+    })
+    .from(schema.chapters)
+    .where(eq(schema.chapters.projectId, projectId))
+    .orderBy(asc(schema.chapters.order));
+
+  const withText = chapters
+    .map(ch => ({ ...ch, plainText: stripHtml(ch.content ?? '') }))
+    .filter(ch => ch.plainText.split(/\s+/).filter(Boolean).length >= 50);
+
+  await db.update(schema.contradictionReports)
+    .set({ totalChapters: withText.length, updatedAt: new Date() })
+    .where(eq(schema.contradictionReports.id, reportId));
+
+  let scanned = 0;
+  for (const ch of withText) {
+    const prompt = buildContradictionPrompt(storyBible, ch.title, ch.plainText.slice(0, CONTRADICTION_CHAPTER_CHAR_CAP));
+
+    try {
+      const response = await guardChat(
+        () => aiClient!.generate({ contents: prompt, temperature: 0.1 }),
+        { userId, projectId, route: 'report:contradictions', circuit: 'extract', timeoutMs: 60_000 }
+      );
+      const cleaned = cleanJsonResponse(response.text ?? '[]');
+      let issues: RawContradiction[] = [];
+      try {
+        const parsed = JSON.parse(cleaned);
+        if (Array.isArray(parsed)) issues = parsed;
+      } catch {
+        // Кривой JSON по одной главе — пропускаем, не валим весь отчёт
+      }
+
+      const rows = issues
+        .filter(it => it && typeof it.issue === 'string' && it.issue.trim())
+        .map(it => ({
+          reportId,
+          projectId,
+          chapterId: ch.id,
+          chapterTitle: ch.title,
+          entityName: (typeof it.entity === 'string' ? it.entity : '').slice(0, 200) || null,
+          issue: it.issue.trim().slice(0, 1000),
+          severity: VALID_SEVERITY.has(it.severity) ? it.severity : 'medium',
+          status: 'open' as const,
+        }));
+      if (rows.length > 0) await db.insert(schema.contradictionIssues).values(rows);
+    } catch (err: any) {
+      const status = err?.status ?? err?.error?.code ?? err?.code;
+      if (status === 429 || String(err?.message ?? '').includes('429')) {
+        // Квота исчерпана — завершаем отчёт частично, дальше смысла нет
+        await db.update(schema.contradictionReports)
+          .set({ status: 'done', error: `Проверено ${scanned} из ${withText.length} глав — закончилась дневная квота AI.`, scannedChapters: scanned, updatedAt: new Date() })
+          .where(eq(schema.contradictionReports.id, reportId));
+        return;
+      }
+      if (err?.isCircuitOpen) throw new WorkerHandlerError('AI circuit open — will retry', true);
+      // Прочая ошибка по главе — пропускаем главу, продолжаем
+      console.warn(`[worker] scan_contradictions: глава ${ch.id} пропущена:`, err?.message ?? err);
+    }
+
+    scanned++;
+    await db.update(schema.contradictionReports)
+      .set({ scannedChapters: scanned, updatedAt: new Date() })
+      .where(eq(schema.contradictionReports.id, reportId));
+  }
+
+  await db.update(schema.contradictionReports)
+    .set({ status: 'done', updatedAt: new Date() })
+    .where(eq(schema.contradictionReports.id, reportId));
+}
+
 // ── Core worker loop ──────────────────────────────────────────────────────────
 
 async function pickAndRunJob(): Promise<boolean> {
@@ -274,6 +382,13 @@ async function pickAndRunJob(): Promise<boolean> {
         case 'embed_chapter':
           await handleEmbedChapter(
             job.payload as EmbedChapterPayload,
+            job.project_id,
+            job.user_id,
+          );
+          break;
+        case 'scan_contradictions':
+          await handleScanContradictions(
+            job.payload as ScanContradictionsPayload,
             job.project_id,
             job.user_id,
           );

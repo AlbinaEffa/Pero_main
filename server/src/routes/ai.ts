@@ -8,6 +8,7 @@ import { rateLimit } from '../middleware/rateLimiter.js';
 import { guardChat, CircuitOpenError } from '../lib/aiGuard.js';
 import { getAIProvider, getEmbeddingProvider, type ChatTurn } from '../lib/aiProvider.js';
 import { aiQuota, getQuotaStatus } from '../lib/quota.js';
+import { buildStoryBibleContext } from '../lib/extraction.js';
 
 // ── Input schemas ─────────────────────────────────────────────────────────────
 
@@ -63,67 +64,8 @@ const isValidUUID = (s: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Key character attributes worth surfacing to the AI (token-capped). */
-const CONTEXT_ATTRIBUTE_LABELS: Record<string, string> = {
-  speech:      'Речь',
-  motivations: 'Мотивация',
-  secrets:     'Секреты',
-};
-const CONTEXT_ATTRIBUTE_MAX_CHARS = 160;
-
-/** Build a compact story-bible block from approved entities (+ optional relations). */
-function buildStoryBibleContext(
-  entities: (typeof schema.storyEntities.$inferSelect)[],
-  links: (typeof schema.entityLinks.$inferSelect)[] = [],
-): string {
-  if (entities.length === 0) return '';
-
-  const sections: Record<string, string[]> = {
-    character: [],
-    location: [],
-    item: [],
-    rule: [],
-  };
-
-  for (const e of entities) {
-    let line = e.description ? `- ${e.name}: ${e.description}` : `- ${e.name}`;
-    // Для персонажей добавляем поля, критичные для консистентности текста
-    if (e.type === 'character' && e.attributes && typeof e.attributes === 'object') {
-      const attrs = e.attributes as Record<string, unknown>;
-      for (const [key, label] of Object.entries(CONTEXT_ATTRIBUTE_LABELS)) {
-        const value = attrs[key];
-        if (typeof value === 'string' && value.trim()) {
-          line += `\n  · ${label}: ${value.trim().slice(0, CONTEXT_ATTRIBUTE_MAX_CHARS)}`;
-        }
-      }
-    }
-    if (sections[e.type]) sections[e.type].push(line);
-  }
-
-  const parts: string[] = [];
-  if (sections.character.length) parts.push(`ПЕРСОНАЖИ:\n${sections.character.join('\n')}`);
-  if (sections.location.length)  parts.push(`ЛОКАЦИИ:\n${sections.location.join('\n')}`);
-  if (sections.item.length)      parts.push(`ПРЕДМЕТЫ:\n${sections.item.join('\n')}`);
-  if (sections.rule.length)      parts.push(`ПРАВИЛА МИРА:\n${sections.rule.join('\n')}`);
-
-  // Связи между сущностями («Имя → тип связи → Имя»)
-  if (links.length > 0) {
-    const nameById = new Map(entities.map(e => [e.id, e.name]));
-    const relLines = links
-      .map(l => {
-        const from = nameById.get(l.sourceEntityId);
-        const to   = nameById.get(l.targetEntityId);
-        return from && to ? `- ${from} → ${l.relation} → ${to}` : null;
-      })
-      .filter((s): s is string => Boolean(s));
-    if (relLines.length) parts.push(`СВЯЗИ:\n${relLines.join('\n')}`);
-  }
-
-  return parts.length
-    ? `=== БИБЛИЯ ИСТОРИИ (установленные факты) ===\n${parts.join('\n\n')}`
-    : '';
-}
+// buildStoryBibleContext перенесён в lib/extraction.ts (общий с воркером);
+// импортируется ниже.
 
 /** Load last N messages for a project+chapter, oldest-first */
 async function loadHistory(

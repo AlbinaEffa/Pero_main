@@ -3,7 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft, BookOpen, User, Check, AlertTriangle,
   Sparkles, ChevronLeft, FileText, BarChart2, ChevronUp, X, Bell,
-  Users, MapPin, Box, Globe, Pencil,
+  Users, MapPin, Box, Globe, Pencil, ScanSearch, ShieldCheck, ExternalLink,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { track } from '../services/analytics';
@@ -24,6 +24,7 @@ const TABS = [
   { id: 'locations',  label: 'Локации',      icon: MapPin, type: 'location' },
   { id: 'items',      label: 'Предметы',     icon: Box,    type: 'item' },
   { id: 'rules',      label: 'Правила мира', icon: Globe,  type: 'rule' },
+  { id: 'contradictions', label: 'Противоречия', icon: AlertTriangle, type: '' },
 ] as const;
 
 type TabId = typeof TABS[number]['id'];
@@ -287,6 +288,11 @@ export default function StoryBible() {
         {/* Body */}
         {isLoading ? (
           <div className="flex-1 flex items-center justify-center text-ink/40 text-sm">Загрузка...</div>
+        ) : activeTab === 'contradictions' ? (
+          <ContradictionsPanel
+            projectId={id!}
+            onOpenChapter={(chapterId) => navigate(`/editor/${id}/${chapterId}`)}
+          />
         ) : (
           <div className="flex-1 flex overflow-hidden">
 
@@ -423,6 +429,225 @@ export default function StoryBible() {
                 onSave={handleSaveEntity}
               />
             )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── ContradictionsPanel (PRD P1.2) ────────────────────────────────────────────
+
+interface ContradictionReport {
+  id: string;
+  status: 'running' | 'done' | 'failed';
+  totalChapters: number;
+  scannedChapters: number;
+  error: string | null;
+  createdAt: string;
+}
+interface ContradictionIssue {
+  id: string;
+  chapterId: string | null;
+  chapterTitle: string | null;
+  entityName: string | null;
+  issue: string;
+  severity: 'low' | 'medium' | 'high';
+}
+
+function severityMeta(s: string): { label: string; cls: string } {
+  if (s === 'high')   return { label: 'Высокая',  cls: 'bg-red-100 text-red-700' };
+  if (s === 'medium') return { label: 'Средняя',  cls: 'bg-amber-100 text-amber-700' };
+  return { label: 'Низкая', cls: 'bg-emerald-100 text-emerald-700' };
+}
+const SEVERITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
+
+function ContradictionsPanel({ projectId, onOpenChapter }: {
+  projectId: string;
+  onOpenChapter: (chapterId: string) => void;
+}) {
+  const [report, setReport] = useState<ContradictionReport | null>(null);
+  const [issues, setIssues] = useState<ContradictionIssue[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [starting, setStarting] = useState(false);
+
+  const load = React.useCallback(async () => {
+    try {
+      const data = await api.get<{ report: ContradictionReport | null; issues: ContradictionIssue[] }>(
+        `/bible/${projectId}/contradictions`,
+      );
+      setReport(data.report);
+      setIssues(data.issues ?? []);
+    } catch (e) {
+      console.error('Failed to load contradictions:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  // Поллинг, пока сканирование идёт
+  useEffect(() => {
+    if (report?.status !== 'running') return;
+    const t = setInterval(load, 2500);
+    return () => clearInterval(t);
+  }, [report?.status, load]);
+
+  async function startScan() {
+    setStarting(true);
+    try {
+      await api.post(`/bible/${projectId}/contradictions/scan`, {});
+      track('contradiction_scan_started', { projectId });
+      await load();
+    } catch (e: any) {
+      if (e?.status === 429) {
+        alert('Дневная квота AI исчерпана — проверка станет доступна завтра или на Pro.');
+      } else if (e?.status === 409) {
+        await load(); // уже идёт — просто подтянем статус
+      } else {
+        console.error('Failed to start scan:', e);
+      }
+    } finally {
+      setStarting(false);
+    }
+  }
+
+  async function dismiss(issueId: string) {
+    setIssues(prev => prev.filter(i => i.id !== issueId)); // оптимистично
+    try {
+      await api.post(`/bible/contradictions/${issueId}/dismiss`, {});
+      track('contradiction_dismissed', { projectId });
+    } catch (e) {
+      console.error('Failed to dismiss:', e);
+      load(); // откатить к серверу
+    }
+  }
+
+  const running = report?.status === 'running';
+  const sorted = [...issues].sort((a, b) =>
+    (SEVERITY_ORDER[a.severity] ?? 1) - (SEVERITY_ORDER[b.severity] ?? 1),
+  );
+
+  // Группировка по главам, в порядке появления
+  const byChapter = sorted.reduce<{ chapterId: string | null; chapterTitle: string; items: ContradictionIssue[] }[]>((acc, it) => {
+    const key = it.chapterId ?? '—';
+    let g = acc.find(x => (x.chapterId ?? '—') === key);
+    if (!g) { g = { chapterId: it.chapterId, chapterTitle: it.chapterTitle ?? 'Без главы', items: [] }; acc.push(g); }
+    g.items.push(it);
+    return acc;
+  }, []);
+
+  return (
+    <div className="flex-1 overflow-y-auto bg-[#F5F0E8] p-8 max-md:p-4">
+      <div className="max-w-2xl mx-auto">
+        {/* Шапка раздела */}
+        <div className="flex items-start justify-between gap-4 mb-6">
+          <div>
+            <h2 className="font-serif text-2xl font-semibold text-[#1E2D1F] mb-1">Противоречия по всей книге</h2>
+            <p className="text-[13px] text-ink/55 leading-relaxed max-w-md">
+              Перо сверит каждую главу со всей библией истории и найдёт несоответствия — пока их не нашли читатели.
+            </p>
+          </div>
+          <button
+            onClick={startScan}
+            disabled={starting || running}
+            className="flex-shrink-0 flex items-center gap-2 bg-[#1E2D1F] text-[#f5f0e8] px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-[#2a3f2b] transition-colors disabled:opacity-50"
+          >
+            <ScanSearch size={16} />
+            {running ? 'Идёт проверка…' : starting ? 'Запуск…' : report ? 'Проверить заново' : 'Проверить всю книгу'}
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="py-16 text-center text-ink/40 text-sm">Загрузка…</div>
+        ) : running ? (
+          <div className="bg-white rounded-2xl border border-ink/8 shadow-sm p-6">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-4 h-4 border-2 border-ink/20 border-t-[#4A5D4E] rounded-full animate-spin" />
+              <span className="text-sm font-medium text-ink/70">
+                Читаю главу {report!.scannedChapters + 1}
+                {report!.totalChapters > 0 ? ` из ${report!.totalChapters}` : ''}…
+              </span>
+            </div>
+            {report!.totalChapters > 0 && (
+              <div className="h-1.5 bg-ink/8 rounded-full overflow-hidden">
+                <div className="h-full bg-[#4A5D4E] rounded-full transition-all duration-500"
+                  style={{ width: `${Math.round((report!.scannedChapters / report!.totalChapters) * 100)}%` }} />
+              </div>
+            )}
+            {issues.length > 0 && (
+              <p className="text-[12px] text-ink/45 mt-3">Уже найдено: {issues.length}</p>
+            )}
+          </div>
+        ) : !report ? (
+          <div className="bg-white rounded-2xl border border-ink/8 shadow-sm p-10 text-center">
+            <AlertTriangle size={28} className="text-ink/25 mx-auto mb-3" />
+            <p className="text-sm text-ink/60 mb-1">Проверка ещё не запускалась</p>
+            <p className="text-[13px] text-ink/40">Нажмите «Проверить всю книгу» — это займёт пару минут.</p>
+          </div>
+        ) : issues.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-ink/8 shadow-sm p-10 text-center">
+            <ShieldCheck size={30} className="text-emerald-600 mx-auto mb-3" />
+            <p className="text-[15px] font-medium text-ink/80 mb-1">Противоречий не найдено</p>
+            <p className="text-[13px] text-ink/45">
+              {report.error
+                ? report.error
+                : `Проверено глав: ${report.scannedChapters}. Мир консистентен.`}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {report.error && (
+              <p className="text-[12px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">{report.error}</p>
+            )}
+            <p className="text-[13px] text-ink/50">
+              Найдено противоречий: <b className="text-ink/75">{issues.length}</b>. Отклоните те, что не считаете ошибкой.
+            </p>
+            {byChapter.map(group => (
+              <div key={group.chapterId ?? '—'}>
+                <div className="flex items-center gap-2 mb-2.5 ml-0.5">
+                  <BookOpen size={13} className="text-ink/40" />
+                  <span className="text-[12px] font-bold text-ink/55">{group.chapterTitle}</span>
+                  {group.chapterId && (
+                    <button
+                      onClick={() => onOpenChapter(group.chapterId!)}
+                      className="text-ink/35 hover:text-ink/70 transition-colors"
+                      title="Открыть главу"
+                    >
+                      <ExternalLink size={12} />
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-2.5">
+                  {group.items.map(it => {
+                    const sev = severityMeta(it.severity);
+                    return (
+                      <div key={it.id} className="bg-white rounded-2xl border border-ink/8 shadow-sm p-4 group">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                              <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${sev.cls}`}>{sev.label}</span>
+                              {it.entityName && (
+                                <span className="text-[12px] font-semibold text-ink/70">{it.entityName}</span>
+                              )}
+                            </div>
+                            <p className="text-[13.5px] text-ink/80 leading-relaxed">{it.issue}</p>
+                          </div>
+                          <button
+                            onClick={() => dismiss(it.id)}
+                            className="flex-shrink-0 text-[11px] text-ink/40 hover:text-ink/75 font-medium px-2.5 py-1 rounded-lg hover:bg-ink/5 transition-colors"
+                            title="Это не ошибка"
+                          >
+                            Отклонить
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

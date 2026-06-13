@@ -136,6 +136,33 @@ export const entityEvents = pgTable('entity_events', {
   createdAt:    timestamp('created_at').defaultNow().notNull(),
 });
 
+// Contradiction Reports — отчёт противоречий по всей книге (PRD P1.2).
+// Одна строка на прогон сканирования; статус и прогресс для поллинга с фронта.
+export const contradictionReports = pgTable('contradiction_reports', {
+  id:              uuid('id').primaryKey().defaultRandom(),
+  projectId:       uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }).notNull(),
+  status:          text('status').notNull().default('running'), // running | done | failed
+  totalChapters:   integer('total_chapters').notNull().default(0),
+  scannedChapters: integer('scanned_chapters').notNull().default(0),
+  error:           text('error'),
+  createdAt:       timestamp('created_at').defaultNow().notNull(),
+  updatedAt:       timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Найденные противоречия — отдельными строками; автор может отклонить ложное (status).
+export const contradictionIssues = pgTable('contradiction_issues', {
+  id:           uuid('id').primaryKey().defaultRandom(),
+  reportId:     uuid('report_id').references(() => contradictionReports.id, { onDelete: 'cascade' }).notNull(),
+  projectId:    uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }).notNull(),
+  chapterId:    uuid('chapter_id').references(() => chapters.id, { onDelete: 'set null' }),
+  chapterTitle: text('chapter_title'),
+  entityName:   text('entity_name'),
+  issue:        text('issue').notNull(),
+  severity:     text('severity').notNull().default('medium'), // low | medium | high
+  status:       text('status').notNull().default('open'),     // open | dismissed
+  createdAt:    timestamp('created_at').defaultNow().notNull(),
+});
+
 // Background Job Queue
 // Persisted in Postgres — survives server restarts. Worker polls every 5s.
 // Supported types: 'extract_entities' | 'embed_chapter'

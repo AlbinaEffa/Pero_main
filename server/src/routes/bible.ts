@@ -1,6 +1,6 @@
 import express from 'express';
 import { createHash } from 'crypto';
-import { eq, and, ne, inArray } from 'drizzle-orm';
+import { eq, and, ne, inArray, desc } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import { db } from '../db/client.js';
 import { authenticateToken } from '../middleware/auth.js';
@@ -9,6 +9,7 @@ import { guardChat } from '../lib/aiGuard.js';
 import { stripHtml } from '../lib/html.js';
 import { getAIProvider } from '../lib/aiProvider.js';
 import { aiQuota } from '../lib/quota.js';
+import { enqueueJob } from '../jobs/queue.js';
 import {
   isValidUUID, cleanJsonResponse,
   BASE_EXTRACTION_PROMPT, processExtractionResults,
@@ -1071,6 +1072,126 @@ router.patch('/:entityId/reject', authenticateToken, async (req: any, res) => {
     res.json({ entity: updated[0] });
   } catch (error) {
     console.error('Error rejecting entity:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Contradiction report (PRD P1.2, full-book) ────────────────────────────────
+
+/** Отчёт «завис» — running, но не двигался дольше этого срока (воркер умер/таймаут). */
+const REPORT_STALE_MS = 15 * 60 * 1000;
+
+// POST /api/bible/:projectId/contradictions/scan — запустить проверку всей книги
+router.post('/:projectId/contradictions/scan',
+  authenticateToken,
+  rateLimit('bible:contradictions', 6, 60 * 60 * 1000),
+  aiQuota,
+  async (req: any, res) => {
+    try {
+      if (!ai) return res.status(503).json({ error: 'AI is not configured' });
+      const { projectId } = req.params;
+      if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
+
+      const isOwner = await assertProjectOwnership(projectId, req.user.userId);
+      if (!isOwner) return res.status(403).json({ error: 'Access denied' });
+
+      // Не запускать второй прогон, пока идёт живой первый
+      const running = await db
+        .select({ id: schema.contradictionReports.id, updatedAt: schema.contradictionReports.updatedAt })
+        .from(schema.contradictionReports)
+        .where(and(
+          eq(schema.contradictionReports.projectId, projectId),
+          eq(schema.contradictionReports.status, 'running'),
+        ));
+      const liveRunning = running.find(r => Date.now() - new Date(r.updatedAt).getTime() < REPORT_STALE_MS);
+      if (liveRunning) {
+        return res.status(409).json({ error: 'Проверка уже идёт', reportId: liveRunning.id });
+      }
+
+      const [report] = await db.insert(schema.contradictionReports).values({
+        projectId, status: 'running', totalChapters: 0, scannedChapters: 0,
+      }).returning();
+
+      await enqueueJob('scan_contradictions', { reportId: report.id }, {
+        projectId, userId: req.user.userId, maxAttempts: 2,
+      });
+
+      res.json({ reportId: report.id, status: 'running' });
+    } catch (error) {
+      console.error('Error starting contradiction scan:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+// GET /api/bible/:projectId/contradictions — последний отчёт + открытые противоречия
+router.get('/:projectId/contradictions', authenticateToken, async (req: any, res) => {
+  try {
+    const { projectId } = req.params;
+    if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
+
+    const isOwner = await assertProjectOwnership(projectId, req.user.userId);
+    if (!isOwner) return res.status(403).json({ error: 'Access denied' });
+
+    const reports = await db
+      .select()
+      .from(schema.contradictionReports)
+      .where(eq(schema.contradictionReports.projectId, projectId))
+      .orderBy(desc(schema.contradictionReports.createdAt))
+      .limit(1);
+
+    if (reports.length === 0) return res.json({ report: null, issues: [] });
+
+    let report = reports[0];
+
+    // Подстраховка: подвисший running переводим в failed, чтобы UI не крутил вечно
+    if (report.status === 'running' && Date.now() - new Date(report.updatedAt).getTime() > REPORT_STALE_MS) {
+      const [updated] = await db.update(schema.contradictionReports)
+        .set({ status: 'failed', error: 'Проверка прервалась — попробуйте запустить заново.', updatedAt: new Date() })
+        .where(eq(schema.contradictionReports.id, report.id))
+        .returning();
+      report = updated;
+    }
+
+    const issues = await db
+      .select()
+      .from(schema.contradictionIssues)
+      .where(and(
+        eq(schema.contradictionIssues.reportId, report.id),
+        eq(schema.contradictionIssues.status, 'open'),
+      ))
+      .orderBy(desc(schema.contradictionIssues.createdAt));
+
+    res.json({ report, issues });
+  } catch (error) {
+    console.error('Error fetching contradiction report:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/bible/contradictions/:issueId/dismiss — отклонить ложное срабатывание
+router.post('/contradictions/:issueId/dismiss', authenticateToken, async (req: any, res) => {
+  try {
+    const { issueId } = req.params;
+    if (!isValidUUID(issueId)) return res.status(400).json({ error: 'Invalid issue ID' });
+
+    const rows = await db
+      .select({ userId: schema.projects.userId })
+      .from(schema.contradictionIssues)
+      .innerJoin(schema.projects, eq(schema.contradictionIssues.projectId, schema.projects.id))
+      .where(eq(schema.contradictionIssues.id, issueId));
+
+    if (!rows.length || rows[0].userId !== req.user.userId) {
+      return res.status(403).json({ error: 'Not found or access denied' });
+    }
+
+    await db.update(schema.contradictionIssues)
+      .set({ status: 'dismissed' })
+      .where(eq(schema.contradictionIssues.id, issueId));
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Error dismissing contradiction:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

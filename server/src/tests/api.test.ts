@@ -13,7 +13,7 @@ const { Pool } = pkg;
 import { eq } from 'drizzle-orm';
 
 import { app } from '../app.js';
-import { users, projects, chapters, storyEntities, entityLinks, entityEvents } from '../db/schema.js';
+import { users, projects, chapters, storyEntities, entityLinks, entityEvents, contradictionReports, contradictionIssues } from '../db/schema.js';
 
 // ── Test state ──────────────────────────────────────────────────────────────
 
@@ -427,5 +427,82 @@ describe('Bible profiles', () => {
       .get(`/api/bible/${ctx.projectId}`)
       .set('Authorization', `Bearer ${ctx.tokenA}`);
     expect(after.body.events.some((e: any) => e.id === eventId)).toBe(false);
+  });
+});
+
+// ── Contradiction report (P1.2) ───────────────────────────────────────────────
+
+describe('Contradiction report', () => {
+  it('GET contradictions with no scan yet → { report: null, issues: [] }', async () => {
+    const res = await request(app)
+      .get(`/api/bible/${ctx.projectId}/contradictions`)
+      .set('Authorization', `Bearer ${ctx.tokenA}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.report).toBeNull();
+    expect(res.body.issues).toEqual([]);
+  });
+
+  it('non-owner cannot read contradictions → 403', async () => {
+    const res = await request(app)
+      .get(`/api/bible/${ctx.projectId}/contradictions`)
+      .set('Authorization', `Bearer ${ctx.tokenB}`);
+    expect(res.status).toBe(403);
+  });
+
+  it('non-owner cannot start a scan → 403', async () => {
+    const res = await request(app)
+      .post(`/api/bible/${ctx.projectId}/contradictions/scan`)
+      .set('Authorization', `Bearer ${ctx.tokenB}`);
+    expect([403, 503]).toContain(res.status); // 403 ownership, or 503 if AI unconfigured (checked first)
+  });
+
+  it('owner can read a seeded report with open issues; dismiss hides one', async () => {
+    // Сидируем отчёт и два противоречия напрямую (минуя AI)
+    const report = (await db.insert(contradictionReports).values({
+      projectId: ctx.projectId, status: 'done', totalChapters: 3, scannedChapters: 3,
+    }).returning())[0];
+
+    const issueA = (await db.insert(contradictionIssues).values({
+      reportId: report.id, projectId: ctx.projectId, chapterTitle: 'Глава 1',
+      entityName: 'Герой', issue: 'Глаза меняют цвет', severity: 'high', status: 'open',
+    }).returning())[0];
+    await db.insert(contradictionIssues).values({
+      reportId: report.id, projectId: ctx.projectId, chapterTitle: 'Глава 2',
+      entityName: 'Замок', issue: 'То каменный, то деревянный', severity: 'medium', status: 'open',
+    });
+
+    const res = await request(app)
+      .get(`/api/bible/${ctx.projectId}/contradictions`)
+      .set('Authorization', `Bearer ${ctx.tokenA}`);
+    expect(res.status).toBe(200);
+    expect(res.body.report.id).toBe(report.id);
+    expect(res.body.issues.length).toBe(2);
+
+    // Отклонить одно
+    const dis = await request(app)
+      .post(`/api/bible/contradictions/${issueA.id}/dismiss`)
+      .set('Authorization', `Bearer ${ctx.tokenA}`);
+    expect(dis.status).toBe(200);
+
+    const after = await request(app)
+      .get(`/api/bible/${ctx.projectId}/contradictions`)
+      .set('Authorization', `Bearer ${ctx.tokenA}`);
+    expect(after.body.issues.length).toBe(1);
+    expect(after.body.issues.some((i: any) => i.id === issueA.id)).toBe(false);
+  });
+
+  it('non-owner cannot dismiss an issue → 403', async () => {
+    const report = (await db.insert(contradictionReports).values({
+      projectId: ctx.projectId, status: 'done', totalChapters: 1, scannedChapters: 1,
+    }).returning())[0];
+    const issue = (await db.insert(contradictionIssues).values({
+      reportId: report.id, projectId: ctx.projectId, issue: 'тест', severity: 'low', status: 'open',
+    }).returning())[0];
+
+    const res = await request(app)
+      .post(`/api/bible/contradictions/${issue.id}/dismiss`)
+      .set('Authorization', `Bearer ${ctx.tokenB}`);
+    expect(res.status).toBe(403);
   });
 });

@@ -17,8 +17,12 @@ export interface EmbedChapterPayload {
   content: string;         // HTML from tiptap — worker will strip before chunking
 }
 
-export type JobType = 'extract_entities' | 'embed_chapter';
-export type JobPayload = ExtractEntitiesPayload | EmbedChapterPayload;
+export interface ScanContradictionsPayload {
+  reportId: string;        // contradiction_reports row this job fills in
+}
+
+export type JobType = 'extract_entities' | 'embed_chapter' | 'scan_contradictions';
+export type JobPayload = ExtractEntitiesPayload | EmbedChapterPayload | ScanContradictionsPayload;
 
 // ── enqueueJob ────────────────────────────────────────────────────────────────
 

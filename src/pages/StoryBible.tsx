@@ -82,6 +82,7 @@ export default function StoryBible() {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [contradictionCount, setContradictionCount] = useState(0);
 
   // Load entities + links + events + chapters together
   useEffect(() => {
@@ -104,6 +105,14 @@ export default function StoryBible() {
       .catch(console.error)
       .finally(() => setIsLoading(false));
   }, [id]);
+
+  // Счётчик открытых противоречий для бейджа на вкладке (лёгкий запрос)
+  useEffect(() => {
+    if (!id) return;
+    api.get<{ issues?: { id: string }[] }>(`/bible/${id}/contradictions`)
+      .then(d => setContradictionCount((d.issues ?? []).length))
+      .catch(() => {});
+  }, [id, activeTab]);
 
   // Derived lists
   const tabCfg = TABS.find(t => t.id === activeTab)!;
@@ -209,7 +218,7 @@ export default function StoryBible() {
 
         {/* Chapter list */}
         <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-0.5">
-          <div className="flex items-center justify-between px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-white/40 mb-1 mt-2">
+          <div className="flex items-center justify-between px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-white/60 mb-1 mt-2">
             <span>Главы</span>
           </div>
           {isLoading && (
@@ -280,6 +289,11 @@ export default function StoryBible() {
                     {pendingCount}
                   </span>
                 )}
+                {tab.id === 'contradictions' && contradictionCount > 0 && (
+                  <span className="ml-2 inline-flex items-center justify-center min-w-4 h-4 px-1 bg-red-600 text-white text-[9px] font-bold rounded-full">
+                    {contradictionCount > 9 ? '9+' : contradictionCount}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -287,7 +301,7 @@ export default function StoryBible() {
 
         {/* Body */}
         {isLoading ? (
-          <div className="flex-1 flex items-center justify-center text-ink/40 text-sm">Загрузка...</div>
+          <div className="flex-1 flex items-center justify-center text-ink/55 text-sm">Загрузка...</div>
         ) : activeTab === 'contradictions' ? (
           <ContradictionsPanel
             projectId={id!}
@@ -301,7 +315,7 @@ export default function StoryBible() {
               {activeTab === 'inbox' ? (
                 // ── Inbox ──────────────────────────────────────────────────
                 <>
-                  <h2 className="text-[13px] font-bold text-ink/40 uppercase tracking-wider mb-6">
+                  <h2 className="text-[13px] font-bold text-ink/55 uppercase tracking-wider mb-6">
                     Ожидают проверки
                   </h2>
                   {tabEntities.length === 0 ? (
@@ -317,7 +331,7 @@ export default function StoryBible() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <span className="font-bold text-[16px] text-[#1E2D1F]">{entity.name}</span>
-                              <span className="text-[10px] font-bold text-ink/40 uppercase tracking-wider">{typeLabel(entity.type)}</span>
+                              <span className="text-[10px] font-bold text-ink/55 uppercase tracking-wider">{typeLabel(entity.type)}</span>
                               {entity.significance && (
                                 <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${significanceColor(entity.significance)}`}>
                                   {significanceLabel(entity.significance)}
@@ -352,7 +366,7 @@ export default function StoryBible() {
               ) : (
                 // ── Entity grid ────────────────────────────────────────────
                 <>
-                  <h2 className="text-[13px] font-bold text-ink/40 uppercase tracking-wider mb-8">
+                  <h2 className="text-[13px] font-bold text-ink/55 uppercase tracking-wider mb-8">
                     {tabCfg.label}
                   </h2>
                   {tabEntities.length === 0 ? (
@@ -366,7 +380,7 @@ export default function StoryBible() {
                       {groupBySignificance(tabEntities).map(group => (
                         <div key={group.key}>
                           <div className="flex items-center gap-2 mb-4">
-                            <span className="text-[12px] font-bold uppercase tracking-wider text-ink/35">{group.title}</span>
+                            <span className="text-[12px] font-bold uppercase tracking-wider text-ink/55">{group.title}</span>
                             <span className="text-[12px] text-ink/25 font-medium">· {group.items.length}</span>
                           </div>
                           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -392,7 +406,7 @@ export default function StoryBible() {
                                     )}
                                   </div>
                                   <h3 className="font-bold text-[15px] text-[#1E2D1F] truncate">{entity.name}</h3>
-                                  <p className="text-[11px] font-bold text-ink/40 uppercase tracking-wider mt-0.5">
+                                  <p className="text-[11px] font-bold text-ink/55 uppercase tracking-wider mt-0.5">
                                     {typeLabel(entity.type)}
                                   </p>
                                 </div>
@@ -560,7 +574,7 @@ function ContradictionsPanel({ projectId, onOpenChapter }: {
         </div>
 
         {loading ? (
-          <div className="py-16 text-center text-ink/40 text-sm">Загрузка…</div>
+          <div className="py-16 text-center text-ink/55 text-sm">Загрузка…</div>
         ) : running ? (
           <div className="bg-white rounded-2xl border border-ink/8 shadow-sm p-6">
             <div className="flex items-center gap-3 mb-3">
@@ -577,20 +591,20 @@ function ContradictionsPanel({ projectId, onOpenChapter }: {
               </div>
             )}
             {issues.length > 0 && (
-              <p className="text-[12px] text-ink/45 mt-3">Уже найдено: {issues.length}</p>
+              <p className="text-[12px] text-ink/60 mt-3">Уже найдено: {issues.length}</p>
             )}
           </div>
         ) : !report ? (
           <div className="bg-white rounded-2xl border border-ink/8 shadow-sm p-10 text-center">
             <AlertTriangle size={28} className="text-ink/25 mx-auto mb-3" />
             <p className="text-sm text-ink/60 mb-1">Проверка ещё не запускалась</p>
-            <p className="text-[13px] text-ink/40">Нажмите «Проверить всю книгу» — это займёт пару минут.</p>
+            <p className="text-[13px] text-ink/55">Нажмите «Проверить всю книгу» — это займёт пару минут.</p>
           </div>
         ) : issues.length === 0 ? (
           <div className="bg-white rounded-2xl border border-ink/8 shadow-sm p-10 text-center">
             <ShieldCheck size={30} className="text-emerald-600 mx-auto mb-3" />
             <p className="text-[15px] font-medium text-ink/80 mb-1">Противоречий не найдено</p>
-            <p className="text-[13px] text-ink/45">
+            <p className="text-[13px] text-ink/60">
               {report.error
                 ? report.error
                 : `Проверено глав: ${report.scannedChapters}. Мир консистентен.`}
@@ -607,12 +621,12 @@ function ContradictionsPanel({ projectId, onOpenChapter }: {
             {byChapter.map(group => (
               <div key={group.chapterId ?? '—'}>
                 <div className="flex items-center gap-2 mb-2.5 ml-0.5">
-                  <BookOpen size={13} className="text-ink/40" />
+                  <BookOpen size={13} className="text-ink/55" />
                   <span className="text-[12px] font-bold text-ink/55">{group.chapterTitle}</span>
                   {group.chapterId && (
                     <button
                       onClick={() => onOpenChapter(group.chapterId!)}
-                      className="text-ink/35 hover:text-ink/70 transition-colors"
+                      className="text-ink/55 hover:text-ink/70 transition-colors"
                       title="Открыть главу"
                     >
                       <ExternalLink size={12} />
@@ -636,7 +650,7 @@ function ContradictionsPanel({ projectId, onOpenChapter }: {
                           </div>
                           <button
                             onClick={() => dismiss(it.id)}
-                            className="flex-shrink-0 text-[11px] text-ink/40 hover:text-ink/75 font-medium px-2.5 py-1 rounded-lg hover:bg-ink/5 transition-colors"
+                            className="flex-shrink-0 text-[11px] text-ink/55 hover:text-ink/75 font-medium px-2.5 py-1 rounded-lg hover:bg-ink/5 transition-colors"
                             title="Это не ошибка"
                           >
                             Отклонить
@@ -740,7 +754,7 @@ function EntityDetailPanel({
       <div className="p-8 flex flex-col items-center text-center border-b border-ink/5 bg-white relative">
         <button
           onClick={onClose}
-          className="lg:hidden absolute top-4 left-4 p-2 rounded-lg text-ink/40 hover:text-ink/70 hover:bg-ink/5 transition-colors"
+          className="lg:hidden absolute top-4 left-4 p-2 rounded-lg text-ink/55 hover:text-ink/70 hover:bg-ink/5 transition-colors"
           title="Закрыть"
         >
           <X size={18} />
@@ -802,7 +816,7 @@ function EntityDetailPanel({
         {isEditing ? (
           <>
             <div>
-              <h4 className="text-[12px] font-bold text-ink/40 uppercase tracking-wider mb-2 ml-1">Описание</h4>
+              <h4 className="text-[12px] font-bold text-ink/55 uppercase tracking-wider mb-2 ml-1">Описание</h4>
               <textarea
                 value={draftDescription}
                 onChange={e => setDraftDescription(e.target.value)}
@@ -812,11 +826,11 @@ function EntityDetailPanel({
             </div>
             {editableKeys.length > 0 && (
               <div>
-                <h4 className="text-[12px] font-bold text-ink/40 uppercase tracking-wider mb-2 ml-1">Детали</h4>
+                <h4 className="text-[12px] font-bold text-ink/55 uppercase tracking-wider mb-2 ml-1">Детали</h4>
                 <div className="bg-white rounded-2xl border border-ink/10 shadow-sm overflow-hidden">
                   {editableKeys.map((key, i) => (
                     <div key={key} className={`px-4 py-3 ${i < editableKeys.length - 1 ? 'border-b border-ink/5' : ''}`}>
-                      <label className="block text-[11px] font-semibold text-ink/40 mb-1">
+                      <label className="block text-[11px] font-semibold text-ink/55 mb-1">
                         {ATTRIBUTE_LABELS[key] ?? key}
                         {key === 'aliases' && <span className="font-normal text-ink/30"> (через запятую)</span>}
                       </label>
@@ -853,7 +867,7 @@ function EntityDetailPanel({
           <>
             {entity.description ? (
               <div>
-                <h4 className="text-[12px] font-bold text-ink/40 uppercase tracking-wider mb-2 ml-1">
+                <h4 className="text-[12px] font-bold text-ink/55 uppercase tracking-wider mb-2 ml-1">
                   Описание
                 </h4>
                 <div className="bg-white p-4 rounded-2xl border border-ink/5 shadow-sm text-[14px] leading-relaxed text-ink/80">

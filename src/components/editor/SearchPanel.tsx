@@ -196,7 +196,7 @@ export function SearchPanel({ projectId, onClose }: Props) {
           borderRadius: '20px',
           width: '100%',
           maxWidth: '560px',
-          boxShadow: '0 32px 80px rgba(30,45,31,0.35)',
+          boxShadow: '0 32px 80px rgba(30,45,31,0.58)',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
@@ -214,7 +214,7 @@ export function SearchPanel({ projectId, onClose }: Props) {
           background: '#fff',
           borderBottom: '1px solid rgba(30,45,31,0.07)',
         }}>
-          <Search size={18} style={{ color: 'rgba(30,45,31,0.3)', flexShrink: 0 }} />
+          <Search size={18} style={{ color: 'rgba(30,45,31,0.55)', flexShrink: 0 }} />
           <input
             ref={inputRef}
             value={query}
@@ -232,19 +232,19 @@ export function SearchPanel({ projectId, onClose }: Props) {
             }}
           />
           {isLoading
-            ? <Loader2 size={16} style={{ color: 'rgba(30,45,31,0.3)', flexShrink: 0, animation: 'spin 0.8s linear infinite' }} />
+            ? <Loader2 size={16} style={{ color: 'rgba(30,45,31,0.55)', flexShrink: 0, animation: 'spin 0.8s linear infinite' }} />
             : query
               ? (
                 <button
                   onClick={() => { requestIdRef.current++; setQuery(''); setResults([]); setIsLoading(false); inputRef.current?.focus(); }}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: 'rgba(30,45,31,0.3)', flexShrink: 0 }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: 'rgba(30,45,31,0.55)', flexShrink: 0 }}
                 >
                   <X size={16} />
                 </button>
               )
               : (
                 <kbd style={{
-                  fontSize: '11px', color: 'rgba(30,45,31,0.3)',
+                  fontSize: '11px', color: 'rgba(30,45,31,0.55)',
                   background: 'rgba(30,45,31,0.05)', borderRadius: '4px',
                   padding: '2px 6px', fontFamily: 'monospace', flexShrink: 0,
                 }}>
@@ -257,13 +257,13 @@ export function SearchPanel({ projectId, onClose }: Props) {
         {/* ── Results ── */}
         <div ref={listRef} style={{ overflowY: 'auto', flex: 1 }}>
           {query.trim().length >= 2 && !isLoading && results.length === 0 && (
-            <div style={{ padding: '32px 20px', textAlign: 'center', color: 'rgba(30,45,31,0.35)', fontSize: '14px' }}>
+            <div style={{ padding: '32px 20px', textAlign: 'center', color: 'rgba(30,45,31,0.58)', fontSize: '14px' }}>
               Ничего не найдено по&nbsp;«{query}»
             </div>
           )}
 
           {query.trim().length < 2 && (
-            <div style={{ padding: '20px 20px 24px', color: 'rgba(30,45,31,0.3)', fontSize: '13px', textAlign: 'center' }}>
+            <div style={{ padding: '20px 20px 24px', color: 'rgba(30,45,31,0.55)', fontSize: '13px', textAlign: 'center' }}>
               Введите минимум 2 символа — ищем по главам и Библии
             </div>
           )}
@@ -277,7 +277,7 @@ export function SearchPanel({ projectId, onClose }: Props) {
                 fontWeight: 700,
                 letterSpacing: '0.1em',
                 textTransform: 'uppercase',
-                color: 'rgba(30,45,31,0.35)',
+                color: 'rgba(30,45,31,0.58)',
               }}>
                 {group.label}
               </div>
@@ -316,7 +316,7 @@ export function SearchPanel({ projectId, onClose }: Props) {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: isSelected ? '#3A4F41' : 'rgba(30,45,31,0.4)',
+                      color: isSelected ? '#3A4F41' : 'rgba(30,45,31,0.6)',
                       flexShrink: 0,
                       marginTop: '1px',
                     }}>
@@ -334,7 +334,7 @@ export function SearchPanel({ projectId, onClose }: Props) {
                           background: 'rgba(30,45,31,0.06)',
                           borderRadius: '4px',
                           padding: '1px 5px',
-                          color: 'rgba(30,45,31,0.4)',
+                          color: 'rgba(30,45,31,0.6)',
                           flexShrink: 0,
                           fontWeight: 500,
                         }}>
@@ -358,7 +358,7 @@ export function SearchPanel({ projectId, onClose }: Props) {
                       )}
 
                       {result.type !== 'chapter' && result.chapterTitle && (
-                        <p style={{ fontSize: '11px', color: 'rgba(30,45,31,0.3)', margin: '2px 0 0', fontStyle: 'italic' }}>
+                        <p style={{ fontSize: '11px', color: 'rgba(30,45,31,0.55)', margin: '2px 0 0', fontStyle: 'italic' }}>
                           {result.chapterTitle}
                         </p>
                       )}
@@ -378,7 +378,7 @@ export function SearchPanel({ projectId, onClose }: Props) {
             display: 'flex',
             gap: '14px',
             fontSize: '11px',
-            color: 'rgba(30,45,31,0.3)',
+            color: 'rgba(30,45,31,0.55)',
             background: '#fff',
           }}>
             <span><kbd style={{ fontFamily: 'monospace', background: 'rgba(30,45,31,0.06)', borderRadius: '3px', padding: '1px 4px' }}>↑↓</kbd> навигация</span>

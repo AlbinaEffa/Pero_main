@@ -131,7 +131,7 @@ export default function Login() {
               placeholder="••••••••"
             />
             {!isLogin && (
-              <p className="mt-1.5 text-xs text-ink/40">
+              <p className="mt-1.5 text-xs text-ink/55">
                 Минимум 8 символов, латинские буквы и цифры
               </p>
             )}

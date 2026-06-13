@@ -138,7 +138,7 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
           style={{
             position: 'absolute', top: '16px', right: '16px',
             background: 'none', border: 'none', cursor: 'pointer',
-            color: 'rgba(30,45,31,0.3)', padding: '4px',
+            color: 'rgba(30,45,31,0.55)', padding: '4px',
             borderRadius: '50%', display: 'flex',
           }}
         >
@@ -382,7 +382,7 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
                     <item.icon size={18} style={{ color: '#4A5D4E', flexShrink: 0 }} />
                     <span style={{
                       fontSize: '13px', flex: 1,
-                      color: done ? 'rgba(30,45,31,0.75)' : 'rgba(30,45,31,0.4)',
+                      color: done ? 'rgba(30,45,31,0.75)' : 'rgba(30,45,31,0.6)',
                       transition: 'color 0.3s',
                     }}>
                       {item.label}
@@ -442,7 +442,7 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
             </div>
 
             <p style={{
-              fontSize: '12px', color: 'rgba(30,45,31,0.4)',
+              fontSize: '12px', color: 'rgba(30,45,31,0.6)',
               textAlign: 'center', margin: '0 0 20px', lineHeight: 1.6,
             }}>
               Перо уже готово отвечать на вопросы — даже пока идёт обработка.

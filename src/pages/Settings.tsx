@@ -359,7 +359,7 @@ export default function Settings({
                     </div>
                     <span className="text-[15px] font-medium text-[#1E2D1F]">Смена пароля</span>
                   </div>
-                  <ChevronRight size={18} className="text-ink/40" />
+                  <ChevronRight size={18} className="text-ink/55" />
                 </button>
 
                 <button className="w-full flex items-center justify-between p-2 hover:bg-white/60 rounded-xl transition-colors group">
@@ -369,7 +369,7 @@ export default function Settings({
                     </div>
                     <span className="text-[15px] font-medium text-[#1E2D1F]">Двухфакторная аутентификация</span>
                   </div>
-                  <ChevronRight size={18} className="text-ink/40" />
+                  <ChevronRight size={18} className="text-ink/55" />
                 </button>
               </div>
             </div>

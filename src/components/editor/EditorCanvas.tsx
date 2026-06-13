@@ -900,7 +900,7 @@ export function EditorCanvas({
                       <CircleOff size={20} strokeWidth={2.1} />
                     </button>
                   </div>
-                  <div className="mt-2 text-[11px] leading-none text-[#1e2d1f]/45 flex items-center justify-center gap-10">
+                  <div className="mt-2 text-[11px] leading-none text-[#1e2d1f]/60 flex items-center justify-center gap-10">
                     <span>→ выделить</span>
                     <span>← стереть</span>
                   </div>
@@ -943,7 +943,7 @@ export function EditorCanvas({
                       }
                     }}
                     placeholder="Вставьте ссылку..."
-                    className="flex-1 bg-transparent outline-none text-[15px] text-[#1e2d1f] placeholder:text-[#1e2d1f]/35 px-2"
+                    className="flex-1 bg-transparent outline-none text-[15px] text-[#1e2d1f] placeholder:text-[#1e2d1f]/55 px-2"
                   />
                   <div className="w-px self-stretch bg-[#1e2d1f]/10" />
                   <button
@@ -1047,7 +1047,7 @@ export function EditorCanvas({
               </button>
               {isFontMenuOpen && (
                 <div className="absolute top-full mt-2 left-0 min-w-44 bg-[#f5f0e8] rounded-xl shadow-lg border border-[#1e2d1f]/10 p-1.5 z-[101]">
-                  <div className="px-2.5 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-[#1e2d1f]/35">
+                  <div className="px-2.5 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-[#1e2d1f]/55">
                     Шрифт всего текста
                   </div>
                   {([

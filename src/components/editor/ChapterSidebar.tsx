@@ -193,7 +193,7 @@ export function ChapterSidebar({
 
       {/* Chapter list */}
       <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-0.5">
-        <div className="flex items-center justify-between px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-white/40 mb-1 mt-2">
+        <div className="flex items-center justify-between px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-white/60 mb-1 mt-2">
           <span>Главы</span>
           <div className="relative">
             <button
@@ -279,7 +279,7 @@ export function ChapterSidebar({
                   ? 'Статус: Готово — нажмите, чтобы вернуть в черновик'
                   : 'Статус: Черновик — нажмите, чтобы отметить готовым'}
                 className={`flex-shrink-0 flex items-center justify-center transition-all hover:scale-105 active:scale-95 ${
-                  isDone ? 'text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.3)]' : 'text-white/40 hover:text-white/70'
+                  isDone ? 'text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.3)]' : 'text-white/60 hover:text-white/70'
                 }`}
               >
                 {isDone ? <FileCheck size={16} strokeWidth={1.75} /> : <FileText size={16} strokeWidth={1.75} />}
@@ -296,7 +296,7 @@ export function ChapterSidebar({
                   {primary}
                 </span>
                 {secondary && (
-                  <span className={`text-[12px] truncate leading-tight mt-0.5 ${isActive ? 'text-white/72' : 'text-white/45'}`}>
+                  <span className={`text-[12px] truncate leading-tight mt-0.5 ${isActive ? 'text-white/72' : 'text-white/60'}`}>
                     {secondary}
                   </span>
                 )}
@@ -356,7 +356,7 @@ export function ChapterSidebar({
               <AlertCircle size={11} /> Не сохранено
             </span>
           ) : lastSavedAt ? (
-            <><span className="w-1.5 h-1.5 rounded-full bg-emerald-400/70 inline-block" /><span className="text-white/45">Сохранено</span></>
+            <><span className="w-1.5 h-1.5 rounded-full bg-emerald-400/70 inline-block" /><span className="text-white/60">Сохранено</span></>
           ) : (
             <><span className="w-1.5 h-1.5 rounded-full bg-white/20 inline-block" /><span className="text-white/30">Ожидание…</span></>
           )}

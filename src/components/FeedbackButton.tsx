@@ -160,7 +160,7 @@ export function FeedbackButton() {
               onClick={handleClose}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
-                color: 'rgba(30,45,31,0.35)', padding: '2px',
+                color: 'rgba(30,45,31,0.58)', padding: '2px',
                 display: 'flex', borderRadius: '6px',
               }}
             >
@@ -241,10 +241,10 @@ export function FeedbackButton() {
                   display: 'flex', justifyContent: 'space-between',
                   marginTop: '6px', marginBottom: '14px',
                 }}>
-                  <span style={{ fontSize: '11px', color: 'rgba(30,45,31,0.3)' }}>
+                  <span style={{ fontSize: '11px', color: 'rgba(30,45,31,0.55)' }}>
                     ⌘↵ отправить
                   </span>
-                  <span style={{ fontSize: '11px', color: 'rgba(30,45,31,0.3)' }}>
+                  <span style={{ fontSize: '11px', color: 'rgba(30,45,31,0.55)' }}>
                     {message.length}/2000
                   </span>
                 </div>
@@ -261,7 +261,7 @@ export function FeedbackButton() {
                   style={{
                     width: '100%', padding: '11px',
                     background: message.trim() ? '#3A4F41' : 'rgba(30,45,31,0.1)',
-                    color: message.trim() ? '#fff' : 'rgba(30,45,31,0.35)',
+                    color: message.trim() ? '#fff' : 'rgba(30,45,31,0.58)',
                     border: 'none', borderRadius: '12px',
                     fontSize: '13px', fontWeight: 600,
                     cursor: message.trim() ? 'pointer' : 'not-allowed',

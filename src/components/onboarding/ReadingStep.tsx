@@ -128,20 +128,20 @@ export function ReadingStep({ world, quotes, onComplete }: Props) {
       {/* Лента находок */}
       <div className="w-full max-w-md space-y-2 text-left">
         {entities.length > 0 && (
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#1e2d1f]/35 ml-1 mb-2">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#1e2d1f]/55 ml-1 mb-2">
             Найдено в тексте · {entities.length}
           </p>
         )}
         {recent.map(e => <FindingCard key={e.id} entity={e} isFresh={world.freshIds.includes(e.id)} />)}
         {!isDone && entities.length === 0 && doneChapters >= 2 && (
-          <p className="text-xs text-[#1e2d1f]/40 text-center">
+          <p className="text-xs text-[#1e2d1f]/55 text-center">
             Пока тихо — так бывает на прологах. Перо продолжает читать.
           </p>
         )}
         {isDone && entities.length === 0 && (
           <div className="text-center py-6">
             <p className="text-sm text-[#1e2d1f]/60 mb-1">Мир пока пуст</p>
-            <p className="text-xs text-[#1e2d1f]/40">
+            <p className="text-xs text-[#1e2d1f]/55">
               В тексте не нашлось именованных персонажей или мест. Перо будет искать их по мере того, как вы пишете.
             </p>
           </div>
@@ -165,7 +165,7 @@ function FindingCard({ entity, isFresh }: { entity: Entity; isFresh: boolean }) 
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-semibold text-[#1e2d1f] truncate">{entity.name}</p>
-        <p className="text-[10px] uppercase tracking-wider text-[#1e2d1f]/40 font-bold">{meta.label}</p>
+        <p className="text-[10px] uppercase tracking-wider text-[#1e2d1f]/55 font-bold">{meta.label}</p>
       </div>
       <style>{`@keyframes slideIn { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }`}</style>
     </div>

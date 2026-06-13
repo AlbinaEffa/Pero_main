@@ -77,10 +77,10 @@ export function ProjectSyncPanel({
 
         {/* ── Summary tiles ── */}
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#1e2d1f]/35 mb-2">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#1e2d1f]/55 mb-2">
             Статус глав
           </p>
-          <p className="text-[11px] text-[#1e2d1f]/40 mb-2 -mt-1">
+          <p className="text-[11px] text-[#1e2d1f]/55 mb-2 -mt-1">
             Актуальность данных для Библии истории
           </p>
           <div className="grid grid-cols-2 gap-2">
@@ -158,7 +158,7 @@ export function ProjectSyncPanel({
 
         {/* ── Chapter list ── */}
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#1e2d1f]/35 mb-2">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#1e2d1f]/55 mb-2">
             Главы
           </p>
           <div className="space-y-1">
@@ -198,7 +198,7 @@ export function ProjectSyncPanel({
             })}
 
             {chapters.length === 0 && (
-              <p className="text-sm text-[#1e2d1f]/40 text-center py-8">
+              <p className="text-sm text-[#1e2d1f]/55 text-center py-8">
                 Нет глав
               </p>
             )}
@@ -207,7 +207,7 @@ export function ProjectSyncPanel({
 
         {/* ── Legend ── */}
         <div className="bg-white/60 border border-[#1e2d1f]/6 rounded-xl p-3 space-y-1.5">
-          <p className="text-[9px] font-bold uppercase tracking-widest text-[#1e2d1f]/30 mb-2">Что означают статусы</p>
+          <p className="text-[9px] font-bold uppercase tracking-widest text-[#1e2d1f]/55 mb-2">Что означают статусы</p>
           <LegendRow dot="bg-emerald-400" label="Актуальна" desc="Библия синхронизирована с текстом" />
           <LegendRow dot="bg-amber-400"   label="Устарела"  desc="Текст изменился после последнего анализа" />
           <LegendRow dot="bg-[#1e2d1f]/20" label="Не проверена" desc="Глава ещё не анализировалась" />
@@ -246,7 +246,7 @@ function LegendRow({ dot, label, desc }: { dot: string; label: string; desc: str
       <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-1 ${dot}`} />
       <div>
         <span className="text-[11px] font-semibold text-[#1e2d1f]/70">{label}</span>
-        <span className="text-[11px] text-[#1e2d1f]/40"> — {desc}</span>
+        <span className="text-[11px] text-[#1e2d1f]/55"> — {desc}</span>
       </div>
     </div>
   );

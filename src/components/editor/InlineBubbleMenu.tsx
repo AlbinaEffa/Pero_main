@@ -238,12 +238,12 @@ export function InlineBubbleMenu({ editor, projectId }: Props) {
         >
           {/* Header */}
           <div className="flex items-center justify-between px-3.5 pt-3 pb-2 border-b border-[#1e2d1f]/6">
-            <span className="text-[10px] font-bold text-[#1e2d1f]/40 uppercase tracking-widest">
+            <span className="text-[10px] font-bold text-[#1e2d1f]/55 uppercase tracking-widest">
               {activeAction?.label}
             </span>
             <button
               onMouseDown={e => { e.preventDefault(); handleCancel(); }}
-              className="p-1 rounded-md hover:bg-[#1e2d1f]/6 text-[#1e2d1f]/30 hover:text-[#1e2d1f]/60 transition-colors"
+              className="p-1 rounded-md hover:bg-[#1e2d1f]/6 text-[#1e2d1f]/55 hover:text-[#1e2d1f]/60 transition-colors"
             >
               <X size={13} />
             </button>
@@ -278,7 +278,7 @@ export function InlineBubbleMenu({ editor, projectId }: Props) {
             </button>
             <button
               onMouseDown={e => { e.preventDefault(); handleCancel(); }}
-              className="ml-auto text-[11px] text-[#1e2d1f]/35 hover:text-[#1e2d1f]/60 transition-colors px-2 py-2"
+              className="ml-auto text-[11px] text-[#1e2d1f]/55 hover:text-[#1e2d1f]/60 transition-colors px-2 py-2"
             >
               Отменить
             </button>

@@ -30,6 +30,14 @@ interface Props {
   onOpenSearch: () => void;
 }
 
+/** Склонение «глава» для бейджа синхронизации. */
+function pluralChapters(n: number): string {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return 'глава';
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'главы';
+  return 'глав';
+}
+
 export function BottomToolbar({
   isDictating,
   isDictationProcessing,
@@ -67,7 +75,7 @@ export function BottomToolbar({
       <div className="relative">
         {isBibleMenuOpen && (
           <div className="absolute bottom-full mb-2 right-0 w-48 bg-white rounded-xl shadow-xl border border-[#1e2d1f]/10 py-2 z-50">
-            <div className="px-4 py-2 text-[10px] font-bold text-ink/40 uppercase tracking-widest mb-1">
+            <div className="px-4 py-2 text-[10px] font-bold text-ink/55 uppercase tracking-widest mb-1">
               Библия истории
             </div>
             {BIBLE_MENU_ITEMS.map(item => {
@@ -81,7 +89,7 @@ export function BottomToolbar({
                   }}
                   className="w-full flex items-center gap-3 px-4 py-2 text-sm text-left hover:bg-[#f5f0e8] transition-colors"
                 >
-                  <Icon size={16} className="text-[#1e2d1f]/40" />
+                  <Icon size={16} className="text-[#1e2d1f]/55" />
                   <span className="font-medium text-[#1e2d1f]">{item.label}</span>
                 </button>
               );
@@ -160,7 +168,7 @@ export function BottomToolbar({
                 ? 'bg-[#1e2d1f] text-white'
                 : 'bg-transparent text-[#6b7280] hover:bg-[#f5f0e8] hover:text-[#1e2d1f]'
             }`}
-            title="Библия истории"
+            title="Библия истории" aria-label="Библия истории"
           >
             <BookOpen size={18} />
           </button>
@@ -172,7 +180,7 @@ export function BottomToolbar({
                 ? 'bg-[#1e2d1f] text-white'
                 : 'bg-transparent text-[#6b7280] hover:bg-[#f5f0e8] hover:text-[#1e2d1f]'
             }`}
-            title="Справочник главы"
+            title="Справочник главы" aria-label="Справочник главы"
           >
             <Bookmark size={18} />
           </button>
@@ -184,7 +192,7 @@ export function BottomToolbar({
                 ? 'bg-emerald-700 text-white'
                 : 'bg-transparent text-[#6b7280] hover:bg-[#f5f0e8] hover:text-[#1e2d1f]'
             }`}
-            title="Ревизия"
+            title="Ревизия" aria-label="Ревизия"
           >
             <GitBranch size={18} />
           </button>
@@ -196,11 +204,16 @@ export function BottomToolbar({
                 ? 'bg-blue-600 text-white'
                 : 'bg-transparent text-[#6b7280] hover:bg-[#f5f0e8] hover:text-[#1e2d1f]'
             }`}
-            title="Синхронизация проекта"
+            title={syncBadgeCount > 0
+              ? `Синхронизация: ${syncBadgeCount} ${pluralChapters(syncBadgeCount)} изменились после анализа — обновить библию`
+              : 'Синхронизация проекта с библией'}
+            aria-label={syncBadgeCount > 0
+              ? `Синхронизация, ${syncBadgeCount} ${pluralChapters(syncBadgeCount)} ждут обновления библии`
+              : 'Синхронизация проекта с библией'}
           >
             <Activity size={18} />
             {syncBadgeCount > 0 && !isSyncOpen && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] flex items-center justify-center bg-amber-400 text-white text-[8px] font-bold rounded-full leading-none px-0.5">
+              <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] flex items-center justify-center bg-amber-400 text-white text-[8px] font-bold rounded-full leading-none px-0.5">
                 {syncBadgeCount > 9 ? '9+' : syncBadgeCount}
               </span>
             )}
@@ -213,7 +226,7 @@ export function BottomToolbar({
                 ? 'bg-emerald-600 text-white'
                 : 'bg-transparent text-[#6b7280] hover:bg-[#f5f0e8] hover:text-[#1e2d1f]'
             }`}
-            title="Статистика написанного"
+            title="Статистика написанного" aria-label="Статистика написанного"
           >
             <BarChart2 size={18} />
           </button>
@@ -226,6 +239,7 @@ export function BottomToolbar({
                 : 'bg-transparent text-[#6b7280] hover:bg-[#f5f0e8] hover:text-[#1e2d1f]'
             }`}
             title={isFocusMode ? 'Выйти из режима фокусировки' : 'Режим фокусировки'}
+            aria-label={isFocusMode ? 'Выйти из режима фокусировки' : 'Режим фокусировки'}
           >
             {isFocusMode ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
           </button>

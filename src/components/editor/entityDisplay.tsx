@@ -81,14 +81,14 @@ export function EntityAttributesBlock({ attributes }: { attributes?: EntityAttri
   if (entries.length === 0) return null;
   return (
     <div>
-      <h4 className="text-[10px] font-bold text-ink/40 uppercase tracking-wider mb-2 ml-1">Детали</h4>
+      <h4 className="text-[10px] font-bold text-ink/55 uppercase tracking-wider mb-2 ml-1">Детали</h4>
       <div className="bg-white rounded-xl border border-ink/5 shadow-sm overflow-hidden">
         {entries.map(({ label, value }, i) => (
           <div
             key={label}
             className={`flex gap-3 px-4 py-2.5 ${i < entries.length - 1 ? 'border-b border-ink/5' : ''}`}
           >
-            <span className="text-[11px] font-semibold text-ink/35 w-24 flex-shrink-0 pt-0.5">{label}</span>
+            <span className="text-[11px] font-semibold text-ink/55 w-24 flex-shrink-0 pt-0.5">{label}</span>
             <span className="text-[12px] text-ink/75 leading-relaxed">{value}</span>
           </div>
         ))}
@@ -110,7 +110,7 @@ export function FirstAppearanceLine({ entity, chapters }: { entity: Entity; chap
   const chapter = chapters.find(c => c.id === entity.chapterId);
   if (!chapter) return null;
   return (
-    <div className="flex items-center gap-1.5 text-[11px] text-ink/45">
+    <div className="flex items-center gap-1.5 text-[11px] text-ink/60">
       <BookOpen size={11} className="flex-shrink-0" />
       <span>Впервые: {chapter.title}</span>
     </div>
@@ -157,7 +157,7 @@ export function EntityConnectionsBlock({ entity, links, entities, onSelectEntity
   if (rows.length === 0) return null;
   return (
     <div>
-      <h4 className="text-[10px] font-bold text-ink/40 uppercase tracking-wider mb-2 ml-1">Связи</h4>
+      <h4 className="text-[10px] font-bold text-ink/55 uppercase tracking-wider mb-2 ml-1">Связи</h4>
       <div className="bg-white rounded-xl border border-ink/5 shadow-sm overflow-hidden">
         {rows.map(({ link, other, label }, i) => (
           <div
@@ -169,7 +169,7 @@ export function EntityConnectionsBlock({ entity, links, entities, onSelectEntity
               className={`flex-1 min-w-0 text-left ${onSelectEntity ? 'cursor-pointer' : 'cursor-default'}`}
             >
               <span className="text-[12px] font-semibold text-ink/80 hover:text-ink transition-colors">{other.name}</span>
-              <span className="text-[11px] text-ink/45 ml-2">{label}</span>
+              <span className="text-[11px] text-ink/60 ml-2">{label}</span>
             </button>
             {onDeleteLink && (
               <button
@@ -220,7 +220,7 @@ export function EntityTimelineBlock({ entity, events, chapters, onDeleteEvent }:
   const chapterById = new Map(chapters.map(c => [c.id, c]));
   return (
     <div>
-      <h4 className="text-[10px] font-bold text-ink/40 uppercase tracking-wider mb-2 ml-1">Таймлайн</h4>
+      <h4 className="text-[10px] font-bold text-ink/55 uppercase tracking-wider mb-2 ml-1">Таймлайн</h4>
       <div className="bg-white rounded-xl border border-ink/5 shadow-sm px-4 py-3">
         <div className="relative">
           {own.map((ev, i) => {
@@ -253,7 +253,7 @@ export function EntityTimelineBlock({ entity, events, chapters, onDeleteEvent }:
                     <p className="text-[11px] text-ink/55 leading-relaxed mt-0.5">{ev.description}</p>
                   )}
                   {chapterTitle && (
-                    <p className="text-[10px] text-ink/35 mt-1">{chapterTitle}</p>
+                    <p className="text-[10px] text-ink/55 mt-1">{chapterTitle}</p>
                   )}
                 </div>
               </div>

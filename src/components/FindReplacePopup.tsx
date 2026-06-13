@@ -161,7 +161,7 @@ export function FindReplacePopup({ isOpen, onClose, editor }: FindReplacePopupPr
         </button>
 
         <div className="flex-1 flex items-center bg-[#f5f0e8]/50 border border-[#1e2d1f]/10 rounded-lg focus-within:border-[#1e2d1f]/30 focus-within:bg-white transition-all px-2 py-1">
-          <Search size={14} className="text-[#1e2d1f]/40 mr-1.5 flex-shrink-0" />
+          <Search size={14} className="text-[#1e2d1f]/55 mr-1.5 flex-shrink-0" />
           <input
             ref={findInputRef}
             type="text"
@@ -169,9 +169,9 @@ export function FindReplacePopup({ isOpen, onClose, editor }: FindReplacePopupPr
             value={findText}
             onChange={e => handleFindChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full bg-transparent text-[13px] outline-none placeholder:text-[#1e2d1f]/40 text-[#1e2d1f]"
+            className="w-full bg-transparent text-[13px] outline-none placeholder:text-[#1e2d1f]/55 text-[#1e2d1f]"
           />
-          <span className={`text-[11px] font-medium px-2 flex-shrink-0 ${matchCount === 0 && findText ? 'text-red-400' : 'text-[#1e2d1f]/30'}`}>
+          <span className={`text-[11px] font-medium px-2 flex-shrink-0 ${matchCount === 0 && findText ? 'text-red-400' : 'text-[#1e2d1f]/55'}`}>
             {findText ? `${displayIndex}/${matchCount}` : ''}
           </span>
         </div>
@@ -208,14 +208,14 @@ export function FindReplacePopup({ isOpen, onClose, editor }: FindReplacePopupPr
         <>
           <div className="flex items-center gap-2 pl-8 pr-[104px]">
             <div className="flex-1 flex items-center bg-[#f5f0e8]/50 border border-[#1e2d1f]/10 rounded-lg focus-within:border-[#1e2d1f]/30 focus-within:bg-white transition-all px-2 py-1">
-              <Replace size={14} className="text-[#1e2d1f]/40 mr-1.5 flex-shrink-0" />
+              <Replace size={14} className="text-[#1e2d1f]/55 mr-1.5 flex-shrink-0" />
               <input
                 type="text"
                 placeholder="Заменить на..."
                 value={replaceText}
                 onChange={e => setReplaceText(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') handleReplace(); if (e.key === 'Escape') onClose(); }}
-                className="w-full bg-transparent text-[13px] outline-none placeholder:text-[#1e2d1f]/40 text-[#1e2d1f]"
+                className="w-full bg-transparent text-[13px] outline-none placeholder:text-[#1e2d1f]/55 text-[#1e2d1f]"
               />
             </div>
           </div>

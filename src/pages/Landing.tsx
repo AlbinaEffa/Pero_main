@@ -30,7 +30,7 @@ const COMPARE_ROWS: { label: string; pero: Cell; mythril: Cell; novelcrafter: Ce
 
 function CellIcon({ v }: { v: Cell }) {
   if (v === 'yes') return <Check size={16} className="text-emerald-600 mx-auto" strokeWidth={2.5} />;
-  if (v === 'partial') return <span className="text-[11px] text-ink/45 font-medium">частично</span>;
+  if (v === 'partial') return <span className="text-[11px] text-ink/60 font-medium">частично</span>;
   return <Minus size={14} className="text-ink/25 mx-auto" />;
 }
 
@@ -77,7 +77,7 @@ export default function Landing() {
                 Как это работает
               </a>
             </div>
-            <p className="text-[13px] text-ink/45">
+            <p className="text-[13px] text-ink/60">
               Без карты · docx, fb2, epub, pdf, txt · Тексты не используются для обучения моделей
             </p>
           </div>
@@ -90,14 +90,14 @@ export default function Landing() {
                 <span className="text-[9px] font-semibold px-2 py-0.5 rounded-md bg-violet-100 text-violet-700">Ключевой</span>
               </div>
               <h3 className="font-serif text-3xl font-semibold mb-1">Весна</h3>
-              <p className="text-[11px] text-ink/40 mb-4">Впервые: Глава 1 · Пыль дорог</p>
+              <p className="text-[11px] text-ink/55 mb-4">Впервые: Глава 1 · Пыль дорог</p>
               <div className="space-y-2.5 text-[13px]">
-                <div className="flex gap-3"><span className="text-ink/40 w-20 shrink-0 font-semibold text-[11px] pt-0.5">Речь</span><span className="text-ink/75">короткие фразы, степные присловья</span></div>
-                <div className="flex gap-3"><span className="text-ink/40 w-20 shrink-0 font-semibold text-[11px] pt-0.5">Секрет</span><span className="text-ink/75">варит отвар забвения — последний дар бабки</span></div>
-                <div className="flex gap-3"><span className="text-ink/40 w-20 shrink-0 font-semibold text-[11px] pt-0.5">Связи</span><span className="text-ink/75">Корней — <span className="text-ink/45">вынужденный союзник</span> · Степь — <span className="text-ink/45">дом</span></span></div>
+                <div className="flex gap-3"><span className="text-ink/55 w-20 shrink-0 font-semibold text-[11px] pt-0.5">Речь</span><span className="text-ink/75">короткие фразы, степные присловья</span></div>
+                <div className="flex gap-3"><span className="text-ink/55 w-20 shrink-0 font-semibold text-[11px] pt-0.5">Секрет</span><span className="text-ink/75">варит отвар забвения — последний дар бабки</span></div>
+                <div className="flex gap-3"><span className="text-ink/55 w-20 shrink-0 font-semibold text-[11px] pt-0.5">Связи</span><span className="text-ink/75">Корней — <span className="text-ink/60">вынужденный союзник</span> · Степь — <span className="text-ink/60">дом</span></span></div>
               </div>
               <div className="mt-5 pt-4 border-t border-ink/6">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-ink/35 mb-2.5">Таймлайн</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-ink/55 mb-2.5">Таймлайн</p>
                 <div className="space-y-2 text-[12px] text-ink/70">
                   <p><span className="inline-block w-2 h-2 rounded-full bg-emerald-300 mr-2" />Приезд всадника — гл. 2</p>
                   <p><span className="inline-block w-2 h-2 rounded-full bg-amber-300 mr-2" />Степной суд — гл. 4</p>
@@ -145,7 +145,7 @@ export default function Landing() {
               <li key={s.n}>
                 <div className="flex items-center gap-3 mb-3">
                   <span className="font-serif text-4xl font-semibold text-[var(--color-accent)]">{s.n}</span>
-                  <s.icon size={18} className="text-ink/35" />
+                  <s.icon size={18} className="text-ink/55" />
                 </div>
                 <h3 className="font-semibold text-[15px] mb-1.5">{s.t}</h3>
                 <p className="text-[13.5px] text-ink/55 leading-relaxed">{s.d}</p>
@@ -159,7 +159,7 @@ export default function Landing() {
           <div className="max-w-5xl mx-auto px-6 py-20 space-y-14">
             <div className="grid md:grid-cols-[1fr_1.2fr] gap-8 items-baseline">
               <h3 className="font-serif text-2xl md:text-3xl font-semibold">Профили глубже, чем у редактора в издательстве</h3>
-              <p className="text-ink/60 leading-relaxed">Не только внешность и роль: предыстория, мотивация, манера речи, секреты. <span className="inline-flex items-center gap-1 text-ink/45"><Link2 size={13} />связи</span> между героями и <span className="inline-flex items-center gap-1 text-ink/45"><Activity size={13} />таймлайн</span> арки каждого персонажа по главам — кто с кем, что и когда случилось.</p>
+              <p className="text-ink/60 leading-relaxed">Не только внешность и роль: предыстория, мотивация, манера речи, секреты. <span className="inline-flex items-center gap-1 text-ink/60"><Link2 size={13} />связи</span> между героями и <span className="inline-flex items-center gap-1 text-ink/60"><Activity size={13} />таймлайн</span> арки каждого персонажа по главам — кто с кем, что и когда случилось.</p>
             </div>
             <div className="grid md:grid-cols-[1fr_1.2fr] gap-8 items-baseline">
               <h3 className="font-serif text-2xl md:text-3xl font-semibold">Перо — соавтор, который читал вашу книгу</h3>
@@ -167,7 +167,7 @@ export default function Landing() {
             </div>
             <div className="grid md:grid-cols-[1fr_1.2fr] gap-8 items-baseline">
               <h3 className="font-serif text-2xl md:text-3xl font-semibold">Редактор для длинной прозы — в том же окне</h3>
-              <p className="text-ink/60 leading-relaxed">Главы, сцены, цели по словам, автосохранение, ревизии. <span className="inline-flex items-center gap-1 text-ink/45"><Mic size={13} />Диктовка</span> по-русски с расстановкой знаков и подстановкой имён из вашей истории. Экспорт в docx и markdown, когда пора отправлять текст.</p>
+              <p className="text-ink/60 leading-relaxed">Главы, сцены, цели по словам, автосохранение, ревизии. <span className="inline-flex items-center gap-1 text-ink/60"><Mic size={13} />Диктовка</span> по-русски с расстановкой знаков и подстановкой имён из вашей истории. Экспорт в docx и markdown, когда пора отправлять текст.</p>
             </div>
           </div>
         </section>
@@ -180,7 +180,7 @@ export default function Landing() {
             <table className="w-full min-w-[640px] text-sm border-separate" style={{ borderSpacing: 0 }}>
               <thead>
                 <tr className="text-left">
-                  <th className="pb-4 pr-4 font-medium text-ink/45 text-[13px] w-[34%]"></th>
+                  <th className="pb-4 pr-4 font-medium text-ink/60 text-[13px] w-[34%]"></th>
                   <th className="pb-4 px-3 text-center">
                     <span className="inline-flex items-center gap-1.5 font-serif text-lg font-semibold"><PeroMark size={16} />Перо</span>
                   </th>
@@ -202,7 +202,7 @@ export default function Landing() {
               </tbody>
             </table>
           </div>
-          <p className="text-[11.5px] text-ink/35 mt-4">По публичным данным продуктов, июнь 2026. «Частично» — функция есть, но ограничена или требует ручной работы.</p>
+          <p className="text-[11.5px] text-ink/55 mt-4">По публичным данным продуктов, июнь 2026. «Частично» — функция есть, но ограничена или требует ручной работы.</p>
         </section>
 
         {/* ── Цены ── */}
@@ -273,7 +273,7 @@ export default function Landing() {
 
       {/* ── Footer ── */}
       <footer className="border-t border-ink/8 py-8">
-        <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-ink/40">
+        <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-ink/55">
           <span className="text-ink/60"><PeroLogo size={16} /></span>
           <span>
             &copy; {new Date().getFullYear()} Перо ·{' '}

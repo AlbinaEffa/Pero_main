@@ -85,9 +85,9 @@ export function WritingStatsPanel({
         <div className="grid grid-cols-2 gap-3">
           {/* Today's words */}
           <div className="bg-white rounded-2xl p-4 border border-[#1e2d1f]/8 shadow-sm flex flex-col gap-1">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-[#1e2d1f]/40">Сегодня</span>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-[#1e2d1f]/55">Сегодня</span>
             <span className="text-3xl font-bold text-[#1e2d1f] leading-none">{todayWords.toLocaleString('ru-RU')}</span>
-            <span className="text-[11px] text-[#1e2d1f]/40">слов</span>
+            <span className="text-[11px] text-[#1e2d1f]/55">слов</span>
           </div>
 
           {/* Streak */}
@@ -96,21 +96,21 @@ export function WritingStatsPanel({
               ? 'bg-amber-50 border-amber-200/60'
               : 'bg-white border-[#1e2d1f]/8'
           }`}>
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-[#1e2d1f]/40">Стрик</span>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-[#1e2d1f]/55">Стрик</span>
             <div className="flex items-baseline gap-1.5">
               <span className={`text-3xl font-bold leading-none ${streakActive ? 'text-amber-600' : 'text-[#1e2d1f]'}`}>
                 {streak}
               </span>
               {streakActive && <Flame size={18} className="text-amber-500 mb-0.5" />}
             </div>
-            <span className="text-[11px] text-[#1e2d1f]/40">{streak === 1 ? 'день' : streak >= 2 && streak <= 4 ? 'дня' : 'дней'}</span>
+            <span className="text-[11px] text-[#1e2d1f]/55">{streak === 1 ? 'день' : streak >= 2 && streak <= 4 ? 'дня' : 'дней'}</span>
           </div>
         </div>
 
         {/* Current chapter */}
         <div className="bg-white rounded-2xl p-4 border border-[#1e2d1f]/8 shadow-sm flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <BookOpen size={16} className="text-[#1e2d1f]/40 flex-shrink-0" />
+            <BookOpen size={16} className="text-[#1e2d1f]/55 flex-shrink-0" />
             <span className="text-sm text-[#1e2d1f]/70 font-medium">Текущая глава</span>
           </div>
           <span className="text-sm font-bold text-[#1e2d1f]">{chapterWords.toLocaleString('ru-RU')} сл.</span>
@@ -119,7 +119,7 @@ export function WritingStatsPanel({
         {/* Project total */}
         <div className="bg-white rounded-2xl p-4 border border-[#1e2d1f]/8 shadow-sm flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <TrendingUp size={16} className="text-[#1e2d1f]/40 flex-shrink-0" />
+            <TrendingUp size={16} className="text-[#1e2d1f]/55 flex-shrink-0" />
             <span className="text-sm text-[#1e2d1f]/70 font-medium">Всего в проекте</span>
           </div>
           <span className="text-sm font-bold text-[#1e2d1f]">{totalProjectWords.toLocaleString('ru-RU')} сл.</span>
@@ -135,7 +135,7 @@ export function WritingStatsPanel({
             {!editingGoal && (
               <button
                 onClick={() => setEditingGoal(true)}
-                className="p-1 rounded-md hover:bg-[#f5f0e8] text-[#1e2d1f]/35 hover:text-[#1e2d1f]/60 transition-colors"
+                className="p-1 rounded-md hover:bg-[#f5f0e8] text-[#1e2d1f]/55 hover:text-[#1e2d1f]/60 transition-colors"
                 title="Изменить цель"
               >
                 <Edit3 size={13} />
@@ -159,7 +159,7 @@ export function WritingStatsPanel({
               <div className="text-[22px] font-bold text-[#1e2d1f] leading-none">
                 {formatNumber(totalProjectWords)}
               </div>
-              <div className="text-[11px] text-[#1e2d1f]/40 mt-0.5">
+              <div className="text-[11px] text-[#1e2d1f]/55 mt-0.5">
                 из {' '}
                 {editingGoal ? (
                   <span className="inline-flex items-center gap-1">
@@ -204,7 +204,7 @@ export function WritingStatsPanel({
                 </div>
               )}
               {pct < 100 && wordGoal - totalProjectWords > 0 && (
-                <div className="mt-1.5 text-[10px] text-[#1e2d1f]/35">
+                <div className="mt-1.5 text-[10px] text-[#1e2d1f]/55">
                   осталось {formatNumber(wordGoal - totalProjectWords)} слов
                 </div>
               )}
@@ -214,7 +214,7 @@ export function WritingStatsPanel({
 
         {/* Quick tip */}
         <div className="bg-[#f5f0e8]/60 rounded-xl px-3.5 py-2.5 border border-[#1e2d1f]/6">
-          <p className="text-[10px] text-[#1e2d1f]/40 leading-relaxed">
+          <p className="text-[10px] text-[#1e2d1f]/55 leading-relaxed">
             Стрик растёт, если вы пишете каждый день. Статистика хранится локально в браузере.
           </p>
         </div>

@@ -1274,7 +1274,7 @@ export default function Editor() {
                 style={{
                   background: 'none', border: 'none', cursor: 'pointer',
                   padding: '4px', borderRadius: '8px', display: 'flex', alignItems: 'center',
-                  color: 'rgba(30,45,31,0.4)', marginLeft: '2px',
+                  color: 'rgba(30,45,31,0.6)', marginLeft: '2px',
                   transition: 'background 0.12s',
                 }}
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(30,45,31,0.06)'; }}
@@ -1440,7 +1440,7 @@ export default function Editor() {
               <div className="flex-1 overflow-y-auto p-4 space-y-5">
                 {referenceScope === 'chapter' ? (
                   chapterLinkedEntities.length === 0 && chapterMentionedEntities.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-[#1e2d1f]/30 text-center">
+                    <div className="flex flex-col items-center justify-center py-16 text-[#1e2d1f]/55 text-center">
                       <Bookmark size={32} className="mb-3 opacity-40" />
                       <p className="text-sm font-medium leading-relaxed">
                         Нет привязанных объектов.<br />
@@ -1451,7 +1451,7 @@ export default function Editor() {
                     <>
                       {chapterLinkedEntities.length > 0 && (
                         <div>
-                          <div className="flex items-center gap-1.5 text-[#1e2d1f]/40 font-bold text-[10px] uppercase tracking-widest mb-2.5">
+                          <div className="flex items-center gap-1.5 text-[#1e2d1f]/55 font-bold text-[10px] uppercase tracking-widest mb-2.5">
                             <span>Из этой главы</span>
                             <span className="bg-[#1e2d1f]/8 rounded-full px-1.5 py-0.5 text-[10px]">{chapterLinkedEntities.length}</span>
                           </div>
@@ -1464,7 +1464,7 @@ export default function Editor() {
                       )}
                       {chapterMentionedEntities.length > 0 && (
                         <div>
-                          <div className="flex items-center gap-1.5 text-[#1e2d1f]/40 font-bold text-[10px] uppercase tracking-widest mb-2.5">
+                          <div className="flex items-center gap-1.5 text-[#1e2d1f]/55 font-bold text-[10px] uppercase tracking-widest mb-2.5">
                             <span>В тексте</span>
                             <span className="bg-[#1e2d1f]/8 rounded-full px-1.5 py-0.5 text-[10px]">{chapterMentionedEntities.length}</span>
                           </div>
@@ -1479,7 +1479,7 @@ export default function Editor() {
                   )
                 ) : (
                   allApprovedEntities.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-[#1e2d1f]/30 text-center">
+                    <div className="flex flex-col items-center justify-center py-16 text-[#1e2d1f]/55 text-center">
                       <Bookmark size={32} className="mb-3 opacity-40" />
                       <p className="text-sm font-medium">
                         Библия пуста — используйте ИИ-извлечение в нижней панели

@@ -108,7 +108,7 @@ export function EditorFirstRunHints({ isNewChapter }: Props) {
             </div>
             <button
               onClick={dismiss}
-              className="p-1 rounded-lg hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors flex-shrink-0 ml-2"
+              className="p-1 rounded-lg hover:bg-white/10 text-white/60 hover:text-white/70 transition-colors flex-shrink-0 ml-2"
             >
               <X size={15} />
             </button>

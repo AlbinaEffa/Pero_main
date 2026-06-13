@@ -204,7 +204,7 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
           background: '#F5F0E8', borderRadius: '24px', width: '100%',
           maxWidth: step === 'preview' ? '560px' : '480px',
           maxHeight: '90vh',
-          boxShadow: '0 24px 60px rgba(30,45,31,0.3)',
+          boxShadow: '0 24px 60px rgba(30,45,31,0.55)',
           overflow: 'hidden',
           display: 'flex', flexDirection: 'column',
           animation: 'slideUp 0.2s cubic-bezier(0.34,1.56,0.64,1)',
@@ -221,12 +221,12 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
               {step === 'creating' && 'Создаём проект'}
             </h2>
             {step === 'upload' && (
-              <p style={{ fontSize: '12px', color: 'rgba(30,45,31,0.4)', margin: '2px 0 0' }}>
+              <p style={{ fontSize: '12px', color: 'rgba(30,45,31,0.6)', margin: '2px 0 0' }}>
                 TXT · DOCX · PDF · EPUB · FB2 · до 20 МБ
               </p>
             )}
             {step === 'preview' && parsed && (
-              <p style={{ fontSize: '12px', color: 'rgba(30,45,31,0.4)', margin: '2px 0 0' }}>
+              <p style={{ fontSize: '12px', color: 'rgba(30,45,31,0.6)', margin: '2px 0 0' }}>
                 {parsed.chapters.length} {parsed.chapters.length === 1 ? 'глава' : parsed.chapters.length < 5 ? 'главы' : 'глав'} · {formatWords(parsed.totalWords)} слов
               </p>
             )}
@@ -264,7 +264,7 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
                 <p style={{ fontSize: '15px', fontWeight: 600, color: 'rgba(30,45,31,0.65)', margin: '0 0 6px' }}>
                   Перетащите файл сюда
                 </p>
-                <p style={{ fontSize: '13px', color: 'rgba(30,45,31,0.4)', margin: 0 }}>
+                <p style={{ fontSize: '13px', color: 'rgba(30,45,31,0.6)', margin: 0 }}>
                   или нажмите, чтобы выбрать
                 </p>
               </div>
@@ -285,10 +285,10 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
               <p style={{ fontSize: '15px', fontWeight: 600, color: 'rgba(30,45,31,0.7)', marginBottom: '6px' }}>
                 Анализируем рукопись…
               </p>
-              <p style={{ fontSize: '13px', color: 'rgba(30,45,31,0.4)', margin: 0 }}>
+              <p style={{ fontSize: '13px', color: 'rgba(30,45,31,0.6)', margin: 0 }}>
                 {fileName}
               </p>
-              <p style={{ fontSize: '12px', color: 'rgba(30,45,31,0.3)', margin: '10px 0 0' }}>
+              <p style={{ fontSize: '12px', color: 'rgba(30,45,31,0.55)', margin: '10px 0 0' }}>
                 Определяем структуру глав
               </p>
             </div>
@@ -299,7 +299,7 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
               {/* Title */}
               <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.4)', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.6)', marginBottom: '6px' }}>
                   Название
                 </label>
                 <input
@@ -314,7 +314,7 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
 
               {/* Genre */}
               <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.4)', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.6)', marginBottom: '6px' }}>
                   Жанр <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(можно выбрать несколько)</span>
                 </label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -374,7 +374,7 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
 
               {/* Color */}
               <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.4)', marginBottom: '8px' }}>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.6)', marginBottom: '8px' }}>
                   Цвет обложки
                 </label>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -407,7 +407,7 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
                   <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, fontFamily: '"Cormorant Garamond", serif', color: '#1E2D1F' }}>
                     {title || 'Название книги'}
                   </p>
-                  <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'rgba(30,45,31,0.4)' }}>
+                  <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'rgba(30,45,31,0.6)' }}>
                     {genres.length > 0 ? genres.join(', ') : 'Жанр'} · {formatWords(parsed.totalWords)} слов
                   </p>
                 </div>
@@ -415,7 +415,7 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
 
               {/* Chapter list */}
               <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.4)', marginBottom: '8px' }}>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.6)', marginBottom: '8px' }}>
                   Главы ({parsed.chapters.length})
                 </label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -425,7 +425,7 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
                         <span style={{ fontSize: '13px', fontWeight: 600, color: '#1E2D1F', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {chapter.title}
                         </span>
-                        <span style={{ fontSize: '11px', color: 'rgba(30,45,31,0.35)', flexShrink: 0 }}>
+                        <span style={{ fontSize: '11px', color: 'rgba(30,45,31,0.58)', flexShrink: 0 }}>
                           {formatWords(chapter.wordCount)} сл.
                         </span>
                       </div>
@@ -470,7 +470,7 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
               <p style={{ fontSize: '15px', fontWeight: 600, color: 'rgba(30,45,31,0.7)', marginBottom: '6px' }}>
                 {processingWarning ? 'Проект создан' : 'Создаём проект…'}
               </p>
-              <p style={{ fontSize: '13px', color: 'rgba(30,45,31,0.4)', margin: '0 0 12px' }}>
+              <p style={{ fontSize: '13px', color: 'rgba(30,45,31,0.6)', margin: '0 0 12px' }}>
                 «{title}»
               </p>
               {processingWarning ? (
@@ -499,7 +499,7 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
               style={{
                 padding: '10px 22px', borderRadius: '12px', border: 'none',
                 background: title.trim() ? '#3A4F41' : 'rgba(30,45,31,0.08)',
-                color: title.trim() ? '#fff' : 'rgba(30,45,31,0.3)',
+                color: title.trim() ? '#fff' : 'rgba(30,45,31,0.55)',
                 fontSize: '14px', fontWeight: 600,
                 cursor: title.trim() ? 'pointer' : 'not-allowed',
                 transition: 'all 0.2s',

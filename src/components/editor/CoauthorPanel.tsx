@@ -206,7 +206,7 @@ export function CoauthorPanel({
                     ? 'text-red-500'
                     : quota.remaining <= Math.ceil(quota.limit * 0.15)
                       ? 'text-amber-600'
-                      : 'text-[#1e2d1f]/40'
+                      : 'text-[#1e2d1f]/55'
                 }`}
                 title={`Тариф: ${quota.plan === 'pro' ? 'Pro' : 'Бесплатный'}. Лимит обновится в полночь по UTC.`}
               >
@@ -327,7 +327,7 @@ export function CoauthorPanel({
                 <div className="flex items-center gap-0.5 mt-1 ml-1">
                   <button
                     onClick={() => handleCopy(msg.text, idx)}
-                    className="flex items-center gap-1 text-[10px] text-[#1e2d1f]/35 hover:text-[#1e2d1f]/65 px-1.5 py-0.5 rounded-md hover:bg-[#1e2d1f]/5 transition-colors"
+                    className="flex items-center gap-1 text-[10px] text-[#1e2d1f]/55 hover:text-[#1e2d1f]/65 px-1.5 py-0.5 rounded-md hover:bg-[#1e2d1f]/5 transition-colors"
                     title="Скопировать"
                   >
                     <Copy size={10} />
@@ -335,7 +335,7 @@ export function CoauthorPanel({
                   </button>
                   <button
                     onClick={() => onInsertText(stripMarkdown(msg.text))}
-                    className="flex items-center gap-1 text-[10px] text-[#1e2d1f]/35 hover:text-[#1e2d1f]/65 px-1.5 py-0.5 rounded-md hover:bg-[#1e2d1f]/5 transition-colors"
+                    className="flex items-center gap-1 text-[10px] text-[#1e2d1f]/55 hover:text-[#1e2d1f]/65 px-1.5 py-0.5 rounded-md hover:bg-[#1e2d1f]/5 transition-colors"
                     title="Вставить в текст на позиции курсора"
                   >
                     <CornerDownLeft size={10} />
@@ -350,7 +350,7 @@ export function CoauthorPanel({
         {/* Empty state: suggested questions */}
         {isEmptyState && !isAiLoading && (
           <div className="space-y-2 pt-1">
-            <p className="text-[10px] text-[#1e2d1f]/35 font-medium uppercase tracking-widest px-1">
+            <p className="text-[10px] text-[#1e2d1f]/55 font-medium uppercase tracking-widest px-1">
               С чего начать
             </p>
             {SUGGESTIONS.map((s, i) => (
@@ -372,11 +372,11 @@ export function CoauthorPanel({
       <div className="p-4 bg-white/40 border-t border-[#1e2d1f]/5 flex-shrink-0">
         {/* Context pills */}
         <div className="flex items-center gap-1.5 mb-2.5">
-          <span className="text-[9px] text-[#1e2d1f]/30 font-medium uppercase tracking-widest">Контекст:</span>
-          <span className="text-[9px] text-[#1e2d1f]/45 bg-[#1e2d1f]/5 rounded px-1.5 py-0.5" style={{ display: "inline-flex", alignItems: "center", gap: "3px" }}><BookOpen size={9} /> Библия</span>
-          <span className="text-[9px] text-[#1e2d1f]/45 bg-[#1e2d1f]/5 rounded px-1.5 py-0.5" style={{ display: "inline-flex", alignItems: "center", gap: "3px" }}><FileText size={9} /> Глава</span>
+          <span className="text-[9px] text-[#1e2d1f]/55 font-medium uppercase tracking-widest">Контекст:</span>
+          <span className="text-[9px] text-[#1e2d1f]/60 bg-[#1e2d1f]/5 rounded px-1.5 py-0.5" style={{ display: "inline-flex", alignItems: "center", gap: "3px" }}><BookOpen size={9} /> Библия</span>
+          <span className="text-[9px] text-[#1e2d1f]/60 bg-[#1e2d1f]/5 rounded px-1.5 py-0.5" style={{ display: "inline-flex", alignItems: "center", gap: "3px" }}><FileText size={9} /> Глава</span>
           {chatMessages.length > 2 && (
-            <span className="text-[9px] text-[#1e2d1f]/45 bg-[#1e2d1f]/5 rounded px-1.5 py-0.5" style={{ display: "inline-flex", alignItems: "center", gap: "3px" }}><MessageCircle size={9} /> История</span>
+            <span className="text-[9px] text-[#1e2d1f]/60 bg-[#1e2d1f]/5 rounded px-1.5 py-0.5" style={{ display: "inline-flex", alignItems: "center", gap: "3px" }}><MessageCircle size={9} /> История</span>
           )}
         </div>
 

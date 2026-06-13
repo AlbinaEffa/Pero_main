@@ -141,7 +141,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({
         {/* Header / Search Input */}
         <div className="p-4 border-b border-[#1e2d1f]/10 bg-white">
           <div className="flex items-center gap-3 bg-[#f5f0e8] rounded-xl px-4 py-3">
-            <Search size={18} className="text-[#1e2d1f]/40" />
+            <Search size={18} className="text-[#1e2d1f]/55" />
             <input
               ref={inputRef}
               type="text"
@@ -149,23 +149,23 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({
               onChange={e => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Поиск по тексту книги..."
-              className="flex-1 bg-transparent border-none outline-none text-[#1e2d1f] placeholder:text-[#1e2d1f]/40 text-base"
+              className="flex-1 bg-transparent border-none outline-none text-[#1e2d1f] placeholder:text-[#1e2d1f]/55 text-base"
             />
             {query && (
-              <span className="text-xs font-medium text-[#1e2d1f]/40 mr-2">
+              <span className="text-xs font-medium text-[#1e2d1f]/55 mr-2">
                 {textMatches.length} совпадения
               </span>
             )}
             <button 
               onClick={() => setShowReplace(!showReplace)}
-              className={`p-1.5 rounded-md transition-colors ${showReplace ? 'bg-[#1e2d1f]/10 text-[#1e2d1f]' : 'text-[#1e2d1f]/40 hover:bg-[#1e2d1f]/5 hover:text-[#1e2d1f]'}`}
+              className={`p-1.5 rounded-md transition-colors ${showReplace ? 'bg-[#1e2d1f]/10 text-[#1e2d1f]' : 'text-[#1e2d1f]/55 hover:bg-[#1e2d1f]/5 hover:text-[#1e2d1f]'}`}
               title="Заменить"
             >
               <Replace size={16} />
             </button>
             <button 
               onClick={onClose}
-              className="p-1.5 rounded-md text-[#1e2d1f]/40 hover:bg-[#1e2d1f]/5 hover:text-[#1e2d1f] transition-colors ml-1"
+              className="p-1.5 rounded-md text-[#1e2d1f]/55 hover:bg-[#1e2d1f]/5 hover:text-[#1e2d1f] transition-colors ml-1"
             >
               <X size={16} />
             </button>
@@ -181,7 +181,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({
                 onChange={e => setReplaceWith(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Заменить на..."
-                className="flex-1 bg-[#f5f0e8] rounded-xl px-4 py-2.5 border-none outline-none text-[#1e2d1f] placeholder:text-[#1e2d1f]/40 text-sm"
+                className="flex-1 bg-[#f5f0e8] rounded-xl px-4 py-2.5 border-none outline-none text-[#1e2d1f] placeholder:text-[#1e2d1f]/55 text-sm"
               />
               <div className="flex items-center gap-2">
                 <button 
@@ -206,19 +206,19 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({
         {/* Results Area */}
         <div className="flex-1 overflow-y-auto p-2 bg-[#F5F0E8]">
           {!query ? (
-            <div className="py-12 text-center text-[#1e2d1f]/40 text-sm">
+            <div className="py-12 text-center text-[#1e2d1f]/55 text-sm">
               Введите текст для поиска по текущей книге.<br/>
               Поиск поддерживает морфологию (например, "бежал" найдет "бежит").
             </div>
           ) : textMatches.length === 0 ? (
-            <div className="py-12 text-center text-[#1e2d1f]/40 text-sm">
+            <div className="py-12 text-center text-[#1e2d1f]/55 text-sm">
               Ничего не найдено
             </div>
           ) : (
             <div className="space-y-6 p-2">
               {/* Главы и сцены */}
               <div>
-                <h3 className="text-xs font-bold uppercase tracking-widest text-[#1e2d1f]/40 mb-3 px-2">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-[#1e2d1f]/55 mb-3 px-2">
                   Главы и сцены
                 </h3>
                 <div className="space-y-1">
@@ -237,7 +237,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({
                     >
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-sm font-medium text-[#1e2d1f]">Глава 12. Тени прошлого</span>
-                        <span className="text-[10px] text-[#1e2d1f]/40">Рукопись</span>
+                        <span className="text-[10px] text-[#1e2d1f]/55">Рукопись</span>
                       </div>
                       <div className="text-sm text-[#1e2d1f]/60 leading-relaxed font-serif">
                         ...{match.before}
@@ -254,7 +254,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({
               {/* Mock Lore Results if query matches */}
               {(query.toLowerCase().includes('воронц') || query.toLowerCase().includes('анн')) && (
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-[#1e2d1f]/40 mb-3 px-2">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-[#1e2d1f]/55 mb-3 px-2">
                     Персонажи
                   </h3>
                   <div className="space-y-1">

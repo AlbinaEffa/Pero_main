@@ -37,7 +37,7 @@ interface Project {
 function heightFromId(id: string): number {
   let hash = 0;
   for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) & 0xffffffff;
-  return 200 + Math.abs(hash % 120); // 200-320px
+  return 260 + Math.abs(hash % 130); // 260-390px — полка как главный объект
 }
 
 /**
@@ -224,7 +224,7 @@ function Book({ project, onOpen, onDelete, onEdit, onBible, onExport, onArchive,
         className="group cursor-pointer select-none"
         style={{
           height: `${project.height}px`,
-          width: '72px',
+          width: '76px',
           backgroundColor: project.color,
           borderRadius: '3px 6px 6px 3px',
           boxShadow: hovered
@@ -304,9 +304,9 @@ function ShelfSlot({ icon: Icon, label, height, onClick }: {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        height: `${height}px`, width: '68px', flexShrink: 0, alignSelf: 'flex-end',
+        height: `${height}px`, width: '74px', flexShrink: 0, alignSelf: 'flex-end',
         background: hovered ? 'rgba(255,255,255,0.75)' : 'rgba(30,45,31,0.025)',
-        border: `2px dashed ${hovered ? 'rgba(30,45,31,0.35)' : 'rgba(30,45,31,0.15)'}`,
+        border: `2px dashed ${hovered ? 'rgba(30,45,31,0.58)' : 'rgba(30,45,31,0.15)'}`,
         borderRadius: '3px 6px 6px 3px', cursor: 'pointer',
         display: 'flex', flexDirection: 'column', alignItems: 'center',
         paddingTop: '14px', gap: '10px',
@@ -315,12 +315,12 @@ function ShelfSlot({ icon: Icon, label, height, onClick }: {
       }}
       title={label}
     >
-      <Icon size={16} style={{ color: hovered ? 'rgba(30,45,31,0.7)' : 'rgba(30,45,31,0.35)', transition: 'color 0.2s' }} />
+      <Icon size={16} style={{ color: hovered ? 'rgba(30,45,31,0.7)' : 'rgba(30,45,31,0.58)', transition: 'color 0.2s' }} />
       <span style={{
         writingMode: 'vertical-rl', transform: 'rotate(180deg)',
         fontFamily: '"Cormorant Garamond", serif', fontSize: '13px', fontWeight: 600,
         letterSpacing: '0.08em', whiteSpace: 'nowrap',
-        color: hovered ? 'rgba(30,45,31,0.75)' : 'rgba(30,45,31,0.4)', transition: 'color 0.2s',
+        color: hovered ? 'rgba(30,45,31,0.75)' : 'rgba(30,45,31,0.6)', transition: 'color 0.2s',
       }}>
         {label}
       </span>
@@ -350,7 +350,7 @@ function Shelf({ projects, label, onOpen, onDelete, onEdit, onBible, onExport, o
       <div className="flex items-center gap-4 mb-0 px-1">
         <span style={{
           fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em',
-          textTransform: 'uppercase', color: 'rgba(30,45,31,0.3)',
+          textTransform: 'uppercase', color: 'rgba(30,45,31,0.55)',
           fontFamily: "'Golos Text', sans-serif"
         }}>
           {label}
@@ -373,7 +373,7 @@ function Shelf({ projects, label, onOpen, onDelete, onEdit, onBible, onExport, o
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               border: '2px dashed rgba(30,45,31,0.08)', borderRadius: '12px',
               margin: '16px 0 0',
-              color: 'rgba(30,45,31,0.3)', fontSize: '13px', gap: '8px',
+              color: 'rgba(30,45,31,0.55)', fontSize: '13px', gap: '8px',
             }}>
               <BookOpen size={16} style={{ opacity: 0.4 }} />
               {emptyLabel || 'Нет проектов'}
@@ -416,7 +416,7 @@ function Shelf({ projects, label, onOpen, onDelete, onEdit, onBible, onExport, o
               height: '6px',
               background: '#5C4220',
               borderRadius: '0 0 4px 4px',
-              boxShadow: '0 4px 12px rgba(30,45,31,0.3)',
+              boxShadow: '0 4px 12px rgba(30,45,31,0.55)',
             }} />
           </>
         )}
@@ -446,7 +446,7 @@ function EmptyState({ onNew }: { onNew: () => void }) {
       }}>
         Ваша полка пуста
       </h2>
-      <p style={{ color: 'rgba(30,45,31,0.4)', fontSize: '15px', maxWidth: '320px', lineHeight: 1.6, marginBottom: '28px' }}>
+      <p style={{ color: 'rgba(30,45,31,0.6)', fontSize: '15px', maxWidth: '320px', lineHeight: 1.6, marginBottom: '28px' }}>
         Каждая великая история начинается с первого слова. Создайте свой первый проект.
       </p>
       <button
@@ -513,7 +513,7 @@ function NewProjectModal({ onClose, onCreate, onImport }: { onClose: () => void;
       <div
         style={{
           background: '#F5F0E8', borderRadius: '24px', width: '100%',
-          maxWidth: '480px', boxShadow: '0 24px 60px rgba(30,45,31,0.3)',
+          maxWidth: '480px', boxShadow: '0 24px 60px rgba(30,45,31,0.55)',
           overflow: 'hidden', animation: 'slideUp 0.2s cubic-bezier(0.34,1.56,0.64,1)',
         }}
         onClick={e => e.stopPropagation()}
@@ -524,7 +524,7 @@ function NewProjectModal({ onClose, onCreate, onImport }: { onClose: () => void;
             <h2 style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: '22px', fontWeight: 700, margin: 0 }}>
               Новая книга
             </h2>
-            <p style={{ fontSize: '12px', color: 'rgba(30,45,31,0.4)', margin: '2px 0 0' }}>
+            <p style={{ fontSize: '12px', color: 'rgba(30,45,31,0.6)', margin: '2px 0 0' }}>
               Начните с чистого листа или принесите готовую рукопись
             </p>
           </div>
@@ -561,7 +561,7 @@ function NewProjectModal({ onClose, onCreate, onImport }: { onClose: () => void;
 
           {/* Title */}
           <div>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.4)', marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.6)', marginBottom: '6px' }}>
               Название
             </label>
             <input
@@ -582,7 +582,7 @@ function NewProjectModal({ onClose, onCreate, onImport }: { onClose: () => void;
 
           {/* Genre */}
           <div>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.4)', marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.6)', marginBottom: '6px' }}>
               Жанр
             </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
@@ -646,7 +646,7 @@ function NewProjectModal({ onClose, onCreate, onImport }: { onClose: () => void;
 
           {/* Color */}
           <div>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.4)', marginBottom: '8px' }}>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.6)', marginBottom: '8px' }}>
               Цвет обложки
             </label>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -679,7 +679,7 @@ function NewProjectModal({ onClose, onCreate, onImport }: { onClose: () => void;
               <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, fontFamily: '"Cormorant Garamond", serif', color: '#1E2D1F' }}>
                 {title || 'Название книги'}
               </p>
-              <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'rgba(30,45,31,0.4)' }}>
+              <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'rgba(30,45,31,0.6)' }}>
                 {genre || 'Жанр'} · 0 слов
               </p>
             </div>
@@ -697,7 +697,7 @@ function NewProjectModal({ onClose, onCreate, onImport }: { onClose: () => void;
             style={{
               padding: '10px 22px', borderRadius: '12px', border: 'none',
               background: title ? '#3A4F41' : 'rgba(30,45,31,0.08)',
-              color: title ? '#fff' : 'rgba(30,45,31,0.3)',
+              color: title ? '#fff' : 'rgba(30,45,31,0.55)',
               fontSize: '14px', fontWeight: 600, cursor: title ? 'pointer' : 'not-allowed',
               transition: 'all 0.2s',
             }}
@@ -727,7 +727,7 @@ function RenameModal({ project, onClose, onRename }: {
       onClick={onClose}
     >
       <div
-        style={{ background: '#F5F0E8', borderRadius: '20px', width: '100%', maxWidth: '380px', overflow: 'hidden', boxShadow: '0 24px 60px rgba(30,45,31,0.3)', animation: 'slideUp 0.2s cubic-bezier(0.34,1.56,0.64,1)' }}
+        style={{ background: '#F5F0E8', borderRadius: '20px', width: '100%', maxWidth: '380px', overflow: 'hidden', boxShadow: '0 24px 60px rgba(30,45,31,0.55)', animation: 'slideUp 0.2s cubic-bezier(0.34,1.56,0.64,1)' }}
         onClick={e => e.stopPropagation()}
       >
         <div style={{ background: '#fff', padding: '18px 22px', borderBottom: '1px solid rgba(30,45,31,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -757,7 +757,7 @@ function RenameModal({ project, onClose, onRename }: {
           <button
             onClick={confirm}
             disabled={!title.trim()}
-            style={{ padding: '9px 20px', borderRadius: '12px', border: 'none', background: title.trim() ? '#3A4F41' : 'rgba(30,45,31,0.08)', color: title.trim() ? '#fff' : 'rgba(30,45,31,0.3)', fontSize: '13px', fontWeight: 600, cursor: title.trim() ? 'pointer' : 'not-allowed', transition: 'all 0.2s' }}
+            style={{ padding: '9px 20px', borderRadius: '12px', border: 'none', background: title.trim() ? '#3A4F41' : 'rgba(30,45,31,0.08)', color: title.trim() ? '#fff' : 'rgba(30,45,31,0.55)', fontSize: '13px', fontWeight: 600, cursor: title.trim() ? 'pointer' : 'not-allowed', transition: 'all 0.2s' }}
           >
             Сохранить
           </button>
@@ -1069,7 +1069,7 @@ export default function Dashboard() {
                 border: `1.5px solid ${searchFocused ? 'rgba(30,45,31,0.15)' : 'transparent'}`,
                 transition: 'all 0.2s',
               }}>
-                <Search size={15} style={{ color: 'rgba(30,45,31,0.35)', flexShrink: 0 }} />
+                <Search size={15} style={{ color: 'rgba(30,45,31,0.58)', flexShrink: 0 }} />
                 <input
                   type="text"
                   placeholder="Найти книгу..."
@@ -1117,8 +1117,8 @@ export default function Dashboard() {
                   borderRadius: '50px', border: '1px solid rgba(30,45,31,0.06)',
                   fontSize: '13px',
                 }}>
-                  <span style={{ color: 'rgba(30,45,31,0.35)' }}>{stat.icon}</span>
-                  <span style={{ color: 'rgba(30,45,31,0.4)' }}>{stat.label}:</span>
+                  <span style={{ color: 'rgba(30,45,31,0.58)' }}>{stat.icon}</span>
+                  <span style={{ color: 'rgba(30,45,31,0.6)' }}>{stat.label}:</span>
                   <span style={{ color: 'rgba(30,45,31,0.75)', fontWeight: 600 }}>{stat.value}</span>
                 </div>
               ))}
@@ -1184,7 +1184,7 @@ export default function Dashboard() {
                 </select>
                 <svg
                   width="12" height="12" viewBox="0 0 12 12" fill="none"
-                  style={{ position: 'absolute', right: '12px', pointerEvents: 'none', color: 'rgba(30,45,31,0.4)' }}
+                  style={{ position: 'absolute', right: '12px', pointerEvents: 'none', color: 'rgba(30,45,31,0.6)' }}
                 >
                   <path d="M2 4.5L6 8.5L10 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
@@ -1204,7 +1204,7 @@ export default function Dashboard() {
                 projects={activeProjects}
                 label="Текущие"
                 trailing={
-                  <ShelfSlot icon={Plus} label="Новая книга" height={232} onClick={() => setIsModalOpen(true)} />
+                  <ShelfSlot icon={Plus} label="Новая книга" height={300} onClick={() => setIsModalOpen(true)} />
                 }
                 onOpen={handleOpen}
                 onDelete={id => setDeletingProjectId(id)}
@@ -1327,7 +1327,7 @@ export default function Dashboard() {
           position: 'fixed', bottom: '28px', left: '50%', transform: 'translateX(-50%)',
           background: '#1E2D1F', color: '#fff', borderRadius: '50px',
           padding: '10px 22px', fontSize: '13px', fontWeight: 500,
-          boxShadow: '0 4px 20px rgba(30,45,31,0.35)', zIndex: 9999,
+          boxShadow: '0 4px 20px rgba(30,45,31,0.58)', zIndex: 9999,
           animation: 'fadeInUp 0.2s ease', whiteSpace: 'nowrap',
           pointerEvents: 'none',
         }}>

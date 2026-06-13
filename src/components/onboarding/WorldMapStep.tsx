@@ -82,7 +82,7 @@ export function WorldMapStep({ projectId, projectTitle, firstChapterId, world }:
         <Icon size={16} />
       </div>
       <span className="font-serif text-3xl font-semibold text-[#1e2d1f] leading-none">{n}</span>
-      <span className="text-[10px] uppercase tracking-widest text-[#1e2d1f]/40 font-bold mt-1.5">{label}</span>
+      <span className="text-[10px] uppercase tracking-widest text-[#1e2d1f]/55 font-bold mt-1.5">{label}</span>
     </div>
   );
 
@@ -122,7 +122,7 @@ export function WorldMapStep({ projectId, projectTitle, firstChapterId, world }:
       {/* Главные герои */}
       {majors.length > 0 && (
         <div className="w-full max-w-xl mb-10">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#1e2d1f]/35 mb-3 ml-1">В сердце истории</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#1e2d1f]/55 mb-3 ml-1">В сердце истории</p>
           <div className="grid grid-cols-2 gap-3">
             {majors.map(c => <MajorCard key={c.id} entity={c} />)}
           </div>

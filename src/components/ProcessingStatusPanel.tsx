@@ -29,7 +29,7 @@ interface Props {
 
 function StateLabel({ state }: { state: ProcessingState }) {
   const map: Record<ProcessingState, { label: string; color: string }> = {
-    idle:       { label: 'Не запущено',  color: 'rgba(30,45,31,0.3)' },
+    idle:       { label: 'Не запущено',  color: 'rgba(30,45,31,0.55)' },
     processing: { label: 'Выполняется…', color: '#5B7E5E' },
     done:       { label: 'Готово',       color: '#3A6B40' },
     partial:    { label: 'Частично',     color: '#8B6914' },
@@ -68,7 +68,7 @@ function ProgressBar({ counts }: { counts: TypeCounts }) {
       </div>
       <div style={{
         display: 'flex', justifyContent: 'space-between',
-        marginTop: '3px', fontSize: '11px', color: 'rgba(30,45,31,0.4)',
+        marginTop: '3px', fontSize: '11px', color: 'rgba(30,45,31,0.6)',
       }}>
         <span>{counts.succeeded} из {counts.total} глав</span>
         {counts.failed > 0 && (
@@ -89,7 +89,7 @@ function ChapterRow({
   const icons: Record<string, ReactElement> = {
     succeeded: <CheckCircle size={13} color="#3A6B40" />,
     running:   <Loader size={13} color="#5B7E5E" style={{ animation: 'spin 1s linear infinite' }} />,
-    queued:    <Clock size={13} color="rgba(30,45,31,0.3)" />,
+    queued:    <Clock size={13} color="rgba(30,45,31,0.55)" />,
     failed:    <AlertCircle size={13} color="#9E4338" />,
   };
 
@@ -170,7 +170,7 @@ function JobSection({
             <StateLabel state={state} />
           </div>
           <p style={{
-            margin: '2px 0 0', fontSize: '11px', color: 'rgba(30,45,31,0.4)',
+            margin: '2px 0 0', fontSize: '11px', color: 'rgba(30,45,31,0.6)',
             lineHeight: 1.4,
           }}>
             {tooltip}
@@ -188,7 +188,7 @@ function JobSection({
             onClick={() => setExpanded(v => !v)}
             style={{
               background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-              fontSize: '11px', color: 'rgba(30,45,31,0.4)',
+              fontSize: '11px', color: 'rgba(30,45,31,0.6)',
               display: 'flex', alignItems: 'center', gap: '4px',
             }}
           >
@@ -218,7 +218,7 @@ function JobSection({
 
       {/* Idle state hint */}
       {counts.total === 0 && (
-        <p style={{ margin: '8px 0 0', fontSize: '12px', color: 'rgba(30,45,31,0.3)' }}>
+        <p style={{ margin: '8px 0 0', fontSize: '12px', color: 'rgba(30,45,31,0.55)' }}>
           Задания ещё не созданы
         </p>
       )}
@@ -336,7 +336,7 @@ export function ProcessingStatusPanel({
               <p style={{
                 margin: 0, fontSize: '10px', fontWeight: 700,
                 letterSpacing: '0.14em', textTransform: 'uppercase',
-                color: 'rgba(30,45,31,0.35)',
+                color: 'rgba(30,45,31,0.58)',
               }}>
                 Обработка рукописи
               </p>
@@ -403,7 +403,7 @@ export function ProcessingStatusPanel({
           {loading && (
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: '40px 0', gap: '10px', color: 'rgba(30,45,31,0.35)',
+              padding: '40px 0', gap: '10px', color: 'rgba(30,45,31,0.58)',
             }}>
               <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} />
               <span style={{ fontSize: '13px' }}>Загрузка…</span>

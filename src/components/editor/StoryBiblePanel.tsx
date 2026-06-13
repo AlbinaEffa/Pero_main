@@ -200,7 +200,7 @@ export function StoryBiblePanel({
             )}
             {chapterFreshnessStatus === 'unknown' && !isExtracting && (
               <div className="mb-3 bg-[#f5f0e8]/80 border border-[#1e2d1f]/8 rounded-xl p-3 flex items-start gap-2.5 flex-shrink-0">
-                <Sparkles size={14} className="text-[#1e2d1f]/40 flex-shrink-0 mt-0.5" />
+                <Sparkles size={14} className="text-[#1e2d1f]/55 flex-shrink-0 mt-0.5" />
                 <p className="text-[11px] text-[#1e2d1f]/60 leading-relaxed">
                   Эта глава ещё не анализировалась. Извлеките факты, чтобы начать Библию.
                 </p>
@@ -232,7 +232,7 @@ export function StoryBiblePanel({
             ) : (
               <div className="space-y-4">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs font-bold uppercase tracking-widest text-[#1e2d1f]/40">Найдено в тексте</span>
+                  <span className="text-xs font-bold uppercase tracking-widest text-[#1e2d1f]/55">Найдено в тексте</span>
                   <button
                     onClick={() => suggestions.forEach(s => onApproveSuggestion(s.id))}
                     className="text-xs font-medium text-[#1e2d1f]/60 hover:text-[#1e2d1f]"
@@ -244,7 +244,7 @@ export function StoryBiblePanel({
                   <div key={suggestion.id} className="bg-white rounded-2xl p-4 shadow-sm border border-[#1e2d1f]/5 relative group">
                     <button
                       onClick={() => onRejectSuggestion(suggestion.id)}
-                      className="absolute top-3 right-3 p-1 rounded-md text-[#1e2d1f]/30 hover:bg-[#f5f0e8] hover:text-[#1e2d1f] transition-colors opacity-0 group-hover:opacity-100"
+                      className="absolute top-3 right-3 p-1 rounded-md text-[#1e2d1f]/55 hover:bg-[#f5f0e8] hover:text-[#1e2d1f] transition-colors opacity-0 group-hover:opacity-100"
                     >
                       <X size={14} />
                     </button>
@@ -338,7 +338,7 @@ export function StoryBiblePanel({
                 <FirstAppearanceLine entity={selected} chapters={chapters} />
               </div>
               <div>
-                <h4 className="text-[10px] font-bold text-ink/40 uppercase tracking-wider mb-2 ml-1">Описание</h4>
+                <h4 className="text-[10px] font-bold text-ink/55 uppercase tracking-wider mb-2 ml-1">Описание</h4>
                 <div className="bg-white p-4 rounded-xl border border-ink/5 shadow-sm text-[13px] leading-relaxed text-ink/80">
                   {selected.description}
                 </div>
@@ -364,8 +364,8 @@ export function StoryBiblePanel({
               {groupBySignificance(chars).map(group => (
                 <div key={group.key}>
                   <div className="flex items-center gap-1.5 mb-2 ml-1">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#1e2d1f]/40">{group.title}</span>
-                    <span className="text-[10px] text-[#1e2d1f]/30 font-medium">· {group.items.length}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#1e2d1f]/55">{group.title}</span>
+                    <span className="text-[10px] text-[#1e2d1f]/55 font-medium">· {group.items.length}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     {group.items.map(char => (
@@ -411,7 +411,7 @@ export function StoryBiblePanel({
                   <FirstAppearanceLine entity={selected} chapters={chapters} />
                 </div>
               </div>
-              <h4 className="text-[10px] font-bold text-ink/40 uppercase tracking-wider mb-2 ml-1">Описание</h4>
+              <h4 className="text-[10px] font-bold text-ink/55 uppercase tracking-wider mb-2 ml-1">Описание</h4>
               <div className="bg-white p-4 rounded-xl border border-ink/5 shadow-sm text-[13px] leading-relaxed text-ink/80 mb-4">
                 {selected.description}
               </div>
@@ -469,7 +469,7 @@ export function StoryBiblePanel({
                   <FirstAppearanceLine entity={selected} chapters={chapters} />
                 </div>
               </div>
-              <h4 className="text-[10px] font-bold text-ink/40 uppercase tracking-wider mb-2 ml-1">Описание</h4>
+              <h4 className="text-[10px] font-bold text-ink/55 uppercase tracking-wider mb-2 ml-1">Описание</h4>
               <div className="bg-white p-4 rounded-xl border border-ink/5 shadow-sm text-[13px] leading-relaxed text-ink/80 mb-4">
                 {selected.description}
               </div>
@@ -524,7 +524,7 @@ export function StoryBiblePanel({
                   )}
                 </div>
               </div>
-              <h4 className="text-[10px] font-bold text-ink/40 uppercase tracking-wider mb-2 ml-1">Описание</h4>
+              <h4 className="text-[10px] font-bold text-ink/55 uppercase tracking-wider mb-2 ml-1">Описание</h4>
               <div className="bg-white p-4 rounded-xl border border-ink/5 shadow-sm text-[13px] leading-relaxed text-ink/80 italic font-serif mb-4">
                 {selected.description}
               </div>
@@ -587,11 +587,11 @@ function ChapterUpdateGroup({
       {/* Chapter section header — sticky within the scroll container */}
       <div className="sticky top-0 z-10 -mx-4 px-4 py-2 mb-2.5 bg-[#f5f0e8]/95 backdrop-blur-sm border-b border-[#1e2d1f]/6 flex items-center justify-between">
         <div className="flex items-center gap-1.5 min-w-0">
-          <BookOpen size={11} className="text-[#1e2d1f]/40 flex-shrink-0" />
+          <BookOpen size={11} className="text-[#1e2d1f]/55 flex-shrink-0" />
           <span className="text-[11px] font-bold text-[#1e2d1f]/60 truncate max-w-[150px]">
             {chapterTitle}
           </span>
-          <span className="text-[10px] text-[#1e2d1f]/30 font-medium flex-shrink-0">
+          <span className="text-[10px] text-[#1e2d1f]/55 font-medium flex-shrink-0">
             · {updates.length}
           </span>
         </div>
@@ -600,7 +600,7 @@ function ChapterUpdateGroup({
             {onBulkDismiss && (
               <button
                 onClick={onBulkDismiss}
-                className="text-[10px] text-[#1e2d1f]/40 hover:text-[#1e2d1f]/70 font-medium px-2 py-0.5 rounded hover:bg-[#1e2d1f]/5 transition-colors"
+                className="text-[10px] text-[#1e2d1f]/55 hover:text-[#1e2d1f]/70 font-medium px-2 py-0.5 rounded hover:bg-[#1e2d1f]/5 transition-colors"
                 title="Отложить все обновления по этой главе"
               >
                 Отложить всё
@@ -761,7 +761,7 @@ function UpdateCard({ update, onAccept, onReject, onDismiss, onOpenInEditor }: U
             {onOpenInEditor && (
               <button
                 onClick={onOpenInEditor}
-                className="p-1 rounded-md text-[#1e2d1f]/30 hover:text-[#1e2d1f]/70 hover:bg-[#f5f0e8] transition-colors"
+                className="p-1 rounded-md text-[#1e2d1f]/55 hover:text-[#1e2d1f]/70 hover:bg-[#f5f0e8] transition-colors"
                 title="Открыть в тексте"
               >
                 <ExternalLink size={12} />

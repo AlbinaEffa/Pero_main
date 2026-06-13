@@ -169,7 +169,7 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
             }}>
               Экспорт рукописи
             </h2>
-            <p style={{ fontSize: '12px', color: 'rgba(30,45,31,0.4)', margin: 0 }}>{projectTitle}</p>
+            <p style={{ fontSize: '12px', color: 'rgba(30,45,31,0.6)', margin: 0 }}>{projectTitle}</p>
           </div>
           <button
             onClick={onClose}
@@ -189,7 +189,7 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
           {/* ── Chapter filter ── */}
           <div>
             <p style={{
-              fontSize: '11px', fontWeight: 700, color: 'rgba(30,45,31,0.35)',
+              fontSize: '11px', fontWeight: 700, color: 'rgba(30,45,31,0.58)',
               textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px',
             }}>
               Главы
@@ -226,12 +226,12 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
             cursor: 'pointer', transition: 'all 0.15s',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <BookOpen size={15} color={includeBible ? '#3A4F41' : 'rgba(30,45,31,0.35)'} />
+              <BookOpen size={15} color={includeBible ? '#3A4F41' : 'rgba(30,45,31,0.58)'} />
               <div>
                 <div style={{ fontSize: '13px', fontWeight: 600, color: '#1E2D1F' }}>
                   Приложить Библию истории
                 </div>
-                <div style={{ fontSize: '11px', color: 'rgba(30,45,31,0.4)', lineHeight: 1.4 }}>
+                <div style={{ fontSize: '11px', color: 'rgba(30,45,31,0.6)', lineHeight: 1.4 }}>
                   Добавить персонажей, локации и правила мира
                 </div>
               </div>
@@ -262,7 +262,7 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
           {/* ── Format list ── */}
           <div>
             <p style={{
-              fontSize: '11px', fontWeight: 700, color: 'rgba(30,45,31,0.35)',
+              fontSize: '11px', fontWeight: 700, color: 'rgba(30,45,31,0.58)',
               textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px',
             }}>
               Формат
@@ -314,14 +314,14 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
                         </span>
                         <span style={{
                           fontSize: '10px', fontFamily: 'monospace',
-                          color: 'rgba(30,45,31,0.35)', background: 'rgba(30,45,31,0.04)',
+                          color: 'rgba(30,45,31,0.58)', background: 'rgba(30,45,31,0.04)',
                           padding: '1px 5px', borderRadius: '3px',
                         }}>
                           {fmt.ext}
                         </span>
                         {bibleNote && (
                           <span style={{
-                            fontSize: '10px', color: 'rgba(30,45,31,0.3)',
+                            fontSize: '10px', color: 'rgba(30,45,31,0.55)',
                             fontStyle: 'italic',
                           }}>
                             (без Библии)

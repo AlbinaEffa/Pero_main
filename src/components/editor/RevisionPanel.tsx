@@ -52,7 +52,7 @@ function Section({
           <Icon size={14} />
           <span className="text-[11px] font-bold uppercase tracking-widest">{title}</span>
         </div>
-        {open ? <ChevronDown size={14} className="text-[#1e2d1f]/30" /> : <ChevronRight size={14} className="text-[#1e2d1f]/30" />}
+        {open ? <ChevronDown size={14} className="text-[#1e2d1f]/55" /> : <ChevronRight size={14} className="text-[#1e2d1f]/55" />}
       </button>
       {open && <div className="px-4 pb-4">{children}</div>}
     </div>
@@ -97,7 +97,7 @@ export function RevisionPanel({
 
         {/* ── Section 1: Entity search (trace + arc) ── */}
         <Section title="Поиск по тексту" icon={Search}>
-          <p className="text-[12px] text-[#1e2d1f]/45 mb-3 leading-relaxed">
+          <p className="text-[12px] text-[#1e2d1f]/60 mb-3 leading-relaxed">
             Найди все упоминания персонажа, места или предмета — или проследи его арку.
           </p>
 
@@ -123,7 +123,7 @@ export function RevisionPanel({
           {traceDone && (
             <div className="mb-3">
               {traceResults.length === 0 ? (
-                <div className="flex items-center gap-2 text-[#1e2d1f]/40 text-[12px] py-2">
+                <div className="flex items-center gap-2 text-[#1e2d1f]/55 text-[12px] py-2">
                   <AlertCircle size={13} />
                   <span>
                     {traceSemantic
@@ -133,7 +133,7 @@ export function RevisionPanel({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <p className="text-[11px] text-[#1e2d1f]/40 font-medium">
+                  <p className="text-[11px] text-[#1e2d1f]/55 font-medium">
                     {traceResults.length} {traceResults.length === 1 ? 'глава' : 'главы'}
                     {traceSemantic ? ' (семантический поиск)' : ' (по Библии)'}
                   </p>
@@ -178,7 +178,7 @@ export function RevisionPanel({
 
         {/* ── Section 2: Bible sync ── */}
         <Section title="Обновить Библию" icon={BookOpen} defaultOpen={false}>
-          <p className="text-[12px] text-[#1e2d1f]/45 mb-3 leading-relaxed">
+          <p className="text-[12px] text-[#1e2d1f]/60 mb-3 leading-relaxed">
             ИИ сравнит текущую главу с одобренными фактами и предложит обновления.
           </p>
 
@@ -233,12 +233,12 @@ export function RevisionPanel({
                   </div>
 
                   {s.action === 'update' && s.currentDescription && (
-                    <p className="text-[11px] text-[#1e2d1f]/40 line-through mb-1 leading-relaxed">
+                    <p className="text-[11px] text-[#1e2d1f]/55 line-through mb-1 leading-relaxed">
                       {s.currentDescription}
                     </p>
                   )}
                   <p className="text-[12px] text-[#1e2d1f]/70 leading-relaxed">{s.suggestedDescription}</p>
-                  <p className="text-[10px] text-[#1e2d1f]/35 mt-1.5 italic">{s.reason}</p>
+                  <p className="text-[10px] text-[#1e2d1f]/55 mt-1.5 italic">{s.reason}</p>
                 </div>
               ))}
             </div>

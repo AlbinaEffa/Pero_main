@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import {
   MoveRight, Check, Minus, Upload, BookOpen, Sparkles, Mic,
-  ShieldCheck, Link2, Activity,
+  ShieldCheck, Link2, Activity, PenLine, Clock,
 } from 'lucide-react';
 import { PeroMark, PeroLogo } from '../components/Logo';
 
@@ -57,9 +57,15 @@ export default function Landing() {
         {/* ── Hero ── */}
         <section className="max-w-6xl mx-auto px-6 pt-20 lg:pt-28 pb-16 grid lg:grid-cols-[1.1fr_0.9fr] gap-14 items-center">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)] mb-6">
-              Для авторов романов и серий · Author.Today · Litnet
-            </p>
+            <div className="flex items-center gap-3 mb-6">
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#E7EAE3] text-[var(--color-accent)]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)]" />
+                Закрытая бета
+              </span>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+                Для авторов романов и серий · Author.Today · Litnet
+              </p>
+            </div>
             <h1 className="font-serif text-5xl md:text-6xl lg:text-[64px] font-semibold leading-[1.05] mb-7">
               Перо само ведёт библию вашей&nbsp;истории
             </h1>
@@ -117,15 +123,15 @@ export default function Landing() {
             <div className="grid md:grid-cols-3 gap-x-10 gap-y-8">
               <blockquote className="border-l-2 border-ink/15 pl-5">
                 <p className="font-serif italic text-lg text-ink/75 leading-relaxed mb-2">«Как звали трактирщика из седьмой главы?..»</p>
-                <p className="text-[13px] text-ink/50">Полчаса листаете собственную книгу вместо того, чтобы писать.</p>
+                <p className="text-[13px] text-ink/55">Полчаса листаете собственную книгу вместо того, чтобы писать.</p>
               </blockquote>
               <blockquote className="border-l-2 border-ink/15 pl-5">
                 <p className="font-serif italic text-lg text-ink/75 leading-relaxed mb-2">«Автор, у вас герой погиб в пятой главе, а в седьмой он разговаривает»</p>
-                <p className="text-[13px] text-ink/50">Читатели в комментариях находят противоречия раньше вас.</p>
+                <p className="text-[13px] text-ink/55">Читатели в комментариях находят противоречия раньше вас.</p>
               </blockquote>
               <blockquote className="border-l-2 border-ink/15 pl-5">
                 <p className="font-serif italic text-lg text-ink/75 leading-relaxed mb-2">«Заведу вики по миру… потом»</p>
-                <p className="text-[13px] text-ink/50">Таблица персонажей заброшена на третьей неделе — её надо вести руками.</p>
+                <p className="text-[13px] text-ink/55">Таблица персонажей заброшена на третьей неделе — её надо вести руками.</p>
               </blockquote>
             </div>
           </div>
@@ -172,6 +178,24 @@ export default function Landing() {
           </div>
         </section>
 
+        {/* ── Не генератор ── */}
+        <section className="max-w-5xl mx-auto px-6 py-16">
+          <div className="bg-white rounded-3xl border border-ink/8 shadow-sm px-8 py-10 md:px-12 text-center">
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-ink/55 mb-4">
+              Чтобы не было путаницы
+            </p>
+            <p className="font-serif text-2xl md:text-[32px] font-semibold leading-snug max-w-3xl mx-auto mb-4">
+              Это не генератор историй. Перо не напишет за вас ни строчки —
+              оно помнит каждую, что написали вы.
+            </p>
+            <p className="text-ink/60 leading-relaxed max-w-2xl mx-auto">
+              Sudowrite, Novely и подобные пишут текст вместо автора. Перо устроено наоборот:
+              вы пишете — оно читает, помнит ваш мир и охраняет ваш стиль и права.
+              Серьёзному автору нужен не соавтор-замена, а память.
+            </p>
+          </div>
+        </section>
+
         {/* ── Сравнение ── */}
         <section id="compare" className="max-w-5xl mx-auto px-6 py-20">
           <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-3">Честное сравнение</h2>
@@ -184,9 +208,9 @@ export default function Landing() {
                   <th className="pb-4 px-3 text-center">
                     <span className="inline-flex items-center gap-1.5 font-serif text-lg font-semibold"><PeroMark size={16} />Перо</span>
                   </th>
-                  <th className="pb-4 px-3 text-center font-medium text-ink/50">Mythril</th>
-                  <th className="pb-4 px-3 text-center font-medium text-ink/50">NovelCrafter</th>
-                  <th className="pb-4 px-3 text-center font-medium text-ink/50">Campfire</th>
+                  <th className="pb-4 px-3 text-center font-medium text-ink/55">Mythril</th>
+                  <th className="pb-4 px-3 text-center font-medium text-ink/55">NovelCrafter</th>
+                  <th className="pb-4 px-3 text-center font-medium text-ink/55">Campfire</th>
                 </tr>
               </thead>
               <tbody>
@@ -203,6 +227,19 @@ export default function Landing() {
             </table>
           </div>
           <p className="text-[11.5px] text-ink/55 mt-4">По публичным данным продуктов, июнь 2026. «Частично» — функция есть, но ограничена или требует ручной работы.</p>
+        </section>
+
+        {/* ── От автора / бета ── */}
+        <section className="max-w-3xl mx-auto px-6 py-16 text-center">
+          <PenLine size={26} className="text-[var(--color-accent)] mx-auto mb-5" />
+          <p className="font-serif text-2xl md:text-3xl font-semibold leading-snug mb-4">
+            Перо делает автор — для авторов, которые устали терять собственный мир
+          </p>
+          <p className="text-ink/65 leading-relaxed max-w-xl mx-auto">
+            Сейчас идёт закрытая бета: небольшая группа авторов с Author.Today и Litnet
+            проверяет Перо на своих рукописях, а я правлю продукт по их фидбеку.
+            Без громких обещаний — только то, что уже работает на вашей книге.
+          </p>
         </section>
 
         {/* ── Цены ── */}
@@ -226,10 +263,11 @@ export default function Landing() {
               <div className="bg-ink text-[#f5f0e8] rounded-3xl p-8 shadow-lg relative overflow-hidden">
                 <h3 className="font-serif text-2xl font-semibold mb-1">Pro</h3>
                 <p className="font-serif text-4xl font-semibold mb-6">599 ₽<span className="text-base font-normal opacity-60"> /мес</span></p>
-                <ul className="space-y-2.5 text-[14px] text-[#f5f0e8]/85 mb-8">
-                  {['Проекты и главы без лимитов', '300 ИИ-действий в день', 'Отчёт противоречий по всей книге', 'Диктовка с ИИ-обработкой', 'Экспорт в docx и zip-бэкап', 'Шеринг библии без водяного знака'].map(f => (
+                <ul className="space-y-2.5 text-[14px] text-[#f5f0e8]/85 mb-3">
+                  {['Проекты и главы без лимитов', '300 ИИ-действий в день', 'Отчёт противоречий по всей книге', 'Диктовка с ИИ-обработкой', 'Экспорт в docx и zip-бэкап'].map(f => (
                     <li key={f} className="flex gap-2.5"><Check size={16} className="text-emerald-300 shrink-0 mt-0.5" />{f}</li>
                   ))}
+                  <li className="flex gap-2.5 text-[#f5f0e8]/55"><Clock size={16} className="shrink-0 mt-0.5 opacity-70" />Публичная страница библии по ссылке — скоро</li>
                 </ul>
                 <Link to={CTA_TO} className="block text-center bg-[#f5f0e8] text-ink rounded-xl py-3 font-semibold hover:bg-white transition-colors">
                   Попробовать Pro
@@ -237,6 +275,40 @@ export default function Landing() {
                 <p className="text-[11.5px] opacity-50 mt-3 text-center">Оплата картой РФ через ЮKassa · без автопродления</p>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* ── Частые сомнения (снятие возражений) ── */}
+        <section className="max-w-3xl mx-auto px-6 py-20">
+          <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-10">Частые сомнения</h2>
+          <div className="divide-y divide-ink/8">
+            {[
+              {
+                q: 'ИИ испортит или украдёт мой стиль?',
+                a: 'Перо не пишет за вас — оно читает то, что написали вы, и помнит. Стиль остаётся вашим: Перо помогает не забыть детали мира, а не сочиняет вместо автора.',
+              },
+              {
+                q: 'А мои тексты не уйдут на обучение моделей?',
+                a: 'Нет. Рукописи не используются для обучения. Все права у автора, удаление проекта — безвозвратное.',
+              },
+              {
+                q: 'Снова заводить базу персонажей руками?',
+                a: 'Ничего не нужно вводить руками. Вы загружаете рукопись — библия собирается сама. Вам остаётся только одобрять или править найденное.',
+              },
+              {
+                q: 'У меня уже 100 тысяч слов в Word — поздно?',
+                a: 'Наоборот, это лучший момент. Импорт docx/fb2/epub за пару минут превратит готовый текст в библию мира со связями и таймлайнами.',
+              },
+              {
+                q: 'Дорого — и я не плачу в долларах.',
+                a: '599 ₽ в месяц, оплата российской картой, с чеком. А полный цикл «импорт → библия → проверка» на одном проекте доступен бесплатно — попробуйте до оплаты.',
+              },
+            ].map(item => (
+              <div key={item.q} className="py-5">
+                <h3 className="font-serif text-xl font-semibold mb-2">{item.q}</h3>
+                <p className="text-ink/65 leading-relaxed">{item.a}</p>
+              </div>
+            ))}
           </div>
         </section>
 

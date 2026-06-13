@@ -47,6 +47,55 @@ export function cleanJsonResponse(raw: string): string {
     .trim();
 }
 
+// ── Genre taxonomy (mirror of client src/data/genres.ts — keep in sync) ────────
+
+export const GENRE_TAXONOMY: string[] = [
+  // Фэнтези
+  'Фэнтези', 'Боевое фэнтези', 'Тёмное фэнтези', 'Городское фэнтези',
+  'Романтическое фэнтези', 'Эпическое фэнтези', 'Историческое фэнтези',
+  'ЛитРПГ', 'РеалРПГ', 'Бояръ-аниме', 'Попаданцы', 'Сказка',
+  // Фантастика
+  'Научная фантастика', 'Боевая фантастика', 'Космическая фантастика',
+  'Киберпанк', 'Постапокалипсис', 'Антиутопия', 'Альтернативная история', 'Стимпанк',
+  // Романтика
+  'Любовный роман', 'Современный любовный роман', 'Исторический любовный роман',
+  'Романтическая проза', 'Эротика', 'Young adult',
+  // Детектив и саспенс
+  'Детектив', 'Боевик', 'Триллер', 'Мистика', 'Ужасы',
+  // Проза и другое
+  'Современная проза', 'Историческая проза', 'Драма', 'Юмор',
+  'Приключения', 'Подростковая проза', 'Фанфик',
+];
+
+/** Промпт классификации жанра по фрагменту текста (1–3 жанра строго из таксономии). */
+export function buildGenreClassifyPrompt(sampleText: string): string {
+  return `Ты — литературный редактор. Определи 1–3 наиболее подходящих жанра произведения по фрагменту.
+Выбирай ТОЛЬКО из списка (точные формулировки, без своих вариантов):
+${GENRE_TAXONOMY.join(', ')}
+
+Верни строго JSON-массив строк без markdown, например: ["Фэнтези","ЛитРПГ"].
+Если жанр определить нельзя — верни самый общий подходящий из списка.
+
+=== ФРАГМЕНТ ===
+${sampleText.trim()}`;
+}
+
+/** Приводит ответ модели (массив или JSON-строка) к каноническим жанрам таксономии. */
+export function coerceGenres(value: unknown): string[] {
+  let arr: unknown = value;
+  if (typeof value === 'string') {
+    try { arr = JSON.parse(cleanJsonResponse(value)); } catch { return []; }
+  }
+  if (!Array.isArray(arr)) return [];
+  const canonByLower = new Map(GENRE_TAXONOMY.map(g => [g.toLowerCase(), g]));
+  const out: string[] = [];
+  for (const x of arr) {
+    const canon = canonByLower.get(String(x).trim().toLowerCase());
+    if (canon && !out.includes(canon)) out.push(canon);
+  }
+  return out.slice(0, 3);
+}
+
 // ── Story-bible context (shared: ai.ts chat/consistency + worker contradictions) ──
 
 /** Key character attributes worth surfacing to the AI (token-capped). */

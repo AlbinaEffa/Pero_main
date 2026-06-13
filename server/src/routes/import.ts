@@ -16,6 +16,9 @@ import { authenticateToken } from '../middleware/auth.js';
 import { eq, and } from 'drizzle-orm';
 import { enqueueJobs } from '../jobs/queue.js';
 import { idempotency } from '../middleware/idempotency.js';
+import { getAIProvider } from '../lib/aiProvider.js';
+import { guardChat } from '../lib/aiGuard.js';
+import { buildGenreClassifyPrompt, coerceGenres } from '../lib/extraction.js';
 
 const router = express.Router();
 
@@ -397,6 +400,36 @@ router.post('/create', authenticateToken, idempotency(), async (req: any, res) =
   } catch (error) {
     console.error('Error in POST /import/create:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── POST /api/import/classify-genre ──────────────────────────────────────────
+// Body: { sample: string }  — фрагмент текста (обычно первая глава).
+// Возвращает { genres: string[] } — 1–3 жанра из таксономии. Один дешёвый AI-вызов.
+// Никогда не блокирует импорт: при любой проблеме отдаёт пустой список.
+
+router.post('/classify-genre', authenticateToken, async (req: any, res) => {
+  try {
+    const ai = getAIProvider();
+    if (!ai) return res.json({ genres: [] });
+
+    const sample = String(req.body?.sample ?? '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 4000);
+
+    if (sample.split(/\s+/).filter(Boolean).length < 20) return res.json({ genres: [] });
+
+    const response = await guardChat(
+      () => ai.generate({ contents: buildGenreClassifyPrompt(sample), temperature: 0 }),
+      { userId: req.user.userId, route: 'import:classify_genre', circuit: 'extract', timeoutMs: 30_000 },
+    );
+    res.json({ genres: coerceGenres(response.text ?? '[]') });
+  } catch (err) {
+    // Жанр — необязательная подсказка; импорт продолжается без него
+    res.json({ genres: [] });
   }
 });
 

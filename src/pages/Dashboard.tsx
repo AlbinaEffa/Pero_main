@@ -12,6 +12,8 @@ import { OnboardingWizard, ONBOARDING_KEY } from '../components/OnboardingWizard
 import { FeedbackButton } from '../components/FeedbackButton';
 import { PeroLogo } from '../components/Logo';
 import { ExportPanel } from '../components/ExportPanel';
+import GenrePicker from '../components/GenrePicker';
+import { splitGenres } from '../data/genres';
 
 import { api } from '../services/api';
 import { useJobStatus } from '../hooks/useJobStatus';
@@ -476,29 +478,10 @@ function EmptyState({ onNew }: { onNew: () => void }) {
 
 function NewProjectModal({ onClose, onCreate, onImport }: { onClose: () => void; onCreate: (title: string, genre: string, color: string) => void; onImport?: () => void }) {
   const [title, setTitle] = useState('');
-  const [genre, setGenre] = useState('');
+  const [genres, setGenres] = useState<string[]>([]);
   const [color, setColor] = useState('#3A4F41');
-  const [customGenres, setCustomGenres] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem('pero_custom_genres') || '[]'); } catch { return []; }
-  });
 
   const PRESET_COLORS = ['#41523F', '#C66B49', '#2C3E50', '#806B8A', '#2B7A6B', '#8B6B32', '#6B2B2B', '#2B4A8B'];
-  const GENRE_PRESETS = ['Фэнтези', 'Фантастика', 'Детектив', 'Роман', 'Ужасы', 'Приключения', 'Другое'];
-
-  const saveCustomGenre = (value: string) => {
-    const trimmed = value.trim();
-    if (!trimmed || GENRE_PRESETS.includes(trimmed) || customGenres.includes(trimmed)) return;
-    const updated = [...customGenres, trimmed];
-    setCustomGenres(updated);
-    localStorage.setItem('pero_custom_genres', JSON.stringify(updated));
-  };
-
-  const removeCustomGenre = (value: string) => {
-    const updated = customGenres.filter(g => g !== value);
-    setCustomGenres(updated);
-    localStorage.setItem('pero_custom_genres', JSON.stringify(updated));
-    if (genre === value) setGenre('');
-  };
 
   return (
     <div
@@ -583,65 +566,9 @@ function NewProjectModal({ onClose, onCreate, onImport }: { onClose: () => void;
           {/* Genre */}
           <div>
             <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.6)', marginBottom: '6px' }}>
-              Жанр
+              Жанр <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(можно выбрать несколько)</span>
             </label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
-              {GENRE_PRESETS.map(g => (
-                <button
-                  key={g}
-                  onClick={() => {
-                    if (g === 'Другое') {
-                      setGenre(genre === 'Другое' || !GENRE_PRESETS.includes(genre) ? '' : 'Другое');
-                    } else {
-                      setGenre(genre === g ? '' : g);
-                    }
-                  }}
-                  style={{
-                    padding: '5px 12px', borderRadius: '50px', fontSize: '12px',
-                    border: `1.5px solid ${(g === 'Другое' ? (!GENRE_PRESETS.slice(0,-1).includes(genre) && genre !== '') || genre === 'Другое' : genre === g) ? '#3A4F41' : 'rgba(30,45,31,0.1)'}`,
-                    background: (g === 'Другое' ? (!GENRE_PRESETS.slice(0,-1).includes(genre) && genre !== '') || genre === 'Другое' : genre === g) ? 'rgba(58,79,65,0.08)' : 'transparent',
-                    color: (g === 'Другое' ? (!GENRE_PRESETS.slice(0,-1).includes(genre) && genre !== '') || genre === 'Другое' : genre === g) ? '#3A4F41' : 'rgba(30,45,31,0.5)',
-                    cursor: 'pointer', fontWeight: 400, transition: 'all 0.15s',
-                  }}
-                >
-                  {g}
-                </button>
-              ))}
-              {/* Saved custom genre chips */}
-              {customGenres.map(g => (
-                <span key={g} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '5px 10px 5px 12px', borderRadius: '50px', fontSize: '12px', border: `1.5px solid ${genre === g ? '#3A4F41' : 'rgba(30,45,31,0.1)'}`, background: genre === g ? 'rgba(58,79,65,0.08)' : 'transparent', color: genre === g ? '#3A4F41' : 'rgba(30,45,31,0.5)' }}>
-                  <span style={{ cursor: 'pointer' }} onClick={() => setGenre(genre === g ? '' : g)}>{g}</span>
-                  <button onClick={() => removeCustomGenre(g)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1, color: 'inherit', opacity: 0.5, fontSize: '13px' }}>×</button>
-                </span>
-              ))}
-            </div>
-            {/* Custom genre input — shown when "Другое" is active */}
-            {(!GENRE_PRESETS.slice(0, -1).includes(genre) && !customGenres.includes(genre)) && (
-              <input
-                autoFocus
-                type="text"
-                placeholder="Введите жанр и нажмите Enter..."
-                value={genre === 'Другое' ? '' : genre}
-                onChange={e => setGenre(e.target.value || 'Другое')}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') {
-                    const val = (e.target as HTMLInputElement).value.trim();
-                    if (val) { saveCustomGenre(val); setGenre(val); }
-                  }
-                }}
-                style={{
-                  width: '100%', padding: '8px 12px',
-                  borderRadius: '10px', border: '1.5px solid #3A4F41',
-                  background: '#fff', fontSize: '13px', outline: 'none',
-                  boxSizing: 'border-box', fontFamily: 'inherit', color: '#1E2D1F',
-                }}
-                onBlur={e => {
-                  const val = e.target.value.trim();
-                  if (val && val !== 'Другое') { saveCustomGenre(val); setGenre(val); }
-                  else if (!val) setGenre('');
-                }}
-              />
-            )}
+            <GenrePicker value={genres} onChange={setGenres} />
           </div>
 
           {/* Color */}
@@ -680,7 +607,7 @@ function NewProjectModal({ onClose, onCreate, onImport }: { onClose: () => void;
                 {title || 'Название книги'}
               </p>
               <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'rgba(30,45,31,0.6)' }}>
-                {genre || 'Жанр'} · 0 слов
+                {genres.join(', ') || 'Жанр'} · 0 слов
               </p>
             </div>
           </div>
@@ -692,7 +619,7 @@ function NewProjectModal({ onClose, onCreate, onImport }: { onClose: () => void;
             Отмена
           </button>
           <button
-            onClick={() => { if (title) { onCreate(title, genre, color); onClose(); } }}
+            onClick={() => { if (title) { onCreate(title, genres.join(', '), color); onClose(); } }}
             disabled={!title}
             style={{
               padding: '10px 22px', borderRadius: '12px', border: 'none',
@@ -919,17 +846,18 @@ export default function Dashboard() {
     }
   };
 
-  // Derived genre list from active projects (non-default only)
+  // Derived genre list from active projects (мультижанр: разбиваем CSV на токены)
   const availableGenres = [...new Set(
     projects
-      .filter(p => p.status === 'active' && p.genre !== 'Без жанра')
-      .map(p => p.genre)
-  )].sort();
+      .filter(p => p.status === 'active')
+      .flatMap(p => splitGenres(p.genre))
+      .filter(g => g && g !== 'Без жанра')
+  )].sort((a, b) => a.localeCompare(b, 'ru'));
 
   function applyFiltersAndSort(list: Project[]): Project[] {
     let result = list;
     if (searchQuery)    result = result.filter(p => p.title.toLowerCase().includes(searchQuery.toLowerCase()));
-    if (selectedGenre)  result = result.filter(p => p.genre === selectedGenre);
+    if (selectedGenre)  result = result.filter(p => splitGenres(p.genre).includes(selectedGenre));
     return [...result].sort((a, b) => {
       if (sortKey === 'updatedAt') return b.updatedAtMs - a.updatedAtMs;
       if (sortKey === 'wordCount') return b.wordCount - a.wordCount;

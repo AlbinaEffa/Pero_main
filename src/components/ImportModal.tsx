@@ -11,11 +11,11 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { X, Upload, FileText, CheckCircle, ChevronDown, ChevronUp, AlertCircle, AlertTriangle } from 'lucide-react';
 import { getApiBaseUrl } from '../services/api';
+import GenrePicker from './GenrePicker';
 
 const API = getApiBaseUrl();
 
 const PRESET_COLORS = ['#3A4F41', '#C66B49', '#2C3E50', '#806B8A', '#2B7A6B', '#8B6B32', '#6B2B2B', '#2B4A8B'];
-const GENRE_PRESETS = ['Фэнтези', 'Фантастика', 'Детектив', 'Роман', 'Ужасы', 'Приключения', 'Другое'];
 const ACCEPTED_EXTS = ['.txt', '.docx', '.pdf', '.epub', '.fb2'];
 
 export interface ParsedChapter {
@@ -57,33 +57,31 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
   // Editable fields (preview step)
   const [title, setTitle] = useState('');
   const [genres, setGenres] = useState<string[]>([]);
+  const [suggestedGenres, setSuggestedGenres] = useState<string[]>([]);
+  const [genreLoading, setGenreLoading] = useState(false);
   const [color, setColor] = useState('#3A4F41');
   const [showAllChapters, setShowAllChapters] = useState(false);
-  const [customGenreInput, setCustomGenreInput] = useState('');
-  const [customGenres, setCustomGenres] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem('pero_custom_genres') || '[]'); } catch { return []; }
-  });
 
-  const toggleGenre = (value: string) => {
-    setGenres(prev =>
-      prev.includes(value) ? prev.filter(g => g !== value) : [...prev, value]
-    );
-  };
-
-  const saveCustomGenre = (value: string) => {
-    const trimmed = value.trim();
-    if (!trimmed || GENRE_PRESETS.includes(trimmed) || customGenres.includes(trimmed)) return;
-    const updated = [...customGenres, trimmed];
-    setCustomGenres(updated);
-    localStorage.setItem('pero_custom_genres', JSON.stringify(updated));
-    return trimmed;
-  };
-
-  const removeCustomGenre = (value: string) => {
-    const updated = customGenres.filter(g => g !== value);
-    setCustomGenres(updated);
-    localStorage.setItem('pero_custom_genres', JSON.stringify(updated));
-    setGenres(prev => prev.filter(g => g !== value));
+  /** Перо определяет жанр по первой главе (один дешёвый AI-вызов), предложения пред-выбираются. */
+  const classifyGenre = async (sample: string, token: string) => {
+    if (!sample.trim()) return;
+    setGenreLoading(true);
+    try {
+      const res = await fetch(`${API}/import/classify-genre`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ sample: sample.slice(0, 4000) }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const g: string[] = Array.isArray(data.genres) ? data.genres : [];
+      if (g.length) {
+        setSuggestedGenres(g);
+        setGenres(prev => [...new Set([...prev, ...g])]);
+      }
+    } catch { /* жанр необязателен */ } finally {
+      setGenreLoading(false);
+    }
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -123,7 +121,10 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
 
       setParsed(data as ParseResult);
       setTitle('');
+      setSuggestedGenres([]);
+      setGenres([]);
       setStep('preview');
+      void classifyGenre(data.chapters?.[0]?.content ?? '', token);
     } catch {
       setParseError('Не удалось подключиться к серверу');
       setStep('upload');
@@ -317,59 +318,7 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.6)', marginBottom: '6px' }}>
                   Жанр <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(можно выбрать несколько)</span>
                 </label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {GENRE_PRESETS.filter(g => g !== 'Другое').map(g => (
-                    <button
-                      key={g}
-                      onClick={() => toggleGenre(g)}
-                      style={{
-                        padding: '5px 12px', borderRadius: '50px', fontSize: '12px',
-                        border: `1.5px solid ${genres.includes(g) ? '#3A4F41' : 'rgba(30,45,31,0.1)'}`,
-                        background: genres.includes(g) ? 'rgba(58,79,65,0.08)' : 'transparent',
-                        color: genres.includes(g) ? '#3A4F41' : 'rgba(30,45,31,0.5)',
-                        cursor: 'pointer', fontWeight: 400, transition: 'all 0.15s',
-                      }}
-                    >
-                      {g}
-                    </button>
-                  ))}
-                  {/* Saved custom genre chips */}
-                  {customGenres.map(g => (
-                    <span key={g} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '5px 10px 5px 12px', borderRadius: '50px', fontSize: '12px', border: `1.5px solid ${genres.includes(g) ? '#3A4F41' : 'rgba(30,45,31,0.1)'}`, background: genres.includes(g) ? 'rgba(58,79,65,0.08)' : 'transparent', color: genres.includes(g) ? '#3A4F41' : 'rgba(30,45,31,0.5)' }}>
-                      <span style={{ cursor: 'pointer' }} onClick={() => toggleGenre(g)}>{g}</span>
-                      <button onClick={() => removeCustomGenre(g)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1, color: 'inherit', opacity: 0.5, fontSize: '13px' }}>×</button>
-                    </span>
-                  ))}
-                </div>
-                {/* Custom genre input */}
-                <input
-                  type="text"
-                  placeholder="Свой жанр — введите и нажмите Enter..."
-                  value={customGenreInput}
-                  onChange={e => setCustomGenreInput(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      const val = customGenreInput.trim();
-                      if (val) {
-                        const saved = saveCustomGenre(val);
-                        if (saved) setGenres(prev => [...prev, saved]);
-                        else if (customGenres.includes(val) || GENRE_PRESETS.includes(val)) {
-                          setGenres(prev => prev.includes(val) ? prev : [...prev, val]);
-                        }
-                        setCustomGenreInput('');
-                      }
-                    }
-                  }}
-                  style={{
-                    marginTop: '8px', width: '100%', padding: '7px 12px',
-                    borderRadius: '10px', border: '1.5px solid rgba(30,45,31,0.1)',
-                    background: '#fff', fontSize: '12px', outline: 'none',
-                    boxSizing: 'border-box', fontFamily: 'inherit', color: '#1E2D1F',
-                    transition: 'border-color 0.15s',
-                  }}
-                  onFocus={e => (e.target.style.borderColor = '#3A4F41')}
-                  onBlur={e => (e.target.style.borderColor = 'rgba(30,45,31,0.1)')}
-                />
+                <GenrePicker value={genres} onChange={setGenres} suggested={suggestedGenres} loading={genreLoading} />
               </div>
 
               {/* Color */}

@@ -38,6 +38,7 @@ interface DemoResult {
   firstChapter: { title: string; wordCount: number };
   entities: DemoEntity[];
   relationsCount: number;
+  suggestedGenres?: string[];
 }
 
 type Stage = 'idle' | 'reading' | 'done' | 'error';
@@ -98,7 +99,7 @@ export default function Demo() {
   };
 
   const goRegister = () => {
-    setPendingManuscript(fileRef.current);
+    setPendingManuscript(fileRef.current, result?.suggestedGenres ?? []);
     track('demo_register_clicked');
     navigate('/login');
   };
@@ -210,6 +211,14 @@ function DemoResultView({ result, onRegister, onReset }: { result: DemoResult; o
         <p className="text-ink/55 font-serif italic text-lg">
           «{result.firstChapter.title}» · из {result.totalChapters} {pluralChapters(result.totalChapters)}
         </p>
+        {result.suggestedGenres && result.suggestedGenres.length > 0 && (
+          <div className="flex flex-wrap justify-center gap-1.5 mt-3">
+            <span className="text-[11px] uppercase tracking-wide text-ink/55 font-bold self-center">Жанр:</span>
+            {result.suggestedGenres.map(g => (
+              <span key={g} className="text-[12px] px-2.5 py-1 rounded-full bg-[#E7EAE3] text-[var(--color-accent)] font-medium">{g}</span>
+            ))}
+          </div>
+        )}
       </div>
 
       {counts.length > 0 && (

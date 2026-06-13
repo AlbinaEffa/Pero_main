@@ -20,7 +20,7 @@ import { enqueueJobs } from '../jobs/queue.js';
 import { parseManuscript, upload } from './import.js';
 import { getAIProvider } from '../lib/aiProvider.js';
 import { guardChat } from '../lib/aiGuard.js';
-import { BASE_EXTRACTION_PROMPT, cleanJsonResponse, type AiEntity, type AiRelation } from '../lib/extraction.js';
+import { BASE_EXTRACTION_PROMPT, cleanJsonResponse, coerceGenres, GENRE_TAXONOMY, type AiEntity, type AiRelation } from '../lib/extraction.js';
 
 const router = express.Router();
 
@@ -259,7 +259,8 @@ router.post('/extract-first', upload.single('file'), async (req: any, res) => {
     try {
       response = await guardChat(
         () => ai.generate({
-          contents: `${BASE_EXTRACTION_PROMPT}\n\n<chapter_content>\n${plainText}\n</chapter_content>`,
+          // Жанр определяем в этом же вызове (бесплатно) — поле "genres" в корне ответа
+          contents: `${BASE_EXTRACTION_PROMPT}\n\nДополнительно верни в корне JSON поле "genres" — массив 1–3 жанров СТРОГО из списка: ${GENRE_TAXONOMY.join(', ')}.\n\n<chapter_content>\n${plainText}\n</chapter_content>`,
           temperature: 0.15,
         }),
         // userId=null → cost_logs пишется без привязки к пользователю, ничью квоту не тратит
@@ -278,10 +279,12 @@ router.post('/extract-first', upload.single('file'), async (req: any, res) => {
     // Парсим ответ модели. Ничего не сохраняем в БД — это эфемерный «вкус».
     let entities: AiEntity[] = [];
     let relations: AiRelation[] = [];
+    let suggestedGenres: string[] = [];
     try {
       const p = JSON.parse(cleanJsonResponse(response.text ?? '{"entities":[]}'));
       entities  = Array.isArray(p) ? p : (p.entities ?? []);
       relations = Array.isArray(p) ? [] : (p.relations ?? []);
+      suggestedGenres = Array.isArray(p) ? [] : coerceGenres(p.genres);
     } catch { /* малформ JSON — отдаём пустой вкус */ }
 
     const safeEntities = (Array.isArray(entities) ? entities : [])
@@ -301,6 +304,7 @@ router.post('/extract-first', upload.single('file'), async (req: any, res) => {
       firstChapter: { title: first.title, wordCount: first.wordCount },
       entities: safeEntities,
       relationsCount: Array.isArray(relations) ? relations.length : 0,
+      suggestedGenres,
     });
   } catch (error) {
     console.error('POST /demo/extract-first:', error);

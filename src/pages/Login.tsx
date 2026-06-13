@@ -51,8 +51,8 @@ export default function Login() {
       }
 
       // Перенос рукописи из демо без регистрации: достроить библию всей книги
-      const pendingFile = takePendingManuscript();
-      if (pendingFile && await importPendingManuscript(pendingFile, data.token)) {
+      const pending = takePendingManuscript();
+      if (pending && await importPendingManuscript(pending.file, pending.genres, data.token)) {
         return; // навигация на онбординг произошла внутри
       }
       navigate('/dashboard');
@@ -70,7 +70,7 @@ export default function Login() {
    * Парсит файл и создаёт проект под новым аккаунтом, затем ведёт в онбординг.
    * Любая ошибка → false (вызывающий уведёт на дашборд).
    */
-  const importPendingManuscript = async (file: File, token: string): Promise<boolean> => {
+  const importPendingManuscript = async (file: File, genres: string[], token: string): Promise<boolean> => {
     const base = getApiBaseUrl();
     try {
       const fd = new FormData();
@@ -89,7 +89,7 @@ export default function Login() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           title: parsed.title?.trim() || 'Моя рукопись',
-          genre: null,
+          genre: genres.length > 0 ? genres.join(', ') : null,
           color: '#3A4F41',
           chapters: parsed.chapters.map((c: any) => ({ title: c.title, content: c.content })),
         }),

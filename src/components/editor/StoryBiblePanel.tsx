@@ -132,7 +132,7 @@ export function StoryBiblePanel({
   return (
     <div className="flex flex-col h-full w-[320px]">
       <div className="p-5 border-b border-[#1e2d1f]/5 flex justify-between items-center bg-white/40">
-        <h2 className="font-serif font-bold text-lg text-[#1e2d1f]">Библия истории</h2>
+        <h2 className="font-sans text-base font-semibold text-[#1e2d1f]">Библия истории</h2>
         <button
           onClick={onClose}
           className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/50 transition-colors"

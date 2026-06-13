@@ -700,7 +700,7 @@ export function EditorCanvas({
                 }`}
                 title="Тип текста"
               >
-                <span className="font-serif text-[18px] leading-none tracking-tight">{currentBlockLabel}</span>
+                <span className="text-sm font-medium leading-none">{currentBlockLabel}</span>
                 <ChevronDown size={14} className="opacity-55" />
               </button>
               {isBlockMenuOpen && (
@@ -721,7 +721,7 @@ export function EditorCanvas({
                           : 'text-[#1e2d1f]/75 hover:bg-[#1e2d1f]/6'
                       }`}
                     >
-                      <span className="font-serif tracking-tight">{item.label}</span>
+                      <span className="font-medium">{item.label}</span>
                     </button>
                   ))}
                 </div>

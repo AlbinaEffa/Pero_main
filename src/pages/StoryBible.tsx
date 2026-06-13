@@ -208,7 +208,7 @@ export default function StoryBible() {
         </div>
 
         {/* Chapter list */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-0.5">
+        <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-0.5">
           <div className="flex items-center justify-between px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-white/40 mb-1 mt-2">
             <span>Главы</span>
           </div>
@@ -231,7 +231,7 @@ export default function StoryBible() {
         </div>
 
         {/* Stats stub */}
-        <div className="p-4 border-t border-white/10">
+        <div className="flex-shrink-0 p-4 border-t border-white/10">
           <div className="flex items-center justify-between border border-white/20 rounded-md px-3 py-2.5 text-white">
             <div className="flex items-center gap-2.5">
               <BarChart2 size={18} strokeWidth={2} />

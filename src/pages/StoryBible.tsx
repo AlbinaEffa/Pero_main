@@ -186,7 +186,7 @@ export default function StoryBible() {
           <Link to="/dashboard" className="p-1.5 rounded-md hover:bg-white/10 transition-colors text-white/60 hover:text-white">
             <ChevronLeft size={18} />
           </Link>
-          <span className="text-[#f5f0e8]"><PeroLogo size={20} /></span>
+          <span className="text-[#f5f0e8]"><PeroLogo size={22} withWordmark={false} /></span>
         </div>
 
         {/* Nav */}
@@ -203,7 +203,7 @@ export default function StoryBible() {
             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-white/10 transition-colors"
           >
             <Sparkles size={16} className="text-white/50" />
-            ИИ-Соавтор
+            Перо
           </Link>
         </div>
 

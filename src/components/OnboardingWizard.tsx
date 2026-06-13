@@ -445,7 +445,7 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
               fontSize: '12px', color: 'rgba(30,45,31,0.4)',
               textAlign: 'center', margin: '0 0 20px', lineHeight: 1.6,
             }}>
-              Соавтор уже готов отвечать на вопросы — даже пока идёт обработка.
+              Перо уже готово отвечать на вопросы — даже пока идёт обработка.
             </p>
 
             <button

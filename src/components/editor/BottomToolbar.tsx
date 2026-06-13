@@ -147,7 +147,7 @@ export function BottomToolbar({
                 : 'bg-transparent text-[#6b7280] hover:bg-[#f5f0e8] hover:text-[#1e2d1f]'
             }`}
           >
-            <Sparkles size={16} /> Соавтор
+            <Sparkles size={16} /> Перо
           </button>
 
           <div className="w-px h-6 bg-[#1e2d1f]/10 mx-1 shrink-0" />

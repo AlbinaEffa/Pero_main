@@ -162,7 +162,7 @@ export default function Landing() {
               <p className="text-ink/60 leading-relaxed">Не только внешность и роль: предыстория, мотивация, манера речи, секреты. <span className="inline-flex items-center gap-1 text-ink/45"><Link2 size={13} />связи</span> между героями и <span className="inline-flex items-center gap-1 text-ink/45"><Activity size={13} />таймлайн</span> арки каждого персонажа по главам — кто с кем, что и когда случилось.</p>
             </div>
             <div className="grid md:grid-cols-[1fr_1.2fr] gap-8 items-baseline">
-              <h3 className="font-serif text-2xl md:text-3xl font-semibold">Соавтор, который читал вашу книгу</h3>
+              <h3 className="font-serif text-2xl md:text-3xl font-semibold">Перо — соавтор, который читал вашу книгу</h3>
               <p className="text-ink/60 leading-relaxed">ИИ-чат и правки текста с полным знанием вашей библии: он не перепутает имена, не забудет, что было в пятой главе, и говорит репликами ваших героев — потому что знает их манеру речи. Перо не пишет за вас — оно помнит за вас.</p>
             </div>
             <div className="grid md:grid-cols-[1fr_1.2fr] gap-8 items-baseline">

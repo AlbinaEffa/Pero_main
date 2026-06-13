@@ -185,8 +185,9 @@ export function ChapterSidebar({
         >
           <ChevronLeft size={18} />
         </Link>
+        {/* Только знак: слово «Перо» отдано собеседнику внизу, чтобы не двоилось */}
         <span className="text-[#f5f0e8]">
-          <PeroLogo size={20} />
+          <PeroLogo size={22} withWordmark={false} />
         </span>
       </div>
 
@@ -322,70 +323,45 @@ export function ChapterSidebar({
       <div className="flex-shrink-0 p-3 border-t border-white/10 space-y-1">
         <Link
           to={`/bible/${projectId}`}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-white/10"
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold text-white/90 transition-colors hover:bg-white/10"
         >
-          <BookOpen size={16} className="text-white/50" />
+          <BookOpen size={16} className="text-white/55" />
           Библия истории
         </Link>
         <button
           onClick={onToggleCoauthor}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-            isCoauthoring ? 'bg-white/15 text-white' : 'hover:bg-white/10'
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            isCoauthoring ? 'bg-white/15 text-white' : 'text-white/90 hover:bg-white/10'
           }`}
         >
-          <Sparkles size={16} className={isCoauthoring ? 'text-purple-300' : 'text-white/50'} />
-          ИИ-Соавтор
+          <Sparkles size={16} className={isCoauthoring ? 'text-purple-300' : 'text-white/55'} />
+          Перо
         </button>
         <Link
           to="/ideas"
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-white/10"
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold text-white/90 transition-colors hover:bg-white/10"
         >
-          <Lightbulb size={16} className="text-white/50" />
+          <Lightbulb size={16} className="text-white/55" />
           Идеи
         </Link>
 
-        {/* Word count + save status */}
-        <div className="flex flex-col gap-2 px-3 pt-2">
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/4 px-3 py-2">
-            <div className="min-w-0">
-              <div className="text-white/40 text-[10px] uppercase tracking-widest font-bold">Слова</div>
-              <div className="text-white/78 font-semibold text-sm mt-0.5">
-                {showWordCount ? `${wordCount.toLocaleString('ru-RU')}` : 'Скрыто'}
-              </div>
-            </div>
-            <button
-              onClick={() => onShowWordCountChange(!showWordCount)}
-              title={showWordCount ? 'Скрыть счётчик слов' : 'Показать счётчик слов'}
-              className={`w-9 h-5 rounded-full transition-colors relative shrink-0 ${
-                showWordCount ? 'bg-white/80' : 'bg-white/18'
-              }`}
-            >
-              <span
-                className={`w-3.5 h-3.5 rounded-full absolute top-[3px] transition-transform ${
-                  showWordCount ? 'left-[19px] bg-[#1e2d1f]' : 'left-[3px] bg-white'
-                }`}
-              />
-            </button>
-          </div>
+        {/* Тихая строка статуса: слова текущей главы · сохранение.
+            Карточка с тумблером убрана — полная статистика в панели «Статистика»,
+            переключатель счётчика — в Настройках. */}
+        <div className="flex items-center gap-1.5 px-3 pt-2.5 text-[11px] font-medium">
           {isSaving ? (
-            <div className="flex items-center gap-1.5 text-white/50 text-[11px] font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-white/30 inline-block animate-pulse" />
-              Сохранение...
-            </div>
+            <><span className="w-1.5 h-1.5 rounded-full bg-white/30 inline-block animate-pulse" /><span className="text-white/50">Сохранение…</span></>
           ) : saveError ? (
-            <div className="flex items-center gap-1.5 text-red-400/80 text-[11px] font-medium" title="Нажмите Cmd+S / Ctrl+S чтобы повторить">
+            <span className="flex items-center gap-1.5 text-red-400/80" title="Нажмите Cmd+S / Ctrl+S чтобы повторить">
               <AlertCircle size={11} /> Не сохранено
-            </div>
+            </span>
           ) : lastSavedAt ? (
-            <div className="flex items-center gap-1.5 text-white/40 text-[11px] font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/70 inline-block" />
-              Сохранено
-            </div>
+            <><span className="w-1.5 h-1.5 rounded-full bg-emerald-400/70 inline-block" /><span className="text-white/45">Сохранено</span></>
           ) : (
-            <div className="flex items-center gap-1.5 text-white/20 text-[11px] font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-white/20 inline-block" />
-              Ожидание...
-            </div>
+            <><span className="w-1.5 h-1.5 rounded-full bg-white/20 inline-block" /><span className="text-white/30">Ожидание…</span></>
+          )}
+          {showWordCount && (
+            <span className="text-white/30 ml-auto tabular-nums">{wordCount.toLocaleString('ru-RU')} сл.</span>
           )}
         </div>
       </div>

@@ -40,7 +40,10 @@ type InlineMarkName = 'bold' | 'italic' | 'underline' | 'strike' | 'code';
 type EditorFontName = 'cormorant' | 'literata' | 'source-serif';
 type BlockStyle = 'paragraph' | 'h1' | 'h2' | 'h3';
 type ListStyle = 'bulletList' | 'orderedList' | 'taskList';
-type SlashCommandId = 'chapterTitle' | 'sceneBreak' | 'h1' | 'h2' | 'h3' | 'blockquote';
+type SlashCommandId =
+  | 'chapterTitle' | 'paragraph' | 'h1' | 'h2' | 'h3'
+  | 'bulletList' | 'orderedList' | 'taskList'
+  | 'blockquote' | 'codeBlock' | 'sceneBreak';
 type SlashMenuState = {
   query: string;
   range: { from: number; to: number };
@@ -64,12 +67,17 @@ const SLASH_COMMANDS: {
   hint: string;
   search: string[];
 }[] = [
-  { id: 'chapterTitle', label: 'Название главы', hint: 'Связано с оглавлением', search: ['chapter', 'title', 'глава', 'название'] },
-  { id: 'sceneBreak', label: 'Разделитель сцены', hint: 'Вставить разрыв сцены', search: ['scene', 'break', 'divider', 'сцена', 'разделитель'] },
-  { id: 'h1', label: 'Heading 1', hint: 'Крупный заголовок внутри текста', search: ['h1', 'heading', 'заголовок'] },
-  { id: 'h2', label: 'Heading 2', hint: 'Средний заголовок внутри текста', search: ['h2', 'heading', 'подзаголовок'] },
-  { id: 'h3', label: 'Heading 3', hint: 'Небольшой заголовок внутри текста', search: ['h3', 'heading'] },
-  { id: 'blockquote', label: 'Цитата', hint: 'Цитата или эпиграф', search: ['quote', 'blockquote', 'цитата', 'эпиграф'] },
+  { id: 'chapterTitle', label: 'Название главы',        hint: 'Связано с оглавлением',          search: ['chapter', 'title', 'глава', 'название'] },
+  { id: 'paragraph',    label: 'Текст',                 hint: 'Обычный абзац',                   search: ['text', 'paragraph', 'текст', 'абзац'] },
+  { id: 'h1',           label: 'Заголовок 1',           hint: 'Крупный заголовок внутри текста', search: ['h1', 'heading', 'заголовок'] },
+  { id: 'h2',           label: 'Заголовок 2',           hint: 'Средний заголовок внутри текста', search: ['h2', 'heading', 'подзаголовок', 'заголовок'] },
+  { id: 'h3',           label: 'Заголовок 3',           hint: 'Небольшой заголовок внутри текста', search: ['h3', 'heading', 'заголовок'] },
+  { id: 'bulletList',   label: 'Маркированный список',  hint: 'Список с точками',                search: ['bullet', 'list', 'ul', 'список', 'маркированный'] },
+  { id: 'orderedList',  label: 'Нумерованный список',   hint: 'Список по порядку',               search: ['ordered', 'number', 'list', 'ol', 'нумерованный', 'список'] },
+  { id: 'taskList',     label: 'Список задач',          hint: 'Чек-лист с галочками',            search: ['task', 'todo', 'check', 'задача', 'чеклист', 'список'] },
+  { id: 'blockquote',   label: 'Цитата',                hint: 'Цитата или эпиграф',              search: ['quote', 'blockquote', 'цитата', 'эпиграф'] },
+  { id: 'codeBlock',    label: 'Блок кода',             hint: 'Моноширинный блок',               search: ['code', 'код', 'блок', 'моноширинный'] },
+  { id: 'sceneBreak',   label: 'Разделитель сцены',     hint: 'Вставить разрыв сцены',           search: ['scene', 'break', 'divider', 'сцена', 'разделитель'] },
 ];
 
 function isWordChar(char: string | undefined): boolean {
@@ -474,9 +482,14 @@ export function EditorCanvas({
       setSlashMenu(null);
       return;
     }
+    if (commandId === 'paragraph') chain.setParagraph().run();
     if (commandId === 'h1') chain.setHeading({ level: 1 }).run();
     if (commandId === 'h2') chain.setHeading({ level: 2 }).run();
     if (commandId === 'h3') chain.setHeading({ level: 3 }).run();
+    if (commandId === 'bulletList') chain.toggleBulletList().run();
+    if (commandId === 'orderedList') chain.toggleOrderedList().run();
+    if (commandId === 'taskList') chain.toggleTaskList().run();
+    if (commandId === 'codeBlock') chain.toggleCodeBlock().run();
     if (commandId === 'blockquote') {
       if (slashMenu.blockType !== 'blockquote') {
         chain.setParagraph().toggleBlockquote().run();
@@ -808,6 +821,16 @@ export function EditorCanvas({
               }`}
             >
               <Quote size={19} strokeWidth={2.2} />
+            </button>
+
+            <button
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => editor?.chain().focus().insertSceneBreak().run()}
+              title="Разделитель сцены"
+              aria-label="Разделитель сцены"
+              className="px-1.5 py-1 rounded-md transition-colors text-[16px] leading-none tracking-[0.12em] font-semibold text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4"
+            >
+              ***
             </button>
 
             <button

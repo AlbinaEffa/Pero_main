@@ -114,6 +114,7 @@ export function BottomToolbar({
         }`}>
           {isDictationSupported ? (
             <button
+              data-hint="dictation"
               onClick={onToggleDictation}
               title={isDictating ? 'Остановить диктовку' : 'Начать диктовку'}
               className={`relative flex items-center justify-center w-auto h-[36px] whitespace-nowrap gap-2 px-3 sm:px-4 py-2 text-sm font-medium rounded-lg shrink-0 transition-all outline-none focus:outline-none focus:ring-0 ${
@@ -138,6 +139,7 @@ export function BottomToolbar({
             </button>
           ) : (
             <div
+              data-hint="dictation"
               className="flex items-center justify-center h-[36px] whitespace-nowrap gap-2 px-3 sm:px-4 py-2 text-sm font-medium rounded-lg shrink-0 text-[#9ca3af] cursor-not-allowed select-none"
               title="Диктовка недоступна в этом браузере. Используйте Chrome или Safari."
             >
@@ -148,6 +150,7 @@ export function BottomToolbar({
           )}
 
           <button
+            data-hint="coauthor"
             onClick={onToggleCoauthor}
             className={`flex items-center justify-center w-auto sm:w-[130px] h-[36px] whitespace-nowrap gap-2 px-3 sm:px-4 py-2 transition-colors text-sm font-medium rounded-lg outline-none focus:outline-none focus:ring-0 shrink-0 ${
               isCoauthoring

@@ -1,21 +1,35 @@
 /**
  * EditorFirstRunHints — a floating card shown only on the first editor session.
  *
- * Appears above the bottom toolbar, cycles through 4 tips about key features.
- * Dismissed on "Понятно" or after viewing all hints.
- * Persisted in localStorage so it only shows once.
+ * Cycles through tips about key features. Hints that describe a specific toolbar
+ * button (Диктовка, Перо) anchor their tail to that button — the card is measured
+ * against the live button position (`[data-hint="…"]`) and clamped to the viewport,
+ * while the tail offsets to keep pointing at the button. Hints without a button
+ * (text selection, slash-commands) are shown centred above the toolbar WITHOUT a
+ * tail — the copy itself explains them, so there is nothing to point at.
+ *
+ * Dismissed on "Понятно" / close; persisted in localStorage so it shows once.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback } from 'react';
 import { X, ChevronLeft, ChevronRight, Mic, WandSparkles, MessageSquareText, SquareSlash } from 'lucide-react';
 
 export const HINTS_DONE_KEY = 'pero_editor_hints_done';
 
-const HINTS = [
+/** `target` — `data-hint` of the toolbar button this tip points at (if any). */
+type Hint = {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  title: string;
+  body: string;
+  target?: 'dictation' | 'coauthor';
+};
+
+const HINTS: Hint[] = [
   {
     icon: Mic,
     title: 'Диктуйте голосом',
     body: 'Нажмите «Диктовка» в панели снизу — говорите, AI расставит знаки препинания и подставит имена из вашей истории.',
+    target: 'dictation',
   },
   {
     icon: WandSparkles,
@@ -26,30 +40,92 @@ const HINTS = [
     icon: MessageSquareText,
     title: 'Перо знает вашу историю',
     body: 'Кнопка «Перо» открывает чат с вашим соавтором. Перо прочитало рукопись и Библию истории — спрашивайте про сюжет, персонажей, стиль.',
+    target: 'coauthor',
   },
   {
     icon: SquareSlash,
     title: 'Слэш-команды',
     body: 'Начните строку с / — откроется меню блоков: заголовки, цитаты, списки, разрыв сцены, AI-вставки.',
   },
-] as const;
+];
 
 interface Props {
   /** Optional: only show if the editor chapter is new/empty */
   isNewChapter?: boolean;
 }
 
+interface Layout {
+  left: number;
+  bottom: number;
+  width: number;
+  /** Tail x within the card; null → no tail (centred info card). */
+  tailLeft: number | null;
+}
+
+const CARD_MAX = 360;
+const VIEWPORT_MARGIN = 16;
+
 export function EditorFirstRunHints({ isNewChapter }: Props) {
+  void isNewChapter;
   const [visible, setVisible] = useState(false);
   const [idx, setIdx]         = useState(0);
   const [closing, setClosing] = useState(false);
+  const [layout, setLayout]   = useState<Layout>({ left: 0, bottom: 96, width: CARD_MAX, tailLeft: null });
 
   useEffect(() => {
-    // Show only once, slight delay so the editor finishes loading
+    // Show only once, slight delay so the editor + toolbar finish loading
     if (localStorage.getItem(HINTS_DONE_KEY)) return;
     const timer = setTimeout(() => setVisible(true), 1200);
     return () => clearTimeout(timer);
   }, []);
+
+  // Position the card relative to the live target button (or centre it if none).
+  const recompute = useCallback(() => {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const width = Math.min(CARD_MAX, vw - 2 * VIEWPORT_MARGIN);
+
+    const centredNoTail = (): Layout => ({
+      left: Math.round((vw - width) / 2),
+      bottom: 96,
+      width,
+      tailLeft: null,
+    });
+
+    const target = HINTS[idx].target;
+    if (!target) return setLayout(centredNoTail());
+
+    const el = document.querySelector<HTMLElement>(`[data-hint="${target}"]`);
+    if (!el) return setLayout(centredNoTail()); // button not rendered (e.g. dictation unsupported)
+
+    const r = el.getBoundingClientRect();
+    const targetX = r.left + r.width / 2;
+
+    // Centre the card on the button, then clamp so it stays on-screen…
+    let left = Math.round(targetX - width / 2);
+    left = Math.max(VIEWPORT_MARGIN, Math.min(left, vw - width - VIEWPORT_MARGIN));
+
+    // …and offset the tail back onto the button (kept inside the card's rounded corners).
+    let tailLeft = Math.round(targetX - left);
+    tailLeft = Math.max(18, Math.min(tailLeft, width - 18));
+
+    // Card sits just above the button.
+    const bottom = Math.round(vh - r.top + 10);
+
+    setLayout({ left, bottom, width, tailLeft });
+  }, [idx]);
+
+  useLayoutEffect(() => {
+    if (!visible) return;
+    recompute();
+    window.addEventListener('resize', recompute);
+    // The toolbar slides when side panels open/close; recompute on any scroll/layout shift.
+    window.addEventListener('scroll', recompute, true);
+    return () => {
+      window.removeEventListener('resize', recompute);
+      window.removeEventListener('scroll', recompute, true);
+    };
+  }, [visible, recompute]);
 
   if (!visible) return null;
 
@@ -76,14 +152,13 @@ export function EditorFirstRunHints({ isNewChapter }: Props) {
 
   return (
     <div
-      className={`pointer-events-auto transition-all duration-200 ${closing ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'}`}
+      className={`pointer-events-auto transition-[opacity,transform] duration-200 ${closing ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'}`}
       style={{
         position: 'fixed',
-        bottom: '96px',       // above the bottom toolbar (~80px high)
-        left: '50%',
-        transform: 'translateX(-50%)',
+        bottom: `${layout.bottom}px`,
+        left: `${layout.left}px`,
+        width: `${layout.width}px`,
         zIndex: 9000,
-        width: 'min(360px, calc(100vw - 2rem))',
       }}
     >
       {/* font-sans принудительно: карточка живёт внутри обёртки шрифта рукописи,
@@ -162,11 +237,13 @@ export function EditorFirstRunHints({ isNewChapter }: Props) {
         </div>
       </div>
 
-      {/* Tail pointing down toward toolbar */}
-      <div
-        className="w-3 h-3 bg-[#1e2d1f] rotate-45 mx-auto -mt-1.5 rounded-sm"
-        style={{ marginTop: '-6px' }}
-      />
+      {/* Tail — only for hints anchored to a toolbar button; points at the button. */}
+      {layout.tailLeft != null && (
+        <div
+          className="absolute w-3 h-3 bg-[#1e2d1f] rotate-45 rounded-sm"
+          style={{ left: `${layout.tailLeft - 6}px`, bottom: '-4px' }}
+        />
+      )}
     </div>
   );
 }

@@ -83,12 +83,12 @@ export default function App() {
             <Route path="/demo"    element={<Demo />} />
 
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/ideas"     element={<ProtectedRoute><IdeaLibrary /></ProtectedRoute>} />
             <Route path="/settings"  element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
             <Route path="/editor/:projectId/:chapterId" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
             <Route path="/editor/:projectId"            element={<ProtectedRoute><Editor /></ProtectedRoute>} />
             <Route path="/bible/:id"                    element={<ProtectedRoute><StoryBible /></ProtectedRoute>} />
+            <Route path="/ideas/:projectId"             element={<ProtectedRoute><IdeaLibrary /></ProtectedRoute>} />
             <Route path="/onboarding/:projectId"        element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           </Routes>
         </Suspense>

@@ -5,6 +5,7 @@ import {
   Plus, FileText, FileCheck, AlertCircle, Trash2, ChevronDown, GripVertical,
 } from 'lucide-react';
 import { Chapter, ChapterType } from './types';
+import { getChapterDisplayLabel } from './chapterDisplay';
 import { AppSidebar } from '../AppSidebar';
 
 interface Props {
@@ -27,36 +28,6 @@ interface Props {
   editorFont: EditorFontName;
   /** Свернуть боковую панель (на десктопе). */
   onCollapse?: () => void;
-}
-
-const CHAPTER_TYPE_LABELS: Record<string, string> = {
-  prologue: 'Пролог',
-  epilogue: 'Эпилог',
-  interlude: 'Интермедия',
-  chapter: '',
-};
-
-function getChapterDisplayLabel(chapter: Chapter, index: number): { primary: string; secondary: string | null } {
-  const type = chapter.chapterType ?? 'chapter';
-  const trimmed = chapter.title.trim();
-
-  if (type !== 'chapter') {
-    const typeLabel = CHAPTER_TYPE_LABELS[type] ?? type;
-    if (!trimmed || trimmed.toLowerCase() === typeLabel.toLowerCase()) {
-      return { primary: typeLabel, secondary: null };
-    }
-    return { primary: typeLabel, secondary: trimmed };
-  }
-
-  const exactDefault = `Глава ${index + 1}`;
-  if (!trimmed || trimmed === exactDefault) {
-    return { primary: `Глава ${index + 1}`, secondary: null };
-  }
-  const prefixedMatch = trimmed.match(/^Глава\s+\d+[\s.:—-]+(.+)$/i);
-  if (prefixedMatch?.[1]?.trim()) {
-    return { primary: `Глава ${index + 1}`, secondary: prefixedMatch[1].trim() };
-  }
-  return { primary: `Глава ${index + 1}`, secondary: trimmed };
 }
 
 export function ChapterSidebar({

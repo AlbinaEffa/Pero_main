@@ -1,28 +1,30 @@
 import { Link } from 'react-router-dom';
 import {
   ChevronLeft, BookOpen, Sparkles, Lightbulb, PanelLeftClose,
-  FileText, Library, Settings as SettingsIcon,
+  FileText, FileCheck, Library, Settings as SettingsIcon,
 } from 'lucide-react';
 import { PeroLogo } from './Logo';
+import { Chapter } from './editor/types';
+import { getChapterDisplayLabel } from './editor/chapterDisplay';
 
 /**
- * Единый левый сайдбар приложения — общий для ВСЕХ страниц.
+ * Единый левый сайдбар рабочего пространства проекта — общий для Редактора,
+ * Библии истории и Идей. Один и тот же компонент рисует одинаковое меню на всех
+ * страницах проекта, поэтому сайдбар не «прыгает» при переходах между ними.
  *
  * Структура (сверху вниз):
- *   • Шапка: логотип (→ к проектам) + кнопка сворачивания.
- *   • Середина (слот `children`): контекст проекта — список глав. На глобальных
- *     страницах (Проекты / Настройки / Идеи) слот пуст, его место занимает распорка.
- *   • Навигация проекта (только если задан `projectId`): Библия истории / Перо.
- *   • Глобальная навигация (всегда): Проекты / Идеи / Настройки.
+ *   • Шапка: знак-перо (→ к проектам) + кнопка сворачивания.
+ *   • Середина (слот `children`): список глав — в Редакторе с управлением,
+ *     на Библии/Идеях read-only, но визуально одинаковый (см. SidebarChapterLinks).
+ *   • Навигация проекта (если задан `projectId`): Библия истории / Перо / Идеи.
+ *   • Глобальная навигация (всегда): Проекты / Настройки.
  *   • `bottomExtra`: доп. блок (например, строка статуса сохранения в редакторе).
- *
- * Один и тот же компонент рисует меню на каждой странице — это и есть «общее меню».
  */
 
 type ActivePage = 'dashboard' | 'editor' | 'bible' | 'ideas' | 'settings';
 
 interface AppSidebarProps {
-  /** Если задан — показывается навигация проекта (Библия / Перо) и ведёт на этот проект. */
+  /** Если задан — показывается навигация проекта (Библия / Перо / Идеи). */
   projectId?: string;
   active: ActivePage;
   /** Куда ведёт пункт «Перо» (открыть книгу в редакторе). Нужен в режиме проекта без тоггла. */
@@ -82,7 +84,7 @@ export function AppSidebar({
 
       {/* Навигация */}
       <div className="flex-shrink-0 p-3 border-t border-white/10 space-y-1">
-        {/* Контекст проекта */}
+        {/* Контекст проекта — одинаковый на Редакторе / Библии / Идеях */}
         {projectId && (
           <>
             <Link to={`/bible/${projectId}`} className={active === 'bible' ? navActive : navIdle}>
@@ -105,38 +107,43 @@ export function AppSidebar({
               </Link>
             )}
 
+            <Link to={`/ideas/${projectId}`} className={active === 'ideas' ? navActive : navIdle}>
+              <Lightbulb size={16} className="text-white/55" />
+              Идеи
+            </Link>
+
             <div className="h-px bg-white/10 my-2" />
           </>
         )}
 
-        {/* Глобальная навигация — одинаковая на всех страницах */}
+        {/* Глобальная навигация */}
         <Link to="/dashboard" className={active === 'dashboard' ? navActive : navIdle}>
           <Library size={16} className="text-white/55" />
           Проекты
-        </Link>
-        <Link to="/ideas" className={active === 'ideas' ? navActive : navIdle}>
-          <Lightbulb size={16} className="text-white/55" />
-          Идеи
         </Link>
         <Link to="/settings" className={active === 'settings' ? navActive : navIdle}>
           <SettingsIcon size={16} className="text-white/55" />
           Настройки
         </Link>
 
-        {bottomExtra}
+        {/* Резервируем высоту строки статуса (есть только в редакторе), чтобы меню
+            стояло на одном месте на всех страницах проекта и не «прыгало». */}
+        <div className="min-h-[1.75rem]">{bottomExtra}</div>
       </div>
     </aside>
   );
 }
 
 /**
- * Простой список глав-ссылок для Библии и Идей (в редакторе — своя версия с управлением).
+ * Read-only список глав для Библии и Идей. Визуально совпадает со строками главы
+ * в редакторе «в покое» (иконка-статус + двухстрочная подпись), но без управления
+ * (drag / удаление / добавление) — чтобы сайдбар не менялся между страницами.
  */
 export function SidebarChapterLinks({
   projectId, chapters, isLoading,
 }: {
   projectId: string;
-  chapters: { id: string; title: string }[];
+  chapters: Chapter[];
   isLoading?: boolean;
 }) {
   return (
@@ -146,16 +153,31 @@ export function SidebarChapterLinks({
       </div>
       {isLoading && <p className="px-3 text-xs text-white/40">Загрузка…</p>}
       {!isLoading && chapters.length === 0 && <p className="px-3 text-xs text-white/40">Нет глав</p>}
-      {chapters.map(chapter => (
-        <Link
-          key={chapter.id}
-          to={`/editor/${projectId}/${chapter.id}`}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-white/10 text-[#f5f0e8]/60 hover:text-white"
-        >
-          <FileText size={14} className="text-[#f5f0e8]/40 flex-shrink-0" />
-          <span className="truncate">{chapter.title}</span>
-        </Link>
-      ))}
+      {chapters.map((chapter, index) => {
+        const isDone = chapter.status === 'done';
+        const { primary, secondary } = getChapterDisplayLabel(chapter, index);
+        return (
+          <Link
+            key={chapter.id}
+            to={`/editor/${projectId}/${chapter.id}`}
+            className="group flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors hover:bg-white/5"
+          >
+            <span className={`flex-shrink-0 flex items-center justify-center ${isDone ? 'text-green-400' : 'text-white/60'}`}>
+              {isDone ? <FileCheck size={16} strokeWidth={1.75} /> : <FileText size={16} strokeWidth={1.75} />}
+            </span>
+            <span className="flex-1 flex flex-col min-w-0 text-left">
+              <span className="text-[14px] font-semibold leading-tight text-white/82 group-hover:text-white truncate">
+                {primary}
+              </span>
+              {secondary && (
+                <span className="text-[12px] truncate leading-tight mt-0.5 text-white/60">
+                  {secondary}
+                </span>
+              )}
+            </span>
+          </Link>
+        );
+      })}
     </div>
   );
 }

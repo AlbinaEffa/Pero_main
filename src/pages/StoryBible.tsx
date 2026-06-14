@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
-  ArrowLeft, BookOpen, User, Check, AlertTriangle,
-  Sparkles, ChevronLeft, FileText, BarChart2, ChevronUp, X, Bell,
+  ArrowLeft, BookOpen, Check, AlertTriangle,
+  X, Bell,
   Users, MapPin, Box, Globe, Pencil, ScanSearch, ShieldCheck, ExternalLink,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { track } from '../services/analytics';
 import { registerApproval, AhaCelebration } from '../components/AhaCelebration';
-import { PeroLogo } from '../components/Logo';
+import { AppSidebar, SidebarChapterLinks } from '../components/AppSidebar';
 import { Entity, EntitySignificance, EntityLink, EntityEvent, Chapter } from '../components/editor/types';
 import {
   significanceLabel, significanceColor, groupBySignificance,
@@ -83,6 +83,7 @@ export default function StoryBible() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [contradictionCount, setContradictionCount] = useState(0);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Load entities + links + events + chapters together
   useEffect(() => {
@@ -188,68 +189,19 @@ export default function StoryBible() {
     <div className="flex h-screen w-full bg-[#F5F0E8] font-sans overflow-hidden text-[#1E2D1F]">
       <AhaCelebration />
 
-      {/* ── Left Sidebar ──────────────────────────────────────────────────── */}
-      <aside className="w-[220px] bg-[#1e2d1f] text-white/80 flex-col flex-shrink-0 shadow-xl z-20 hidden md:flex">
-        {/* Logo */}
-        <div className="p-4 flex items-center gap-3 border-b border-white/10">
-          <Link to="/dashboard" className="p-1.5 rounded-md hover:bg-white/10 transition-colors text-white/60 hover:text-white">
-            <ChevronLeft size={18} />
-          </Link>
-          <span className="text-[#f5f0e8]"><PeroLogo size={22} withWordmark={false} /></span>
-        </div>
-
-        {/* Nav */}
-        <div className="p-3 space-y-1 border-b border-white/10">
-          <Link
-            to={`/bible/${id}`}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium bg-white/15 text-white"
+      {/* ── Left Sidebar (общий компонент) ─────────────────────────────────── */}
+      {!isSidebarCollapsed && (
+        <div className="hidden md:flex">
+          <AppSidebar
+            projectId={id!}
+            active="bible"
+            editorPath={editorPath}
+            onCollapse={() => setIsSidebarCollapsed(true)}
           >
-            <BookOpen size={16} className="text-white/50" />
-            Библия истории
-          </Link>
-          <Link
-            to={editorPath}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-white/10 transition-colors"
-          >
-            <Sparkles size={16} className="text-white/50" />
-            Перо
-          </Link>
+            <SidebarChapterLinks projectId={id!} chapters={chapters} isLoading={isLoading} />
+          </AppSidebar>
         </div>
-
-        {/* Chapter list */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-0.5">
-          <div className="flex items-center justify-between px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-white/60 mb-1 mt-2">
-            <span>Главы</span>
-          </div>
-          {isLoading && (
-            <p className="px-3 text-xs text-white/30">Загрузка...</p>
-          )}
-          {!isLoading && chapters.length === 0 && (
-            <p className="px-3 text-xs text-white/30">Нет глав</p>
-          )}
-          {chapters.map(chapter => (
-            <Link
-              key={chapter.id}
-              to={`/editor/${id}/${chapter.id}`}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-white/10 text-[#f5f0e8]/60 hover:text-white"
-            >
-              <FileText size={14} className="text-[#f5f0e8]/40 flex-shrink-0" />
-              <span className="truncate">{chapter.title}</span>
-            </Link>
-          ))}
-        </div>
-
-        {/* Stats stub */}
-        <div className="flex-shrink-0 p-4 border-t border-white/10">
-          <div className="flex items-center justify-between border border-white/20 rounded-md px-3 py-2.5 text-white">
-            <div className="flex items-center gap-2.5">
-              <BarChart2 size={18} strokeWidth={2} />
-              <span className="font-semibold text-sm tracking-wide">Статистика</span>
-            </div>
-            <ChevronUp size={16} className="text-white/60" strokeWidth={2} />
-          </div>
-        </div>
-      </aside>
+      )}
 
       {/* ── Main Content ──────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -262,12 +214,6 @@ export default function StoryBible() {
             </button>
             <h1 className="font-sans text-base font-semibold text-[#1E2D1F]">Библия истории — {tabCfg.label}</h1>
           </div>
-          <button
-            onClick={() => navigate('/settings')}
-            className="w-8 h-8 rounded-full bg-[#E5D5C5] flex items-center justify-center text-[#8C6B4A] border border-ink/5 hover:bg-[#d4c1b0] transition-colors"
-          >
-            <User size={16} />
-          </button>
         </header>
 
         {/* Tabs */}

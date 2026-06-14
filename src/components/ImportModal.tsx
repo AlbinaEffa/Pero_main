@@ -8,7 +8,7 @@
  *  creating → /api/import/create called, background extraction noted
  */
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { X, Upload, FileText, CheckCircle, ChevronDown, ChevronUp, AlertCircle, AlertTriangle } from 'lucide-react';
 import { getApiBaseUrl } from '../services/api';
 import GenrePicker from './GenrePicker';
@@ -37,6 +37,8 @@ type Step = 'upload' | 'parsing' | 'preview' | 'creating';
 interface ImportModalProps {
   onClose: () => void;
   onSuccess: (projectId: string, firstChapterId: string) => void;
+  /** Файл, выбранный заранее (например, в «У меня уже есть рукопись») — разбор стартует сразу. */
+  initialFile?: File | null;
 }
 
 function formatWords(n: number) {
@@ -44,7 +46,7 @@ function formatWords(n: number) {
   return String(n);
 }
 
-export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
+export default function ImportModal({ onClose, onSuccess, initialFile }: ImportModalProps) {
   const [step, setStep] = useState<Step>('upload');
   const [isDragging, setIsDragging] = useState(false);
   const [fileName, setFileName] = useState('');
@@ -130,6 +132,16 @@ export default function ImportModal({ onClose, onSuccess }: ImportModalProps) {
       setStep('upload');
     }
   }, []);
+
+  // Файл, выбранный заранее на дашборде («У меня уже есть рукопись»), — сразу в разбор,
+  // минуя дропзону. Ref-страховка от повторного запроса (StrictMode дважды вызывает эффекты).
+  const autoStartedRef = useRef(false);
+  useEffect(() => {
+    if (initialFile && !autoStartedRef.current) {
+      autoStartedRef.current = true;
+      handleFile(initialFile);
+    }
+  }, [initialFile, handleFile]);
 
   const onFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

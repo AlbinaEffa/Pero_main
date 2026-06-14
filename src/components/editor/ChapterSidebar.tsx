@@ -1,12 +1,11 @@
 type EditorFontName = 'cormorant' | 'literata' | 'source-serif';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useState, useRef, useCallback } from 'react';
 import {
-  ChevronLeft, BookOpen, Sparkles, Plus, Lightbulb,
-  FileText, FileCheck, AlertCircle, Trash2, ChevronDown, GripVertical,
+  Plus, FileText, FileCheck, AlertCircle, Trash2, ChevronDown, GripVertical,
 } from 'lucide-react';
 import { Chapter, ChapterType } from './types';
-import { PeroLogo } from '../Logo';
+import { AppSidebar } from '../AppSidebar';
 
 interface Props {
   projectId: string;
@@ -26,6 +25,8 @@ interface Props {
   lastSavedAt?: Date | null;
   saveError?: boolean;
   editorFont: EditorFontName;
+  /** Свернуть боковую панель (на десктопе). */
+  onCollapse?: () => void;
 }
 
 const CHAPTER_TYPE_LABELS: Record<string, string> = {
@@ -76,6 +77,7 @@ export function ChapterSidebar({
   lastSavedAt,
   saveError,
   editorFont,
+  onCollapse,
 }: Props) {
   const navigate = useNavigate();
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
@@ -175,22 +177,35 @@ export function ChapterSidebar({
   // навигация — UI-хром, ей положен Golos (DESIGN.md, «Правило применения»).
   void editorFont;
 
-  return (
-    <aside className="w-[220px] bg-[#1e2d1f] text-white/80 flex flex-col flex-shrink-0 shadow-xl z-20">
-      {/* Top nav */}
-      <div className="p-4 flex items-center gap-3 border-b border-white/10">
-        <Link
-          to="/dashboard"
-          className="p-1.5 rounded-md hover:bg-white/10 transition-colors text-white/60 hover:text-white"
-        >
-          <ChevronLeft size={18} />
-        </Link>
-        {/* Только знак: слово «Перо» отдано собеседнику внизу, чтобы не двоилось */}
-        <span className="text-[#f5f0e8]">
-          <PeroLogo size={22} withWordmark={false} />
+  // Строка статуса сохранения — уходит в общий сайдбар слотом bottomExtra.
+  const saveStatus = (
+    <div className="flex items-center gap-1.5 px-3 pt-2.5 text-[11px] font-medium">
+      {isSaving ? (
+        <><span className="w-1.5 h-1.5 rounded-full bg-white/30 inline-block animate-pulse" /><span className="text-white/50">Сохранение…</span></>
+      ) : saveError ? (
+        <span className="flex items-center gap-1.5 text-red-400/80" title="Нажмите Cmd+S / Ctrl+S чтобы повторить">
+          <AlertCircle size={11} /> Не сохранено
         </span>
-      </div>
+      ) : lastSavedAt ? (
+        <><span className="w-1.5 h-1.5 rounded-full bg-emerald-400/70 inline-block" /><span className="text-white/60">Сохранено</span></>
+      ) : (
+        <><span className="w-1.5 h-1.5 rounded-full bg-white/20 inline-block" /><span className="text-white/30">Ожидание…</span></>
+      )}
+      {showWordCount && (
+        <span className="text-white/30 ml-auto tabular-nums">{wordCount.toLocaleString('ru-RU')} сл.</span>
+      )}
+    </div>
+  );
 
+  return (
+    <AppSidebar
+      projectId={projectId}
+      active="editor"
+      coauthorActive={isCoauthoring}
+      onToggleCoauthor={onToggleCoauthor}
+      onCollapse={onCollapse}
+      bottomExtra={saveStatus}
+    >
       {/* Chapter list */}
       <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-0.5">
         <div className="flex items-center justify-between px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-white/60 mb-1 mt-2">
@@ -318,53 +333,6 @@ export function ChapterSidebar({
           );
         })}
       </div>
-
-      {/* Bottom panel: tools + status */}
-      <div className="flex-shrink-0 p-3 border-t border-white/10 space-y-1">
-        <Link
-          to={`/bible/${projectId}`}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold text-white/90 transition-colors hover:bg-white/10"
-        >
-          <BookOpen size={16} className="text-white/55" />
-          Библия истории
-        </Link>
-        <button
-          onClick={onToggleCoauthor}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
-            isCoauthoring ? 'bg-white/15 text-white' : 'text-white/90 hover:bg-white/10'
-          }`}
-        >
-          <Sparkles size={16} className={isCoauthoring ? 'text-purple-300' : 'text-white/55'} />
-          Перо
-        </button>
-        <Link
-          to="/ideas"
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold text-white/90 transition-colors hover:bg-white/10"
-        >
-          <Lightbulb size={16} className="text-white/55" />
-          Идеи
-        </Link>
-
-        {/* Тихая строка статуса: слова текущей главы · сохранение.
-            Карточка с тумблером убрана — полная статистика в панели «Статистика»,
-            переключатель счётчика — в Настройках. */}
-        <div className="flex items-center gap-1.5 px-3 pt-2.5 text-[11px] font-medium">
-          {isSaving ? (
-            <><span className="w-1.5 h-1.5 rounded-full bg-white/30 inline-block animate-pulse" /><span className="text-white/50">Сохранение…</span></>
-          ) : saveError ? (
-            <span className="flex items-center gap-1.5 text-red-400/80" title="Нажмите Cmd+S / Ctrl+S чтобы повторить">
-              <AlertCircle size={11} /> Не сохранено
-            </span>
-          ) : lastSavedAt ? (
-            <><span className="w-1.5 h-1.5 rounded-full bg-emerald-400/70 inline-block" /><span className="text-white/60">Сохранено</span></>
-          ) : (
-            <><span className="w-1.5 h-1.5 rounded-full bg-white/20 inline-block" /><span className="text-white/30">Ожидание…</span></>
-          )}
-          {showWordCount && (
-            <span className="text-white/30 ml-auto tabular-nums">{wordCount.toLocaleString('ru-RU')} сл.</span>
-          )}
-        </div>
-      </div>
-    </aside>
+    </AppSidebar>
   );
 }

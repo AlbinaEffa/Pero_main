@@ -307,6 +307,8 @@ export default function Editor() {
   const [isBibleOpen, setIsBibleOpen] = useState(false);
   /** Шторка списка глав на узких экранах (< lg); на широких сайдбар всегда в потоке. */
   const [isChaptersDrawerOpen, setIsChaptersDrawerOpen] = useState(false);
+  /** Свёрнут ли сайдбар глав на десктопе (≥ lg). */
+  const [isChaptersCollapsed, setIsChaptersCollapsed] = useState(false);
   const [isReferenceOpen, setIsReferenceOpen] = useState(false);
   const [isBibleMenuOpen, setIsBibleMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -1120,7 +1122,7 @@ export default function Editor() {
         {!isFocusMode && (
           <div className={`flex h-full max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-50 max-lg:transition-transform max-lg:duration-300 max-lg:ease-in-out ${
             isChaptersDrawerOpen ? 'max-lg:translate-x-0 max-lg:shadow-2xl' : 'max-lg:-translate-x-full'
-          }`}>
+          } ${isChaptersCollapsed ? 'lg:hidden' : ''}`}>
           <ChapterSidebar
             projectId={projectId!}
             chapterId={chapterId}
@@ -1139,6 +1141,7 @@ export default function Editor() {
             lastSavedAt={lastSavedAt}
             saveError={saveError}
             editorFont={editorFont}
+            onCollapse={() => setIsChaptersCollapsed(true)}
           />
           </div>
         )}
@@ -1163,7 +1166,12 @@ export default function Editor() {
             onOpenSettings={() => setIsSettingsOpen(true)}
             onOpenSearch={() => setIsSearchOpen(true)}
             onOpenExport={() => setIsExportOpen(true)}
-            onOpenChapters={() => setIsChaptersDrawerOpen(true)}
+            onOpenChapters={() => {
+              // На десктопе (≥ lg) разворачиваем свёрнутый сайдбар; на узких — шторку
+              if (window.matchMedia('(min-width: 1024px)').matches) setIsChaptersCollapsed(false);
+              else setIsChaptersDrawerOpen(true);
+            }}
+            isChaptersCollapsed={isChaptersCollapsed}
             projectId={projectId}
           />
 

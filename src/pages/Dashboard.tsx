@@ -476,10 +476,11 @@ function EmptyState({ onNew }: { onNew: () => void }) {
   );
 }
 
-function NewProjectModal({ onClose, onCreate, onImport }: { onClose: () => void; onCreate: (title: string, genre: string, color: string) => void; onImport?: () => void }) {
+function NewProjectModal({ onClose, onCreate, onImport }: { onClose: () => void; onCreate: (title: string, genre: string, color: string) => void; onImport?: (file?: File) => void }) {
   const [title, setTitle] = useState('');
   const [genres, setGenres] = useState<string[]>([]);
   const [color, setColor] = useState('#3A4F41');
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const PRESET_COLORS = ['#41523F', '#C66B49', '#2C3E50', '#806B8A', '#2B7A6B', '#8B6B32', '#6B2B2B', '#2B4A8B'];
 
@@ -519,8 +520,16 @@ function NewProjectModal({ onClose, onCreate, onImport }: { onClose: () => void;
         <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Импорт готовой рукописи — главный сценарий Перо живёт прямо в «Новой книге» */}
           {onImport && (
+            <>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".txt,.docx,.pdf,.epub,.fb2"
+              style={{ display: 'none' }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) onImport(f); e.target.value = ''; }}
+            />
             <button
-              onClick={onImport}
+              onClick={() => importInputRef.current?.click()}
               style={{
                 display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left',
                 padding: '13px 16px', borderRadius: '14px', cursor: 'pointer',
@@ -540,6 +549,7 @@ function NewProjectModal({ onClose, onCreate, onImport }: { onClose: () => void;
                 </span>
               </span>
             </button>
+            </>
           )}
 
           {/* Title */}
@@ -787,6 +797,8 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
+  /** Файл, выбранный сразу в «У меня уже есть рукопись» — импорт стартует с разбора, без дропзоны. */
+  const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
   const [processingPanel, setProcessingPanel] = useState<{ id: string; title: string } | null>(null);
   const [renamingProjectId, setRenamingProjectId] = useState<string | null>(null);
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
@@ -1013,7 +1025,7 @@ export default function Dashboard() {
                 />
               </div>
 
-              {/* Создание/импорт/идеи живут на полке — фокус действий в одном месте */}
+              {/* Профиль/настройки — на странице проектов нет сайдбара */}
               <button
                 onClick={() => navigate('/settings')}
                 style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(30,45,31,0.06)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(30,45,31,0.5)', flexShrink: 0 }}
@@ -1179,12 +1191,13 @@ export default function Dashboard() {
         <NewProjectModal
           onClose={() => setIsModalOpen(false)}
           onCreate={handleCreate}
-          onImport={() => { setIsModalOpen(false); setIsImportOpen(true); }}
+          onImport={(file) => { setIsModalOpen(false); setPendingImportFile(file ?? null); setIsImportOpen(true); }}
         />
       )}
       {isImportOpen && (
         <ImportModal
-          onClose={() => setIsImportOpen(false)}
+          initialFile={pendingImportFile}
+          onClose={() => { setIsImportOpen(false); setPendingImportFile(null); }}
           onSuccess={(projectId, firstChapterId) => {
             setIsImportOpen(false);
             track('project_created', { imported: true });

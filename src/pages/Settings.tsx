@@ -121,7 +121,7 @@ export default function Settings({
     <div className="flex-1 flex flex-col h-full bg-[#f5f0e8] p-8 md:p-12 overflow-y-auto w-full text-left">
       <div className="max-w-5xl mx-auto w-full">
         {/* Navigation back */}
-        <button 
+        <button
           onClick={() => onClose ? onClose() : navigate('/dashboard')}
           className="flex items-center gap-1.5 text-[13px] font-medium text-[#6b7280] hover:text-[#1E2D1F] transition-colors mb-8"
         >

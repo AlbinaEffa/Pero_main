@@ -33,6 +33,8 @@ interface Props {
   onOpenExport?: () => void;
   /** Открыть шторку глав на узких экранах (< lg); кнопка-гамбургер видна только там. */
   onOpenChapters?: () => void;
+  /** Свёрнут ли сайдбар глав на десктопе — тогда кнопка «показать» видна и на ≥ lg. */
+  isChaptersCollapsed?: boolean;
   projectId?: string;
 }
 
@@ -257,6 +259,7 @@ export function EditorCanvas({
   onOpenSearch,
   onOpenExport,
   onOpenChapters,
+  isChaptersCollapsed,
   projectId,
 }: Props) {
   const [isBlockMenuOpen, setIsBlockMenuOpen] = useState(false);
@@ -673,8 +676,11 @@ export function EditorCanvas({
           {onOpenChapters && (
             <button
               onClick={onOpenChapters}
-              title="Главы"
-              className="lg:hidden p-1.5 rounded-md text-[#1e2d1f]/60 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/5 transition-colors"
+              title={isChaptersCollapsed ? 'Показать главы' : 'Главы'}
+              aria-label={isChaptersCollapsed ? 'Показать панель глав' : 'Главы'}
+              className={`p-1.5 rounded-md text-[#1e2d1f]/60 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/5 transition-colors ${
+                isChaptersCollapsed ? '' : 'lg:hidden'
+              }`}
             >
               <PanelLeft size={20} strokeWidth={2.2} />
             </button>

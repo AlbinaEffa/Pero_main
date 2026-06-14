@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, User, Lightbulb } from 'lucide-react';
+import { ChevronLeft, Lightbulb } from 'lucide-react';
 
 export default function IdeaLibrary() {
   const navigate = useNavigate();
@@ -8,9 +7,9 @@ export default function IdeaLibrary() {
   return (
     <div className="min-h-screen bg-[#F5F0E8] font-sans">
       <div className="max-w-[900px] mx-auto px-6 py-10">
-        
+
         {/* Navigation back */}
-        <button 
+        <button
           onClick={() => navigate('/dashboard')}
           className="flex items-center gap-1.5 text-[13px] font-medium text-ink/50 hover:text-ink/80 transition-colors mb-6"
         >
@@ -18,22 +17,13 @@ export default function IdeaLibrary() {
         </button>
 
         {/* Header */}
-        <header className="flex justify-between items-start mb-8 gap-4 flex-wrap">
-          <div>
-            <h1 className="font-serif text-4xl md:text-5xl font-bold text-[#1E2D1F] mb-2 leading-tight">
-              Библиотека Идей
-            </h1>
-            <p className="text-[15px] text-ink/50 m-0">
-              Цифровой сад для ваших идей и исследований.
-            </p>
-          </div>
-
-          <button
-            onClick={() => navigate('/settings')}
-            className="w-12 h-12 rounded-full bg-ink/5 hover:bg-ink/10 border-none cursor-pointer flex items-center justify-center text-ink/50 hover:text-ink/80 transition-colors flex-shrink-0"
-          >
-            <User size={20} />
-          </button>
+        <header className="mb-8">
+          <h1 className="font-serif text-4xl md:text-5xl font-bold text-[#1E2D1F] mb-2 leading-tight">
+            Библиотека Идей
+          </h1>
+          <p className="text-[15px] text-ink/50 m-0">
+            Цифровой сад для ваших идей и исследований.
+          </p>
         </header>
 
         {/* Empty state */}

@@ -55,8 +55,14 @@ export function AppSidebar({
         >
           <ChevronLeft size={18} />
         </Link>
-        <Link to="/dashboard" className="text-[#f5f0e8] flex-1 min-w-0 hover:opacity-90 transition-opacity">
-          <PeroLogo size={20} withWordmark />
+        {/* Только знак-перо, без слова: «Перо» в навигации отдано собеседнику (DESIGN.md §Voice),
+            чтобы слово не двоилось с пунктом «Перо» ниже. */}
+        <Link
+          to="/dashboard"
+          title="К проектам"
+          className="text-[#f5f0e8] flex-1 min-w-0 hover:opacity-90 transition-opacity"
+        >
+          <PeroLogo size={20} withWordmark={false} />
         </Link>
         {onCollapse && (
           <button

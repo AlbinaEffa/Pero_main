@@ -38,7 +38,8 @@ interface AppSidebarProps {
   bottomExtra?: React.ReactNode;
 }
 
-const navIdle = 'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold text-white/90 transition-colors hover:bg-white/10';
+// DESIGN.md §Typography (control scale): пункт навигации 14px — неактивный 500, активный 600.
+const navIdle = 'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-white/90 transition-colors hover:bg-white/10';
 const navActive = 'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold bg-white/15 text-white';
 
 export function AppSidebar({

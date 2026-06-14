@@ -39,7 +39,6 @@ export default function IdeaLibrary() {
           <AppSidebar
             projectId={projectId}
             active="ideas"
-            editorPath={editorPath}
             onCollapse={() => setIsSidebarCollapsed(true)}
           >
             <SidebarChapterLinks projectId={projectId!} chapters={chapters} isLoading={isLoading} />

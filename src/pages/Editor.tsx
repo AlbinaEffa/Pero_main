@@ -1128,8 +1128,6 @@ export default function Editor() {
             chapterId={chapterId}
             chapters={chapters}
             isLoadingChapters={isLoadingChapters}
-            isCoauthoring={isCoauthoring}
-            onToggleCoauthor={handleToggleCoauthor}
             onCreateChapter={handleCreateChapter}
             onDeleteChapter={handleDeleteChapter}
             onReorderChapters={handleReorderChapters}

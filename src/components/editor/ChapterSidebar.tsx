@@ -13,8 +13,6 @@ interface Props {
   chapterId: string | undefined;
   chapters: Chapter[];
   isLoadingChapters: boolean;
-  isCoauthoring: boolean;
-  onToggleCoauthor: () => void;
   onCreateChapter: (type?: ChapterType) => void;
   onDeleteChapter: (id: string) => Promise<void>;
   onReorderChapters: (ids: string[]) => Promise<void>;
@@ -35,8 +33,6 @@ export function ChapterSidebar({
   chapterId,
   chapters,
   isLoadingChapters,
-  isCoauthoring,
-  onToggleCoauthor,
   onCreateChapter,
   onDeleteChapter,
   onReorderChapters,
@@ -172,8 +168,6 @@ export function ChapterSidebar({
     <AppSidebar
       projectId={projectId}
       active="editor"
-      coauthorActive={isCoauthoring}
-      onToggleCoauthor={onToggleCoauthor}
       onCollapse={onCollapse}
       bottomExtra={saveStatus}
     >

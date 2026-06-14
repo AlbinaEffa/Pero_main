@@ -181,10 +181,6 @@ export default function StoryBible() {
     } catch (e) { console.error(e); }
   }
 
-  const editorPath = id && chapters[0]
-    ? `/editor/${id}/${chapters[0].id}`
-    : id ? `/editor/${id}` : '/dashboard';
-
   return (
     <div className="flex h-screen w-full bg-[#F5F0E8] font-sans overflow-hidden text-[#1E2D1F]">
       <AhaCelebration />
@@ -195,7 +191,6 @@ export default function StoryBible() {
           <AppSidebar
             projectId={id!}
             active="bible"
-            editorPath={editorPath}
             onCollapse={() => setIsSidebarCollapsed(true)}
           >
             <SidebarChapterLinks projectId={id!} chapters={chapters} isLoading={isLoading} />

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import {
-  ChevronLeft, BookOpen, Sparkles, Lightbulb, PanelLeftClose,
+  ChevronLeft, BookOpen, Lightbulb, PanelLeftClose,
   FileText, FileCheck, Library, Settings as SettingsIcon,
 } from 'lucide-react';
 import { PeroLogo } from './Logo';
@@ -13,27 +13,25 @@ import { getChapterDisplayLabel } from './editor/chapterDisplay';
  * страницах проекта, поэтому сайдбар не «прыгает» при переходах между ними.
  *
  * Структура (сверху вниз):
- *   • Шапка: знак-перо (→ к проектам) + кнопка сворачивания.
+ *   • Шапка: логотип «Перо» (бренд, → к проектам) + кнопка сворачивания.
  *   • Середина (слот `children`): список глав — в Редакторе с управлением,
  *     на Библии/Идеях read-only, но визуально одинаковый (см. SidebarChapterLinks).
- *   • Навигация проекта (если задан `projectId`): Библия истории / Перо / Идеи.
+ *   • Навигация проекта (если задан `projectId`): Библия истории / Идеи.
  *   • Глобальная навигация (всегда): Проекты / Настройки.
  *   • `bottomExtra`: доп. блок (например, строка статуса сохранения в редакторе).
+ *
+ * Соавтор «Перо» здесь НЕ пункт меню — он живёт в нижнем тулбаре редактора,
+ * чтобы слово «Перо» в сайдбаре было только брендом на логотипе (без дубля).
  */
 
 type ActivePage = 'dashboard' | 'editor' | 'bible' | 'ideas' | 'settings';
 
 interface AppSidebarProps {
-  /** Если задан — показывается навигация проекта (Библия / Перо / Идеи). */
+  /** Если задан — показывается навигация проекта (Библия / Идеи). */
   projectId?: string;
   active: ActivePage;
-  /** Куда ведёт пункт «Перо» (открыть книгу в редакторе). Нужен в режиме проекта без тоггла. */
-  editorPath?: string;
   /** Если задан — показывается кнопка сворачивания панели. */
   onCollapse?: () => void;
-  /** Редактор: «Перо» — переключатель соавтора, а не ссылка. */
-  coauthorActive?: boolean;
-  onToggleCoauthor?: () => void;
   /** Середина: список глав (режим проекта). На глобальных страницах не передаётся. */
   children?: React.ReactNode;
   /** Доп. блок внизу под навигацией (например, строка статуса сохранения). */
@@ -45,7 +43,7 @@ const navIdle = 'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm fon
 const navActive = 'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold bg-white/15 text-white';
 
 export function AppSidebar({
-  projectId, active, editorPath, onCollapse, coauthorActive, onToggleCoauthor, children, bottomExtra,
+  projectId, active, onCollapse, children, bottomExtra,
 }: AppSidebarProps) {
   return (
     <aside className="w-[220px] bg-[#1e2d1f] text-white/80 flex flex-col flex-shrink-0 shadow-xl z-20">
@@ -58,14 +56,14 @@ export function AppSidebar({
         >
           <ChevronLeft size={18} />
         </Link>
-        {/* Только знак-перо, без слова: «Перо» в навигации отдано собеседнику (DESIGN.md §Voice),
-            чтобы слово не двоилось с пунктом «Перо» ниже. */}
+        {/* Логотип-бренд «Перо». Соавтора в меню нет — он в нижнем тулбаре редактора,
+            поэтому слово «Перо» здесь не двоится. */}
         <Link
           to="/dashboard"
           title="К проектам"
           className="text-[#f5f0e8] flex-1 min-w-0 hover:opacity-90 transition-opacity"
         >
-          <PeroLogo size={20} withWordmark={false} />
+          <PeroLogo size={20} withWordmark />
         </Link>
         {onCollapse && (
           <button
@@ -91,21 +89,6 @@ export function AppSidebar({
               <BookOpen size={16} className="text-white/55" />
               Библия истории
             </Link>
-
-            {onToggleCoauthor ? (
-              <button
-                onClick={onToggleCoauthor}
-                className={coauthorActive ? navActive : navIdle}
-              >
-                <Sparkles size={16} className={coauthorActive ? 'text-purple-300' : 'text-white/55'} />
-                Перо
-              </button>
-            ) : (
-              <Link to={editorPath ?? `/editor/${projectId}`} className={active === 'editor' ? navActive : navIdle}>
-                <Sparkles size={16} className="text-white/55" />
-                Перо
-              </Link>
-            )}
 
             <Link to={`/ideas/${projectId}`} className={active === 'ideas' ? navActive : navIdle}>
               <Lightbulb size={16} className="text-white/55" />

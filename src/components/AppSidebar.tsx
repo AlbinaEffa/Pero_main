@@ -143,8 +143,11 @@ export function SidebarChapterLinks({
           <Link
             key={chapter.id}
             to={`/editor/${projectId}/${chapter.id}`}
-            className="group flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors hover:bg-white/5"
+            className="group flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors hover:bg-white/5 border-y-2 border-transparent"
           >
+            {/* Невидимая распорка под drag-ручку редактора (size 14, -ml-1): держит
+                иконку и название на той же позиции, что и в редакторе — сайдбар не «прыгает». */}
+            <span className="flex-shrink-0 -ml-1 w-3.5" aria-hidden="true" />
             <span className={`flex-shrink-0 flex items-center justify-center ${isDone ? 'text-green-400' : 'text-white/60'}`}>
               {isDone ? <FileCheck size={16} strokeWidth={1.75} /> : <FileText size={16} strokeWidth={1.75} />}
             </span>
@@ -158,6 +161,9 @@ export function SidebarChapterLinks({
                 </span>
               )}
             </span>
+            {/* Невидимая распорка под кнопку удаления редактора (Trash2 size 13 + p-1 ≈ 21px):
+                держит высоту строки и ширину обрезки названия такими же, как в редакторе. */}
+            <span className="flex-shrink-0 w-[21px] h-[21px]" aria-hidden="true" />
           </Link>
         );
       })}

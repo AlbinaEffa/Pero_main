@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import {
   ChevronLeft, BookOpen, Lightbulb, PanelLeftClose,
-  FileText, FileCheck, Library, Settings as SettingsIcon,
+  FileText, FileCheck, Settings as SettingsIcon,
 } from 'lucide-react';
 import { PeroLogo } from './Logo';
 import { Chapter } from './editor/types';
@@ -99,11 +99,8 @@ export function AppSidebar({
           </>
         )}
 
-        {/* Глобальная навигация */}
-        <Link to="/dashboard" className={active === 'dashboard' ? navActive : navIdle}>
-          <Library size={16} className="text-white/55" />
-          Проекты
-        </Link>
+        {/* Глобальная навигация. «Проекты» убраны — дублировали стрелку «‹ К проектам»
+            в шапке (REORG_PLAN шаг 1). */}
         <Link to="/settings" className={active === 'settings' ? navActive : navIdle}>
           <SettingsIcon size={16} className="text-white/55" />
           Настройки

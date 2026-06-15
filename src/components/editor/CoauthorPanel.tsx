@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef, RefObject } from 'react';
 import {
   X, Sparkles, Send, ShieldCheck, FileText, TrendingUp, BookOpen, MessageCircle,
-  Minimize2, MessageSquare, Zap, Scissors, Copy, CornerDownLeft,
-  MousePointer2,
+  Copy, CornerDownLeft, MousePointer2,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { ChatMessage } from './types';
@@ -10,9 +9,9 @@ import { useAiQuota } from '../../hooks/useAiQuota';
 
 // ── Quick action definitions ──────────────────────────────────────────────────
 
-type QuickActionId =
-  | 'summarize' | 'consistency' | 'changes' | 'bible'
-  | 'denser' | 'dialogue' | 'conflict' | 'shorten';
+// Перо — аналитик, а не генератор: только «прочитать и ответить / сверить / извлечь
+// в библию». Трансформации текста (Плотнее/Диалог/Усиль/Сократи) убраны (REORG_PLAN шаг 5).
+type QuickActionId = 'summarize' | 'consistency' | 'changes' | 'bible';
 
 interface QuickAction {
   id: QuickActionId;
@@ -27,21 +26,16 @@ const QUICK_ACTIONS: QuickAction[] = [
   { id: 'consistency', label: 'Противоречия',     icon: ShieldCheck,   special: 'consistency' },
   { id: 'changes',     label: 'Что изменилось',   icon: TrendingUp,    selectionAware: false  },
   { id: 'bible',       label: 'Извлечь в Библию', icon: BookOpen,      special: 'bible'       },
-  { id: 'denser',      label: 'Плотнее',          icon: Minimize2,     selectionAware: true   },
-  { id: 'dialogue',    label: 'Диалог живее',     icon: MessageSquare, selectionAware: true   },
-  { id: 'conflict',    label: 'Усиль конфликт',   icon: Zap,           selectionAware: true   },
-  { id: 'shorten',     label: 'Сократи',          icon: Scissors,      selectionAware: true   },
 ];
 
-// ── Empty state suggestions ───────────────────────────────────────────────────
+// ── Empty state suggestions (вопросы к Перу — оно отвечает по рукописи) ──────────
 
 const SUGGESTIONS = [
   'Сделай краткое резюме этой главы',
   'Что происходит с главным героем?',
-  'Как можно усилить конфликт?',
-  'Помоги придумать имя для персонажа',
-  'Какие детали стоит добавить в сцену?',
-  'Как звучит темп и ритм главы?',
+  'Нет ли противоречий в этой главе?',
+  'Что я уже рассказал про этот мир?',
+  'Какие детали сцены я мог упустить?',
 ];
 
 function buildPrompt(actionId: QuickActionId, selectedText: string): string {
@@ -57,22 +51,6 @@ function buildPrompt(actionId: QuickActionId, selectedText: string): string {
       return sel
         ? `Какие факты о персонажах, локациях или мире содержит этот фрагмент? Что добавить в Библию истории?\n\n${sel}`
         : 'Какие новые факты о персонажах, локациях или правилах мира есть в этой главе? Что добавить в Библию истории?';
-    case 'denser':
-      return sel
-        ? `Сделай этот фрагмент более плотным и насыщенным, убери лишние слова:\n\n${sel}`
-        : 'Какой фрагмент главы можно сделать плотнее? Предложи конкретную редактуру.';
-    case 'dialogue':
-      return sel
-        ? `Сделай этот диалог живее и естественнее:\n\n${sel}`
-        : 'Найди диалог в главе, который звучит неестественно, и предложи, как его улучшить.';
-    case 'conflict':
-      return sel
-        ? `Усиль конфликт в этом фрагменте, предложи конкретные правки:\n\n${sel}`
-        : 'Как можно усилить конфликт в этой главе? Что работает слабо?';
-    case 'shorten':
-      return sel
-        ? `Сократи этот фрагмент, сохранив смысл:\n\n${sel}`
-        : 'Какие части главы можно сократить без потери смысла?';
     default:
       return '';
   }

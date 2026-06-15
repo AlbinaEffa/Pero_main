@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Editor as TiptapEditor } from '@tiptap/react';
 import { EditorContent } from '@tiptap/react';
-import { InlineBubbleMenu } from './InlineBubbleMenu';
 import { EditorFirstRunHints } from './EditorFirstRunHints';
 import {
   Bold, Italic, Underline, Strikethrough, List, ListOrdered, ListTodo,
@@ -1260,9 +1259,8 @@ export function EditorCanvas({
             />
           </div>
           <div className={`${indentParagraphs ? 'tiptap-indent' : ''} ${editorFontClass}`}>
-            {editor && (
-              <InlineBubbleMenu editor={editor} projectId={projectId} />
-            )}
+            {/* ИИ-меню по выделению убрано (REORG_PLAN шаг 5): Перо — аналитик, не генератор.
+                Форматирование выделенного — в верхнем тулбаре. */}
             <EditorFirstRunHints />
             <EditorContent editor={editor} />
             {(isDictating || interimTranscript) && (

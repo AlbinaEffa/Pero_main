@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
   X, Check, Sparkles, ChevronLeft, Users, MapPin, Box, Globe,
-  RefreshCw, AlertTriangle, ChevronRight, RotateCcw, ExternalLink,
+  ChevronRight, RotateCcw, ExternalLink,
   BookOpen,
 } from 'lucide-react';
 import { BIBLE_MENU_ITEMS } from './constants';
@@ -131,14 +131,52 @@ export function StoryBiblePanel({
 
   return (
     <div className="flex flex-col h-full w-[320px]">
-      <div className="p-5 border-b border-[#1e2d1f]/5 flex justify-between items-center bg-white/40">
-        <h2 className="font-sans text-base font-semibold text-[#1e2d1f]">Библия истории</h2>
-        <button
-          onClick={onClose}
-          className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/50 transition-colors"
-        >
-          <X size={18} />
-        </button>
+      <div className="px-5 py-4 border-b border-[#1e2d1f]/5 bg-white/40">
+        <div className="flex justify-between items-center">
+          <h2 className="font-sans text-base font-semibold text-[#1e2d1f]">Библия истории</h2>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/50 transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Статус чтения — всегда виден: это и есть цикл «Перо читает рукопись».
+            Полуавто: при изменении/новой главе показываем «Прочитать» (один клик). */}
+        <div className="mt-2.5 flex items-center gap-2 text-[12px] leading-snug">
+          {isExtracting ? (
+            <span className="flex items-center gap-1.5 text-[#1e2d1f]/55">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#1e2d1f]/40 inline-block animate-pulse" />
+              Перо читает главу…
+            </span>
+          ) : chapterFreshnessStatus === 'stale' ? (
+            <>
+              <span className="text-amber-800">Глава изменилась после анализа</span>
+              <button
+                onClick={onRecheck}
+                className="ml-auto flex-shrink-0 font-semibold text-amber-800 bg-amber-100 hover:bg-amber-200 rounded-lg px-2.5 py-1 transition-colors"
+              >
+                Прочитать
+              </button>
+            </>
+          ) : chapterFreshnessStatus === 'unknown' ? (
+            <>
+              <span className="text-[#1e2d1f]/55">Глава ещё не прочитана Пером</span>
+              <button
+                onClick={onExtract}
+                className="ml-auto flex-shrink-0 font-semibold text-[#f5f0e8] bg-[#1e2d1f] hover:bg-[#2a3f2b] rounded-lg px-2.5 py-1 transition-colors"
+              >
+                Прочитать
+              </button>
+            </>
+          ) : (
+            <span className="flex items-center gap-1.5 text-[#4D6B4D]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#4D6B4D] inline-block" />
+              Перо прочитало эту главу
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}
@@ -177,36 +215,7 @@ export function StoryBiblePanel({
         {/* ── INBOX TAB ── */}
         {activeBibleTab === 'inbox' && (
           <div className="flex flex-col h-full">
-            {chapterFreshnessStatus === 'stale' && !isExtracting && (
-              <div className="mb-3 bg-amber-50 border border-amber-200/80 rounded-xl p-3 flex items-start gap-2.5 flex-shrink-0">
-                <AlertTriangle size={14} className="text-amber-500 flex-shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-amber-800 leading-snug">
-                    Глава изменялась после последнего анализа
-                  </p>
-                  <p className="text-[11px] text-amber-700 mt-0.5 leading-relaxed">
-                    Библия может не отражать актуальный текст.
-                  </p>
-                </div>
-                <button
-                  onClick={onRecheck}
-                  className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 hover:text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-lg px-2 py-1 transition-colors flex-shrink-0"
-                  title="Проверить главу заново"
-                >
-                  <RefreshCw size={11} />
-                  Обновить
-                </button>
-              </div>
-            )}
-            {chapterFreshnessStatus === 'unknown' && !isExtracting && (
-              <div className="mb-3 bg-[#f5f0e8]/80 border border-[#1e2d1f]/8 rounded-xl p-3 flex items-start gap-2.5 flex-shrink-0">
-                <Sparkles size={14} className="text-[#1e2d1f]/55 flex-shrink-0 mt-0.5" />
-                <p className="text-[11px] text-[#1e2d1f]/60 leading-relaxed">
-                  Эта глава ещё не анализировалась. Извлеките факты, чтобы начать Библию.
-                </p>
-              </div>
-            )}
-
+            {/* Статус чтения главы вынесен в шапку панели (всегда виден) — здесь дубль убран. */}
             {suggestions.length === 0 && !isExtracting ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
                 <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center mb-4 text-[#1e2d1f]/20">

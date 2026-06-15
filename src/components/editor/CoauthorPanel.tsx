@@ -25,7 +25,7 @@ const QUICK_ACTIONS: QuickAction[] = [
   { id: 'summarize',   label: 'Суммируй',         icon: FileText,      selectionAware: true  },
   { id: 'consistency', label: 'Противоречия',     icon: ShieldCheck,   special: 'consistency' },
   { id: 'changes',     label: 'Что изменилось',   icon: TrendingUp,    selectionAware: false  },
-  { id: 'bible',       label: 'Извлечь в Библию', icon: BookOpen,      special: 'bible'       },
+  { id: 'bible',       label: 'Извлечь в Мир',    icon: BookOpen,      special: 'bible'       },
 ];
 
 // ── Empty state suggestions (вопросы к Перу — оно отвечает по рукописи) ──────────

@@ -133,7 +133,7 @@ export function StoryBiblePanel({
     <div className="flex flex-col h-full w-[320px]">
       <div className="px-5 py-4 border-b border-[#1e2d1f]/5 bg-white/40">
         <div className="flex justify-between items-center">
-          <h2 className="font-sans text-base font-semibold text-[#1e2d1f]">Библия истории</h2>
+          <h2 className="font-sans text-base font-semibold text-[#1e2d1f]">Мир</h2>
           <button
             onClick={onClose}
             className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/50 transition-colors"
@@ -223,7 +223,7 @@ export function StoryBiblePanel({
                 </div>
                 <h3 className="font-medium text-[#1e2d1f]/80 mb-2">Нет новых фактов</h3>
                 <p className="text-xs text-[#1e2d1f]/50 mb-6 leading-relaxed">
-                  Нажмите кнопку ниже, чтобы ИИ проанализировал текущую главу и нашел новые детали для Библии.
+                  Нажмите кнопку ниже, чтобы Перо прочитало текущую главу и нашло новые детали для Мира.
                 </p>
                 <button
                   onClick={onExtract}

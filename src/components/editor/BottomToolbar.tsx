@@ -79,7 +79,7 @@ export function BottomToolbar({
         {isBibleMenuOpen && (
           <div className="absolute bottom-full mb-2 right-0 w-48 bg-white rounded-xl shadow-xl border border-[#1e2d1f]/10 py-2 z-50">
             <div className="px-4 py-2 text-[10px] font-bold text-ink/55 uppercase tracking-widest mb-1">
-              Библия истории
+              Мир
             </div>
             {BIBLE_MENU_ITEMS.map(item => {
               const Icon = item.icon;
@@ -175,11 +175,11 @@ export function BottomToolbar({
                 : 'bg-transparent text-[#6b7280] hover:bg-[#f5f0e8] hover:text-[#1e2d1f]'
             }`}
             title={bibleBadgeCount > 0
-              ? `Библия истории — ${bibleBadgeCount} на одобрение`
-              : 'Библия истории'}
+              ? `Мир — ${bibleBadgeCount} на одобрение`
+              : 'Мир'}
             aria-label={bibleBadgeCount > 0
-              ? `Библия истории, ${bibleBadgeCount} ждут одобрения`
-              : 'Библия истории'}
+              ? `Мир, ${bibleBadgeCount} ждут одобрения`
+              : 'Мир'}
           >
             <BookOpen size={18} />
             {bibleBadgeCount > 0 && !isBibleOpen && !isBibleMenuOpen && (

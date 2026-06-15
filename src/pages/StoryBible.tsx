@@ -207,7 +207,7 @@ export default function StoryBible() {
             <button onClick={() => navigate(-1)} className="text-ink/60 hover:text-ink transition-colors">
               <ArrowLeft size={20} />
             </button>
-            <h1 className="font-sans text-base font-semibold text-[#1E2D1F]">Библия истории — {tabCfg.label}</h1>
+            <h1 className="font-sans text-base font-semibold text-[#1E2D1F]">Мир — {tabCfg.label}</h1>
           </div>
         </header>
 

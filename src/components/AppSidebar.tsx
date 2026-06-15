@@ -16,7 +16,7 @@ import { getChapterDisplayLabel } from './editor/chapterDisplay';
  *   • Шапка: логотип «Перо» (бренд, → к проектам) + кнопка сворачивания.
  *   • Середина (слот `children`): список глав — в Редакторе с управлением,
  *     на Библии/Идеях read-only, но визуально одинаковый (см. SidebarChapterLinks).
- *   • Навигация проекта (если задан `projectId`): Библия истории / Идеи.
+ *   • Навигация проекта (если задан `projectId`): Мир / Идеи.
  *   • Глобальная навигация (всегда): Проекты / Настройки.
  *   • `bottomExtra`: доп. блок (например, строка статуса сохранения в редакторе).
  *
@@ -30,7 +30,7 @@ interface AppSidebarProps {
   /** Если задан — показывается навигация проекта (Библия / Идеи). */
   projectId?: string;
   active: ActivePage;
-  /** Если задан — «Библия истории» открывает инспектор прямо в редакторе
+  /** Если задан — «Мир» открывает инспектор прямо в редакторе
       (а не уводит на отдельную страницу /bible). REORG_PLAN шаг 3. */
   onOpenBible?: () => void;
   /** Если задан — показывается кнопка сворачивания панели. */
@@ -91,12 +91,12 @@ export function AppSidebar({
             {onOpenBible ? (
               <button onClick={onOpenBible} className={active === 'bible' ? navActive : navIdle}>
                 <BookOpen size={16} className="text-white/55" />
-                Библия истории
+                Мир
               </button>
             ) : (
               <Link to={`/bible/${projectId}`} className={active === 'bible' ? navActive : navIdle}>
                 <BookOpen size={16} className="text-white/55" />
-                Библия истории
+                Мир
               </Link>
             )}
 

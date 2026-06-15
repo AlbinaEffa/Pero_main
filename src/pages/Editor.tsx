@@ -22,6 +22,7 @@ import { ChapterSidebar } from '../components/editor/ChapterSidebar';
 import { EditorCanvas } from '../components/editor/EditorCanvas';
 import { BottomToolbar } from '../components/editor/BottomToolbar';
 import { PulseRail } from '../components/editor/PulseRail';
+import { CommandPalette, Command } from '../components/editor/CommandPalette';
 import { StoryBiblePanel } from '../components/editor/StoryBiblePanel';
 import { CoauthorPanel } from '../components/editor/CoauthorPanel';
 import { RevisionPanel } from '../components/editor/RevisionPanel';
@@ -41,7 +42,8 @@ import Settings from './Settings';
 
 import { Chapter, Entity, EntityLink, EntityEvent } from '../components/editor/types';
 import { AhaCelebration } from '../components/AhaCelebration';
-import { Users, MapPin, Box, Scale, Bookmark, X, AlertTriangle, ChevronUp, ChevronDown } from 'lucide-react';
+import { Users, MapPin, Box, Scale, Bookmark, X, AlertTriangle, ChevronUp, ChevronDown,
+  Eye, Bell, BookOpen, Feather, Telescope, BarChart2, Search, FolderSearch, Download, Maximize2, Settings as SettingsIcon } from 'lucide-react';
 
 type EditorFontName = 'cormorant' | 'literata' | 'source-serif';
 
@@ -319,6 +321,7 @@ export default function Editor() {
   const [isSyncOpen, setIsSyncOpen] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [isStatsOpen, setIsStatsOpen] = useState(false);
+  const [isCommandOpen, setIsCommandOpen] = useState(false);
   const [totalProjectWords, setTotalProjectWords] = useState(0);
   const [isRecheckingAll, setIsRecheckingAll] = useState(false);
   const [isReading, setIsReading] = useState(false);
@@ -758,6 +761,7 @@ export default function Editor() {
 
       // Escape — close topmost open panel (in priority order)
       if (e.key === 'Escape') {
+        if (isCommandOpen)   { setIsCommandOpen(false);   return; }
         if (isGlobalSearchOpen) { setIsGlobalSearchOpen(false); return; }
         if (isExportOpen)    { setIsExportOpen(false);    return; }
         if (isSettingsOpen)  { setIsSettingsOpen(false);  return; }
@@ -776,10 +780,10 @@ export default function Editor() {
         if (editor) forceSave(editor.getHTML());
       }
 
-      // Cmd/Ctrl+K — open global project search
+      // Cmd/Ctrl+K — open command palette («вызов намерением словом»)
       if (mod && e.key === 'k') {
         e.preventDefault();
-        setIsGlobalSearchOpen(true);
+        setIsCommandOpen(v => !v);
       }
 
       // Cmd/Ctrl+F — open find/replace
@@ -792,7 +796,7 @@ export default function Editor() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [
-    isGlobalSearchOpen,
+    isCommandOpen, isGlobalSearchOpen,
     isExportOpen, isSettingsOpen, isCoauthoring, isBibleOpen,
     isRevisionOpen, isReferenceOpen, isStatsOpen, isSearchOpen, isBibleMenuOpen,
     editor, forceSave,
@@ -1095,6 +1099,35 @@ export default function Editor() {
     setEditorFont(font);
     localStorage.setItem('pero_editorFont', font);
   }, []);
+
+  // ── Команды для ⌘K-палитры («вызов намерением словом») ────────────────────
+  const commands: Command[] = useMemo(() => [
+    { id: 'read', label: 'Прочитать главу Пером', hint: currentChapterFreshness === 'fresh' ? 'прочитано' : '', icon: Eye, keywords: 'извлечь анализ читать',
+      run: () => (currentChapterFreshness === 'stale' ? handleRecheckChapter() : handleExtract()) },
+    { id: 'inbox', label: 'Новое — находки на одобрение', icon: Bell, keywords: 'находки инбокс одобрить сущности',
+      run: () => handleBibleMenuClick('inbox') },
+    { id: 'world', label: 'Мир — каталог, линзы', icon: BookOpen, keywords: 'библия персонажи локации присутствие связи линза',
+      run: () => handleBibleMenuClick('characters') },
+    { id: 'ask', label: 'Перо — спросить про историю', icon: Feather, keywords: 'чат вопрос аналитик суммируй',
+      run: () => { if (!isCoauthoring) handleToggleCoauthor(); } },
+    { id: 'reference', label: 'Справочник / Нестыковки этой главы', icon: Bookmark, keywords: 'справка нестыковки противоречия глава',
+      run: () => { if (!isReferenceOpen) handleToggleReference(); } },
+    { id: 'revision', label: 'Поиск по миру — где встречается, арка', icon: Telescope, keywords: 'ревизия трейс арка найти',
+      run: () => { if (!isRevisionOpen) handleToggleRevision(); } },
+    { id: 'stats', label: 'Статистика написанного', icon: BarChart2, keywords: 'прогресс слова статистика',
+      run: () => { if (!isStatsOpen) handleToggleStats(); } },
+    { id: 'find', label: 'Поиск в тексте главы', hint: '⌘F', icon: Search, keywords: 'найти заменить поиск',
+      run: () => setIsSearchOpen(true) },
+    { id: 'projsearch', label: 'Поиск по всему проекту', icon: FolderSearch, keywords: 'глобальный поиск проект главы',
+      run: () => setIsGlobalSearchOpen(true) },
+    { id: 'export', label: 'Экспорт рукописи', icon: Download, keywords: 'скачать docx экспорт сохранить',
+      run: () => setIsExportOpen(true) },
+    { id: 'focus', label: isFocusMode ? 'Выйти из фокуса' : 'Режим фокуса', icon: Maximize2, keywords: 'фокус чистый письмо',
+      run: () => handleToggleFocusMode() },
+    { id: 'settings', label: 'Настройки', icon: SettingsIcon, keywords: 'настройки аккаунт профиль',
+      run: () => setIsSettingsOpen(true) },
+  ], [currentChapterFreshness, isCoauthoring, isReferenceOpen, isRevisionOpen, isStatsOpen, isFocusMode,
+      handleRecheckChapter, handleExtract, handleToggleCoauthor, handleToggleReference, handleToggleRevision, handleToggleStats, handleToggleFocusMode]);
 
   return (
     <>
@@ -1539,6 +1572,12 @@ export default function Editor() {
           />
         )}
       </div>
+
+      <CommandPalette
+        open={isCommandOpen}
+        onClose={() => setIsCommandOpen(false)}
+        commands={commands}
+      />
 
       <FindReplacePopup
         isOpen={isSearchOpen}

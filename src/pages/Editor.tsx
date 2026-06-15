@@ -23,6 +23,7 @@ import { EditorCanvas } from '../components/editor/EditorCanvas';
 import { BottomToolbar } from '../components/editor/BottomToolbar';
 import { PulseRail } from '../components/editor/PulseRail';
 import { CommandPalette, Command } from '../components/editor/CommandPalette';
+import { EntitySelectionMenu } from '../components/editor/EntitySelectionMenu';
 import { StoryBiblePanel } from '../components/editor/StoryBiblePanel';
 import { CoauthorPanel } from '../components/editor/CoauthorPanel';
 import { RevisionPanel } from '../components/editor/RevisionPanel';
@@ -1104,6 +1105,8 @@ export default function Editor() {
   const commands: Command[] = useMemo(() => [
     { id: 'read', label: 'Прочитать главу Пером', hint: currentChapterFreshness === 'fresh' ? 'прочитано' : '', icon: Eye, keywords: 'извлечь анализ читать',
       run: () => (currentChapterFreshness === 'stale' ? handleRecheckChapter() : handleExtract()) },
+    { id: 'read-all', label: 'Прочитать все изменённые главы', icon: Eye, keywords: 'синхронизация обновить все устаревшие перечитать',
+      run: () => handleRecheckAllStale() },
     { id: 'inbox', label: 'Новое — находки на одобрение', icon: Bell, keywords: 'находки инбокс одобрить сущности',
       run: () => handleBibleMenuClick('inbox') },
     { id: 'world', label: 'Мир — каталог, линзы', icon: BookOpen, keywords: 'библия персонажи локации присутствие связи линза',
@@ -1127,7 +1130,7 @@ export default function Editor() {
     { id: 'settings', label: 'Настройки', icon: SettingsIcon, keywords: 'настройки аккаунт профиль',
       run: () => setIsSettingsOpen(true) },
   ], [currentChapterFreshness, isCoauthoring, isReferenceOpen, isRevisionOpen, isStatsOpen, isFocusMode,
-      handleRecheckChapter, handleExtract, handleToggleCoauthor, handleToggleReference, handleToggleRevision, handleToggleStats, handleToggleFocusMode]);
+      handleRecheckChapter, handleExtract, handleRecheckAllStale, handleToggleCoauthor, handleToggleReference, handleToggleRevision, handleToggleStats, handleToggleFocusMode]);
 
   return (
     <>
@@ -1577,6 +1580,19 @@ export default function Editor() {
         open={isCommandOpen}
         onClose={() => setIsCommandOpen(false)}
         commands={commands}
+      />
+
+      <EntitySelectionMenu
+        editor={editor}
+        entities={allApprovedEntities}
+        onShowInWorld={(entity) => {
+          const tab = { character: 'characters', location: 'locations', item: 'items', rule: 'rules' }[entity.type] ?? 'characters';
+          handleBibleMenuClick(tab);
+        }}
+        onWhereUsed={(entity) => {
+          if (!isRevisionOpen) handleToggleRevision();
+          handleTrace(entity.name);
+        }}
       />
 
       <FindReplacePopup

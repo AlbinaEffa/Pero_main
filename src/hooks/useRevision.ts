@@ -40,8 +40,10 @@ export function useRevision(
   const [isBibleLoading, setIsBibleLoading]     = useState(false);
   const [bibleDone, setBibleDone]               = useState(false);
 
-  const handleTrace = async () => {
-    if (!projectId || !searchQuery.trim()) return;
+  const handleTrace = async (nameArg?: string) => {
+    const query = (nameArg ?? searchQuery).trim();
+    if (!projectId || !query) return;
+    if (nameArg) setSearchQuery(nameArg);
     setIsTracing(true);
     setTraceDone(false);
     setTraceResults([]);
@@ -49,7 +51,7 @@ export function useRevision(
     try {
       const data = await api.post<{ chapters: TraceChapter[]; semantic: boolean }>(
         '/revision/entity-trace',
-        { projectId, entityName: searchQuery.trim() }
+        { projectId, entityName: query }
       );
       const chapters = data.chapters || [];
       setTraceResults(chapters);

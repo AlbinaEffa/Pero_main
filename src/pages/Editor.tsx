@@ -1283,11 +1283,13 @@ export default function Editor() {
             onClick={closeAllSidePanels}
           />
         )}
+        {/* Инспектор = оверлей: наезжает поверх текста справа (слева от пульс-рельса),
+            не раздвигает письмо. Закрытие — Esc / крестик / тап по затемнению (на узких). */}
         <aside
-          className={`bg-[#f5f0e8] border-[#1e2d1f]/10 flex-shrink-0 transition-all duration-300 ease-in-out z-20 overflow-hidden relative max-xl:absolute max-xl:right-0 max-xl:bottom-0 max-xl:top-14 max-md:top-0 max-xl:z-40 max-xl:border-t max-md:border-t-0 ${
+          className={`bg-[#f5f0e8] border-[#1e2d1f]/10 transition-all duration-300 ease-in-out overflow-hidden absolute top-14 bottom-0 right-12 max-md:right-0 max-md:top-0 z-40 w-[320px] border-l border-t max-md:border-t-0 ${
             (!isFocusMode && isAnySidePanelOpen)
-              ? 'w-[320px] border-l opacity-100 max-xl:shadow-2xl'
-              : 'w-0 border-l-0 opacity-0'
+              ? 'opacity-100 translate-x-0 shadow-2xl pointer-events-auto'
+              : 'opacity-0 translate-x-full pointer-events-none'
           }`}
         >
           <div className="w-[320px] h-full flex flex-col absolute top-0 left-0">

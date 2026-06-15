@@ -21,6 +21,7 @@ import { useRevision } from '../hooks/useRevision';
 import { ChapterSidebar } from '../components/editor/ChapterSidebar';
 import { EditorCanvas } from '../components/editor/EditorCanvas';
 import { BottomToolbar } from '../components/editor/BottomToolbar';
+import { PulseRail } from '../components/editor/PulseRail';
 import { StoryBiblePanel } from '../components/editor/StoryBiblePanel';
 import { CoauthorPanel } from '../components/editor/CoauthorPanel';
 import { RevisionPanel } from '../components/editor/RevisionPanel';
@@ -1531,6 +1532,23 @@ export default function Editor() {
           )}
           </div>
         </aside>
+
+        {/* Пульс мира — тонкий всегда-видимый рельс (скрыт в фокусе) */}
+        {!isFocusMode && (
+          <PulseRail
+            freshness={currentChapterFreshness}
+            isExtracting={isExtracting}
+            onRead={currentChapterFreshness === 'stale' ? handleRecheckChapter : handleExtract}
+            findingsCount={suggestions.length + updateSuggestions.filter(u => u.status === 'pending').length}
+            onOpenFindings={() => handleBibleMenuClick('inbox')}
+            contradictionsCount={contradictions.size}
+            onOpenContradictions={() => { if (!isReferenceOpen) handleToggleReference(); }}
+            onOpenWorld={() => handleBibleMenuClick('characters')}
+            isWorldOpen={isBibleOpen}
+            onOpenCoauthor={handleToggleCoauthor}
+            isCoauthorOpen={isCoauthoring}
+          />
+        )}
       </div>
 
       <FindReplacePopup

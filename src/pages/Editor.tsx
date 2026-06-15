@@ -1202,6 +1202,7 @@ export default function Editor() {
               if (!ch.lastExtractedAt) return acc + 1;
               return new Date(ch.updatedAt).getTime() > new Date(ch.lastExtractedAt).getTime() ? acc + 1 : acc;
             }, 0)}
+            bibleBadgeCount={suggestions.length + updateSuggestions.filter(u => u.status === 'pending').length}
             onOpenSearch={() => setIsSearchOpen(true)}
           />
 

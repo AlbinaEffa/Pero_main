@@ -27,6 +27,8 @@ interface Props {
   onToggleFocusMode: () => void;
   /** Badge count for the sync panel button (stale + unknown chapters) */
   syncBadgeCount: number;
+  /** Badge for «Библия»: pending entities + update suggestions waiting for approval */
+  bibleBadgeCount: number;
   onOpenSearch: () => void;
 }
 
@@ -60,6 +62,7 @@ export function BottomToolbar({
   isFocusMode,
   onToggleFocusMode,
   syncBadgeCount,
+  bibleBadgeCount,
   onOpenSearch,
 }: Props) {
   // На < xl правые панели становятся оверлеем шириной 320px — сдвигаем тулбар
@@ -166,14 +169,24 @@ export function BottomToolbar({
 
           <button
             onClick={() => onSetBibleMenuOpen(!isBibleMenuOpen)}
-            className={`p-2 transition-colors rounded-lg outline-none focus:outline-none focus:ring-0 flex items-center justify-center shrink-0 ${
+            className={`relative p-2 transition-colors rounded-lg outline-none focus:outline-none focus:ring-0 flex items-center justify-center shrink-0 ${
               isBibleOpen || isBibleMenuOpen
                 ? 'bg-[#1e2d1f] text-white'
                 : 'bg-transparent text-[#6b7280] hover:bg-[#f5f0e8] hover:text-[#1e2d1f]'
             }`}
-            title="Библия истории" aria-label="Библия истории"
+            title={bibleBadgeCount > 0
+              ? `Библия истории — ${bibleBadgeCount} на одобрение`
+              : 'Библия истории'}
+            aria-label={bibleBadgeCount > 0
+              ? `Библия истории, ${bibleBadgeCount} ждут одобрения`
+              : 'Библия истории'}
           >
             <BookOpen size={18} />
+            {bibleBadgeCount > 0 && !isBibleOpen && !isBibleMenuOpen && (
+              <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] flex items-center justify-center bg-[#71597F] text-white text-[8px] font-bold rounded-full leading-none px-0.5">
+                {bibleBadgeCount > 9 ? '9+' : bibleBadgeCount}
+              </span>
+            )}
           </button>
 
           <button

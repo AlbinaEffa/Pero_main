@@ -2,9 +2,17 @@ import { useState, useMemo } from 'react';
 import {
   X, Check, Sparkles, ChevronLeft, Users, MapPin, Box, Globe,
   ChevronRight, RotateCcw, ExternalLink,
-  BookOpen,
+  BookOpen, LayoutGrid, Share2,
 } from 'lucide-react';
 import { BIBLE_MENU_ITEMS } from './constants';
+import { PresenceLens } from './PresenceLens';
+
+type LensMode = 'catalog' | 'presence';
+const LENSES: { id: LensMode | 'links'; label: string; icon: typeof BookOpen; soon?: boolean }[] = [
+  { id: 'catalog',  label: 'Каталог',     icon: BookOpen },
+  { id: 'presence', label: 'Присутствие', icon: LayoutGrid },
+  { id: 'links',    label: 'Связи',       icon: Share2, soon: true },
+];
 import { Entity, EntityLink, EntityEvent, BibleUpdateSuggestion } from './types';
 import {
   significanceLabel, significanceColor, groupBySignificance,
@@ -40,6 +48,8 @@ interface Props {
   onBulkRejectChapter: (chapterId: string) => void;
   /** Navigate the editor to the source location of this update. */
   onOpenInEditor: (chapterId: string, searchHighlight: string, searchQuery: string) => void;
+  /** Entity ids flagged with a possible contradiction (highlighted on lenses). */
+  contradictions: Set<string>;
   onClose: () => void;
 }
 
@@ -73,8 +83,9 @@ export function StoryBiblePanel({
   onApproveSuggestion, onRejectSuggestion,
   onAcceptUpdate, onRejectUpdate, onDismissUpdate,
   onBulkDismissChapter, onBulkRejectChapter,
-  onOpenInEditor, onClose,
+  onOpenInEditor, contradictions, onClose,
 }: Props) {
+  const [lensMode, setLensMode] = useState<LensMode>('catalog');
   const [selectedCharId, setSelectedCharId]   = useState<string | null>(null);
   const [selectedLocId,  setSelectedLocId]    = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId]   = useState<string | null>(null);
@@ -179,7 +190,30 @@ export function StoryBiblePanel({
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* Переключатель линз: Каталог · Присутствие · Связи(скоро) */}
+      <div className="flex gap-1.5 px-3 py-2 border-b border-[#1e2d1f]/5 bg-white/20">
+        {LENSES.map(l => (
+          <button
+            key={l.id}
+            onClick={() => { if (!l.soon) setLensMode(l.id as LensMode); }}
+            disabled={l.soon}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
+              l.soon
+                ? 'text-[#1e2d1f]/30 cursor-default'
+                : lensMode === l.id
+                ? 'bg-[#1e2d1f] text-[#f5f0e8]'
+                : 'text-[#1e2d1f]/55 hover:bg-[#1e2d1f]/[0.06]'
+            }`}
+            title={l.soon ? 'Скоро' : l.label}
+          >
+            <l.icon size={13} />
+            {l.label}{l.soon ? ' · скоро' : ''}
+          </button>
+        ))}
+      </div>
+
+      {/* Tabs (только для линзы «Каталог») */}
+      {lensMode === 'catalog' && (
       <div
         className="flex px-2 pt-2 border-b border-[#1e2d1f]/5 bg-white/40 overflow-x-auto"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
@@ -209,8 +243,19 @@ export function StoryBiblePanel({
           </button>
         ))}
       </div>
+      )}
 
       <div className="flex-1 overflow-y-auto p-4">
+        {lensMode === 'presence' ? (
+          <PresenceLens
+            entities={approvedEntities}
+            events={entityEvents}
+            links={entityLinks}
+            chapters={chapters}
+            contradictions={contradictions}
+            onJumpToChapter={(chapterId, name) => onOpenInEditor(chapterId, name, name)}
+          />
+        ) : (<>
 
         {/* ── INBOX TAB ── */}
         {activeBibleTab === 'inbox' && (
@@ -566,6 +611,7 @@ export function StoryBiblePanel({
             </div>
           );
         })()}
+        </>)}
       </div>
     </div>
   );

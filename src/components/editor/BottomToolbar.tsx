@@ -1,6 +1,6 @@
 import {
   Mic, MicOff, Sparkles, BookOpen, Bookmark, X,
-  GitBranch, Activity, Maximize2, Minimize2, BarChart2,
+  Telescope, RefreshCw, Maximize2, Minimize2, BarChart2,
 } from 'lucide-react';
 import { BIBLE_MENU_ITEMS } from './constants';
 
@@ -208,9 +208,9 @@ export function BottomToolbar({
                 ? 'bg-emerald-700 text-white'
                 : 'bg-transparent text-[#6b7280] hover:bg-[#f5f0e8] hover:text-[#1e2d1f]'
             }`}
-            title="Ревизия" aria-label="Ревизия"
+            title="Поиск по миру: найти сущность в главах, арка персонажа" aria-label="Поиск по миру"
           >
-            <GitBranch size={18} />
+            <Telescope size={18} />
           </button>
 
           <button
@@ -227,7 +227,7 @@ export function BottomToolbar({
               ? `Синхронизация, ${syncBadgeCount} ${pluralChapters(syncBadgeCount)} ждут обновления библии`
               : 'Синхронизация проекта с библией'}
           >
-            <Activity size={18} />
+            <RefreshCw size={18} />
             {syncBadgeCount > 0 && !isSyncOpen && (
               <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] flex items-center justify-center bg-amber-400 text-white text-[8px] font-bold rounded-full leading-none px-0.5">
                 {syncBadgeCount > 9 ? '9+' : syncBadgeCount}

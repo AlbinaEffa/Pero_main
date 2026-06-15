@@ -30,6 +30,9 @@ interface AppSidebarProps {
   /** Если задан — показывается навигация проекта (Библия / Идеи). */
   projectId?: string;
   active: ActivePage;
+  /** Если задан — «Библия истории» открывает инспектор прямо в редакторе
+      (а не уводит на отдельную страницу /bible). REORG_PLAN шаг 3. */
+  onOpenBible?: () => void;
   /** Если задан — показывается кнопка сворачивания панели. */
   onCollapse?: () => void;
   /** Середина: список глав (режим проекта). На глобальных страницах не передаётся. */
@@ -43,7 +46,7 @@ const navIdle = 'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm fon
 const navActive = 'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold bg-white/15 text-white';
 
 export function AppSidebar({
-  projectId, active, onCollapse, children, bottomExtra,
+  projectId, active, onOpenBible, onCollapse, children, bottomExtra,
 }: AppSidebarProps) {
   return (
     <aside className="w-[220px] bg-[#1e2d1f] text-white/80 flex flex-col flex-shrink-0 shadow-xl z-20">
@@ -85,10 +88,17 @@ export function AppSidebar({
         {/* Контекст проекта — одинаковый на Редакторе / Библии / Идеях */}
         {projectId && (
           <>
-            <Link to={`/bible/${projectId}`} className={active === 'bible' ? navActive : navIdle}>
-              <BookOpen size={16} className="text-white/55" />
-              Библия истории
-            </Link>
+            {onOpenBible ? (
+              <button onClick={onOpenBible} className={active === 'bible' ? navActive : navIdle}>
+                <BookOpen size={16} className="text-white/55" />
+                Библия истории
+              </button>
+            ) : (
+              <Link to={`/bible/${projectId}`} className={active === 'bible' ? navActive : navIdle}>
+                <BookOpen size={16} className="text-white/55" />
+                Библия истории
+              </Link>
+            )}
 
             <Link to={`/ideas/${projectId}`} className={active === 'ideas' ? navActive : navIdle}>
               <Lightbulb size={16} className="text-white/55" />

@@ -24,6 +24,8 @@ interface Props {
   lastSavedAt?: Date | null;
   saveError?: boolean;
   editorFont: EditorFontName;
+  /** «Библия истории» открывает инспектор в редакторе (а не страницу /bible). */
+  onOpenBible?: () => void;
   /** Свернуть боковую панель (на десктопе). */
   onCollapse?: () => void;
 }
@@ -44,6 +46,7 @@ export function ChapterSidebar({
   lastSavedAt,
   saveError,
   editorFont,
+  onOpenBible,
   onCollapse,
 }: Props) {
   const navigate = useNavigate();
@@ -168,6 +171,7 @@ export function ChapterSidebar({
     <AppSidebar
       projectId={projectId}
       active="editor"
+      onOpenBible={onOpenBible}
       onCollapse={onCollapse}
       bottomExtra={saveStatus}
     >

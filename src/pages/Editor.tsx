@@ -1139,6 +1139,7 @@ export default function Editor() {
             lastSavedAt={lastSavedAt}
             saveError={saveError}
             editorFont={editorFont}
+            onOpenBible={() => handleBibleMenuClick('characters')}
             onCollapse={() => setIsChaptersCollapsed(true)}
           />
           </div>

@@ -1184,28 +1184,8 @@ export default function Editor() {
             isDictationProcessing={isDictationProcessing}
             isDictationSupported={isSupported}
             onToggleDictation={toggleListening}
-            isCoauthoring={isCoauthoring}
-            onToggleCoauthor={handleToggleCoauthor}
-            isBibleOpen={isBibleOpen}
-            isBibleMenuOpen={isBibleMenuOpen}
-            onSetBibleMenuOpen={setIsBibleMenuOpen}
-            onBibleMenuClick={handleBibleMenuClick}
-            isReferenceOpen={isReferenceOpen}
-            onToggleReference={handleToggleReference}
-            isRevisionOpen={isRevisionOpen}
-            onToggleRevision={handleToggleRevision}
-            isSyncOpen={isSyncOpen}
-            onToggleSync={handleToggleSync}
-            isStatsOpen={isStatsOpen}
-            onToggleStats={handleToggleStats}
             isFocusMode={isFocusMode}
             onToggleFocusMode={handleToggleFocusMode}
-            syncBadgeCount={chapters.reduce((acc, ch) => {
-              if (!ch.lastExtractedAt) return acc + 1;
-              return new Date(ch.updatedAt).getTime() > new Date(ch.lastExtractedAt).getTime() ? acc + 1 : acc;
-            }, 0)}
-            bibleBadgeCount={suggestions.length + updateSuggestions.filter(u => u.status === 'pending').length}
-            onOpenSearch={() => setIsSearchOpen(true)}
           />
 
           {/* ── Match navigation bar ── */}
@@ -1547,6 +1527,12 @@ export default function Editor() {
             isWorldOpen={isBibleOpen}
             onOpenCoauthor={handleToggleCoauthor}
             isCoauthorOpen={isCoauthoring}
+            onOpenReference={handleToggleReference}
+            isReferenceOpen={isReferenceOpen}
+            onOpenRevision={handleToggleRevision}
+            isRevisionOpen={isRevisionOpen}
+            onOpenStats={handleToggleStats}
+            isStatsOpen={isStatsOpen}
           />
         )}
       </div>

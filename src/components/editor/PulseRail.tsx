@@ -1,5 +1,6 @@
 import {
   Loader2, CheckCircle2, Eye, Bell, AlertTriangle, BookOpen, Feather,
+  Bookmark, Telescope, BarChart2,
 } from 'lucide-react';
 
 interface Props {
@@ -22,6 +23,14 @@ interface Props {
   isWorldOpen: boolean;
   onOpenCoauthor: () => void;
   isCoauthorOpen: boolean;
+
+  /** Secondary cluster — rehoused from the old bottom toolbar. */
+  onOpenReference: () => void;
+  isReferenceOpen: boolean;
+  onOpenRevision: () => void;
+  isRevisionOpen: boolean;
+  onOpenStats: () => void;
+  isStatsOpen: boolean;
 }
 
 /**
@@ -36,14 +45,18 @@ export function PulseRail({
   contradictionsCount, onOpenContradictions,
   onOpenWorld, isWorldOpen,
   onOpenCoauthor, isCoauthorOpen,
+  onOpenReference, isReferenceOpen,
+  onOpenRevision, isRevisionOpen,
+  onOpenStats, isStatsOpen,
 }: Props) {
   const cell =
-    'relative flex items-center justify-center w-10 h-10 rounded-xl transition-colors outline-none focus:outline-none focus:ring-0';
+    'relative flex items-center justify-center w-10 h-10 rounded-xl transition-colors outline-none focus:outline-none focus:ring-0 flex-shrink-0';
   const idle = 'text-[#6b7280] hover:bg-[#1e2d1f]/[0.06] hover:text-[#1e2d1f]';
+  const active = 'bg-[#1e2d1f] text-white hover:bg-[#1e2d1f]';
 
   return (
     <div
-      className="hidden md:flex flex-col items-center gap-1.5 flex-shrink-0 w-12 py-3 z-30
+      className="hidden md:flex flex-col items-center gap-1.5 flex-shrink-0 w-12 py-3 z-30 overflow-y-auto hide-scrollbar
                  bg-[#f5f0e8]/80 backdrop-blur-sm border-l border-[#1e2d1f]/10"
       role="toolbar"
       aria-label="Пульс мира"
@@ -118,8 +131,8 @@ export function PulseRail({
       {/* 4. Мир — лончер линз */}
       <button
         onClick={onOpenWorld}
-        className={`${cell} ${isWorldOpen ? 'bg-[#1e2d1f] text-white hover:bg-[#1e2d1f]' : idle}`}
-        title="Мир — персонажи, локации, предметы, связи"
+        className={`${cell} ${isWorldOpen ? active : idle}`}
+        title="Мир — персонажи, локации, предметы, связи, линзы"
         aria-label="Открыть Мир"
       >
         <BookOpen size={18} />
@@ -127,12 +140,45 @@ export function PulseRail({
 
       {/* 5. Перо — спроси про мир */}
       <button
+        data-hint="coauthor"
         onClick={onOpenCoauthor}
-        className={`${cell} ${isCoauthorOpen ? 'bg-[#1e2d1f] text-white hover:bg-[#1e2d1f]' : idle}`}
+        className={`${cell} ${isCoauthorOpen ? active : idle}`}
         title="Перо — спросить про историю"
         aria-label="Открыть чат с Пером"
       >
         <Feather size={18} />
+      </button>
+
+      <div className="w-5 h-px bg-[#1e2d1f]/10 my-1" />
+
+      {/* 6. Справочник главы */}
+      <button
+        onClick={onOpenReference}
+        className={`${cell} ${isReferenceOpen ? active : idle}`}
+        title="Справочник — сущности этой главы"
+        aria-label="Справочник главы"
+      >
+        <Bookmark size={18} />
+      </button>
+
+      {/* 7. Поиск по миру (бывшая Ревизия) */}
+      <button
+        onClick={onOpenRevision}
+        className={`${cell} ${isRevisionOpen ? active : idle}`}
+        title="Поиск по миру — где встречается сущность, арка персонажа"
+        aria-label="Поиск по миру"
+      >
+        <Telescope size={18} />
+      </button>
+
+      {/* 8. Статистика */}
+      <button
+        onClick={onOpenStats}
+        className={`${cell} ${isStatsOpen ? active : idle}`}
+        title="Статистика написанного"
+        aria-label="Статистика"
+      >
+        <BarChart2 size={18} />
       </button>
     </div>
   );

@@ -503,15 +503,37 @@ export default function Editor() {
   }, [projectId]);
   useEffect(() => { loadContradictions(); }, [loadContradictions]);
 
-  /** Запустить полный скан книги на нестыковки (worker), затем подтянуть отчёт. */
+  // Живой статус скана (№1 — обратная связь ИИ): прогресс по главам + результат.
+  const [scanState, setScanState] = useState<{ status: 'running' | 'done' | 'failed'; scanned: number; total: number; found: number } | null>(null);
+  const scanPollRef = useRef<number | null>(null);
+
+  /** Запустить полный скан книги на нестыковки (worker) с поллингом прогресса. */
   const runContradictionScan = useCallback(async () => {
     if (!projectId) return;
+    if (scanPollRef.current) window.clearTimeout(scanPollRef.current);
     try {
       await api.post(`/bible/${projectId}/contradictions/scan`, {});
-      // скан идёт в фоне — подтягиваем отчёт через паузы
-      [4000, 10000, 20000].forEach(ms => setTimeout(loadContradictions, ms));
-    } catch { /* квота/ошибка — тихо */ }
-  }, [projectId, loadContradictions]);
+      setScanState({ status: 'running', scanned: 0, total: 0, found: 0 });
+      let tries = 0;
+      const poll = async () => {
+        tries++;
+        try {
+          const d = await api.get<{ report: { status: string; totalChapters: number; scannedChapters: number } | null; issues: ScanIssue[] }>(`/bible/${projectId}/contradictions`);
+          const open = (d.issues ?? []).filter(i => i.status === 'open');
+          setContradictionIssues(open);
+          const rep = d.report;
+          if (rep && rep.status === 'running' && tries < 40) {
+            setScanState({ status: 'running', scanned: rep.scannedChapters ?? 0, total: rep.totalChapters ?? 0, found: open.length });
+            scanPollRef.current = window.setTimeout(poll, 3000);
+          } else {
+            setScanState({ status: rep?.status === 'failed' ? 'failed' : 'done', scanned: rep?.scannedChapters ?? 0, total: rep?.totalChapters ?? 0, found: open.length });
+            window.setTimeout(() => setScanState(null), 5000);
+          }
+        } catch { setScanState(null); }
+      };
+      scanPollRef.current = window.setTimeout(poll, 2500);
+    } catch { setScanState(null); /* квота/ошибка */ }
+  }, [projectId]);
 
   // Wrap rawHandleExtract to also optimistically mark the chapter as freshly extracted.
   const handleExtract = useCallback(async () => {
@@ -1277,6 +1299,23 @@ export default function Editor() {
             }
           }}
         >
+          {/* №1 — живой статус скана нестыковок */}
+          {scanState && (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#1e2d1f] text-[#f5f0e8] text-[12.5px] shadow-lg">
+              {scanState.status === 'running' ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-[#f5f0e8]/30 border-t-[#f5f0e8] rounded-full animate-spin" />
+                  Перо проверяет книгу{scanState.total ? `… ${scanState.scanned}/${scanState.total}` : '…'}
+                </>
+              ) : scanState.status === 'failed' ? (
+                <><AlertTriangle size={14} className="text-amber-300" /> Проверка прервалась — попробуйте ещё раз</>
+              ) : scanState.found > 0 ? (
+                <><AlertTriangle size={14} className="text-[#e0a89e]" /> Перо нашло нестыковок: {scanState.found}</>
+              ) : (
+                <><Eye size={14} className="text-emerald-300" /> Нестыковок не найдено</>
+              )}
+            </div>
+          )}
           <EditorCanvas
             editor={editor}
             isSaving={isSaving}

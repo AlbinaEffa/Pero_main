@@ -1331,16 +1331,18 @@ export default function Editor() {
             «Развернуть» — центрированный блок до левого меню (не на весь экран, с отступами).
             Закрытие — Esc / крестик / тап по затемнению (на узких). */}
         <aside
-          className={`bg-[#f5f0e8] border-[#1e2d1f]/10 transition-all duration-300 ease-in-out overflow-hidden absolute z-40 shadow-2xl ${
+          className={`bg-[#f5f0e8] border-[#1e2d1f]/10 transition-all duration-300 ease-in-out overflow-hidden absolute shadow-2xl ${
             !(!isFocusMode && isAnySidePanelOpen)
-              ? 'top-14 bottom-0 right-12 w-[min(92vw,360px)] border-l opacity-0 translate-x-full pointer-events-none'
+              ? 'top-14 bottom-0 right-12 w-[min(92vw,360px)] border-l opacity-0 translate-x-full pointer-events-none z-40'
+              : isBibleOpen
+              ? 'inset-0 w-full z-50 opacity-100 translate-x-0 pointer-events-auto'
               : isInspectorExpanded
-              ? `top-16 bottom-6 max-md:top-12 max-md:bottom-3 right-[68px] max-md:right-3 left-6 max-md:left-3 ${isChaptersCollapsed ? '' : 'lg:left-[244px]'} rounded-2xl border opacity-100 translate-x-0 pointer-events-auto`
-              : 'top-14 bottom-0 right-12 max-md:right-0 max-md:top-0 w-[min(92vw,360px)] border-l border-t max-md:border-t-0 opacity-100 translate-x-0 pointer-events-auto'
+              ? `z-40 top-16 bottom-6 max-md:top-12 max-md:bottom-3 right-[68px] max-md:right-3 left-6 max-md:left-3 ${isChaptersCollapsed ? '' : 'lg:left-[244px]'} rounded-2xl border opacity-100 translate-x-0 pointer-events-auto`
+              : 'z-40 top-14 bottom-0 right-12 max-md:right-0 max-md:top-0 w-[min(92vw,360px)] border-l border-t max-md:border-t-0 opacity-100 translate-x-0 pointer-events-auto'
           }`}
         >
-          {/* Развернуть / свернуть — рядом с крестиком панели */}
-          {(!isFocusMode && isAnySidePanelOpen) && (
+          {/* Развернуть / свернуть — рядом с крестиком (для узких панелей; «Мир» и так на весь экран) */}
+          {(!isFocusMode && isAnySidePanelOpen && !isBibleOpen) && (
             <button
               onClick={() => setIsInspectorExpanded(v => !v)}
               className="absolute top-3.5 right-[54px] z-50 p-1.5 rounded-md text-[#1e2d1f]/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/5 transition-colors"
@@ -1375,7 +1377,7 @@ export default function Editor() {
               onOpenInEditor={handleOpenInEditor}
               contradictions={contradictions}
               currentChapterId={chapterId}
-              isExpanded={isInspectorExpanded}
+              isExpanded={isInspectorExpanded || isBibleOpen}
               onClose={() => setIsBibleOpen(false)}
             />
           )}

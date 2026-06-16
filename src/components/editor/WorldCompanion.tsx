@@ -63,7 +63,7 @@ export function WorldCompanion({
   if (collapsed) return null;
 
   return (
-    <div className="hidden md:flex flex-col w-[288px] flex-shrink-0 border-l border-[#1e2d1f]/10 bg-[#f5f0e8]/90">
+    <div className="flex flex-col flex-shrink-0 border-l border-[#1e2d1f]/10 bg-[#f5f0e8]/95 w-[288px] max-md:fixed max-md:inset-0 max-md:w-full max-md:z-[60]">
       {/* Header */}
       <div className="flex items-center gap-2 px-3.5 py-3 border-b border-[#1e2d1f]/5">
         <Feather size={16} className="text-[#1e2d1f]" />

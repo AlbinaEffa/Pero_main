@@ -327,7 +327,10 @@ export default function Editor() {
   const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [isCommandOpen, setIsCommandOpen] = useState(false);
   const [isInspectorExpanded, setIsInspectorExpanded] = useState(false);
-  const [isCompanionCollapsed, setIsCompanionCollapsed] = useState(false);
+  // На узких экранах спутник по умолчанию свёрнут (он полноэкранный) — сначала видно письмо.
+  const [isCompanionCollapsed, setIsCompanionCollapsed] = useState(() => {
+    try { return window.matchMedia('(max-width: 767px)').matches; } catch { return false; }
+  });
   const [companionMode, setCompanionMode] = useState<'scene' | 'chat'>('scene');
   const [contradictionPopover, setContradictionPopover] = useState<{ name: string; x: number; y: number; issue?: string; issueChapterId?: string | null } | null>(null);
   const [totalProjectWords, setTotalProjectWords] = useState(0);

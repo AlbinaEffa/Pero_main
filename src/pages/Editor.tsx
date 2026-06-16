@@ -46,7 +46,8 @@ import Settings from './Settings';
 import { Chapter, Entity, EntityLink, EntityEvent } from '../components/editor/types';
 import { AhaCelebration } from '../components/AhaCelebration';
 import { Users, MapPin, Box, Scale, Bookmark, X, AlertTriangle, ChevronUp, ChevronDown,
-  Eye, Bell, BookOpen, Feather, Telescope, BarChart2, Search, FolderSearch, Download, Maximize2, Minimize2, Settings as SettingsIcon } from 'lucide-react';
+  Eye, Bell, BookOpen, Feather, Telescope, BarChart2, Search, FolderSearch, Download, Maximize2, Minimize2, Settings as SettingsIcon,
+  ChevronLeft, ChevronRight } from 'lucide-react';
 
 type EditorFontName = 'cormorant' | 'literata' | 'source-serif';
 
@@ -1299,6 +1300,30 @@ export default function Editor() {
             }
           }}
         >
+          {/* №3 — навигация по главам: пред/след без захода в список */}
+          {!isFocusMode && (() => {
+            const sorted = [...chapters].sort((a, b) => a.order - b.order);
+            const idx = sorted.findIndex(c => c.id === chapterId);
+            const prev = idx > 0 ? sorted[idx - 1] : null;
+            const next = idx >= 0 && idx < sorted.length - 1 ? sorted[idx + 1] : null;
+            const go = (id: string) => navigate(`/editor/${projectId}/${id}`);
+            return (
+              <>
+                {prev && (
+                  <button onClick={() => go(prev.id)} title={`← ${prev.title}`} aria-label="Предыдущая глава"
+                    className="absolute left-1 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full flex items-center justify-center text-[#1e2d1f]/30 hover:text-[#1e2d1f] hover:bg-white/80 transition-colors">
+                    <ChevronLeft size={20} />
+                  </button>
+                )}
+                {next && (
+                  <button onClick={() => go(next.id)} title={`${next.title} →`} aria-label="Следующая глава"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full flex items-center justify-center text-[#1e2d1f]/30 hover:text-[#1e2d1f] hover:bg-white/80 transition-colors">
+                    <ChevronRight size={20} />
+                  </button>
+                )}
+              </>
+            );
+          })()}
           {/* №1 — живой статус скана нестыковок */}
           {scanState && (
             <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#1e2d1f] text-[#f5f0e8] text-[12.5px] shadow-lg">

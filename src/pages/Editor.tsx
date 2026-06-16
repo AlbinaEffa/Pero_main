@@ -864,6 +864,22 @@ export default function Editor() {
   }, [allApprovedEntities, chapterLinkedEntities, editor]);
 
   // Contradiction detection: same name (case-insensitive) with differing descriptions
+  // Нестыковки, помеченные автором как «не нестыковка» — больше не флагаем (B1).
+  const [dismissedContradictions, setDismissedContradictions] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem(`pero_dismissed_contradictions_${projectId}`);
+      return new Set<string>(raw ? JSON.parse(raw) : []);
+    } catch { return new Set<string>(); }
+  });
+  const dismissContradiction = useCallback((name: string) => {
+    const key = name.trim().toLowerCase();
+    setDismissedContradictions(prev => {
+      const next = new Set(prev); next.add(key);
+      try { localStorage.setItem(`pero_dismissed_contradictions_${projectId}`, JSON.stringify([...next])); } catch { /* ignore */ }
+      return next;
+    });
+  }, [projectId]);
+
   const contradictions = useMemo(() => {
     const nameGroups = new Map<string, Entity[]>();
     allApprovedEntities.forEach(e => {
@@ -872,15 +888,16 @@ export default function Editor() {
       nameGroups.get(key)!.push(e);
     });
     const flagged = new Set<string>();
-    nameGroups.forEach(group => {
+    nameGroups.forEach((group, key) => {
       if (group.length < 2) return;
+      if (dismissedContradictions.has(key)) return; // автор пометил «не нестыковка»
       const uniqueDescs = new Set(
         group.map(e => e.description?.trim().toLowerCase()).filter(Boolean)
       );
       if (uniqueDescs.size > 1) group.forEach(e => flagged.add(e.id));
     });
     return flagged;
-  }, [allApprovedEntities]);
+  }, [allApprovedEntities, dismissedContradictions]);
 
   // Подсветка нестыковок прямо в тексте: имена сущностей с возможным противоречием
   // подчёркиваются в рукописи (сигнал приходит к автору, а не прячется в панели).
@@ -1669,6 +1686,7 @@ export default function Editor() {
           onClose={() => setContradictionPopover(null)}
           onJump={(chapterId, name) => { setContradictionPopover(null); handleOpenInEditor(chapterId, name, name); }}
           onOpenWorld={() => { setContradictionPopover(null); handleBibleMenuClick('characters'); }}
+          onDismiss={() => { dismissContradiction(contradictionPopover.name); setContradictionPopover(null); }}
         />
       )}
 

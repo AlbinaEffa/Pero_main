@@ -14,6 +14,8 @@ interface Props {
   onClose: () => void;
   onJump: (chapterId: string, name: string) => void;
   onOpenWorld: () => void;
+  /** Пометить «не нестыковка» — больше не подсвечивать. */
+  onDismiss: () => void;
 }
 
 /**
@@ -21,7 +23,7 @@ interface Props {
  * Показывает расходящиеся описания по главам и даёт перейти к ним. «Вау» нативно:
  * автор видит конфликт прямо там, где пишет, и сразу прыгает разбираться.
  */
-export function ContradictionPopover({ name, group, chapters, x, y, onClose, onJump, onOpenWorld }: Props) {
+export function ContradictionPopover({ name, group, chapters, x, y, onClose, onJump, onOpenWorld, onDismiss }: Props) {
   useEffect(() => {
     const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onEsc);
@@ -63,9 +65,14 @@ export function ContradictionPopover({ name, group, chapters, x, y, onClose, onJ
               );
             })}
           </div>
-          <button onClick={onOpenWorld} className="mt-2.5 w-full flex items-center justify-center gap-1.5 text-[11.5px] font-medium text-[#1e2d1f]/65 hover:text-[#1e2d1f] border border-[#1e2d1f]/10 rounded-lg py-1.5 transition-colors">
-            Открыть в Мире <ArrowRight size={12} />
-          </button>
+          <div className="flex gap-2 mt-2.5">
+            <button onClick={onOpenWorld} className="flex-1 flex items-center justify-center gap-1.5 text-[11.5px] font-medium text-[#1e2d1f]/70 hover:text-[#1e2d1f] border border-[#1e2d1f]/10 hover:border-[#1e2d1f]/20 rounded-lg py-1.5 transition-colors">
+              Исправить в Мире <ArrowRight size={12} />
+            </button>
+            <button onClick={onDismiss} className="flex items-center justify-center gap-1 text-[11.5px] font-medium text-[#1e2d1f]/45 hover:text-[#1e2d1f]/70 px-3 rounded-lg transition-colors" title="Это не нестыковка — больше не подсвечивать">
+              Не нестыковка
+            </button>
+          </div>
         </div>
       </div>
     </>

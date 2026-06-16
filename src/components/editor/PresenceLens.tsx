@@ -112,6 +112,15 @@ export function PresenceLens({ entities, events, links, chapters, contradictions
             const cells = presence.get(e.id)!;
             const pigment = TYPE_PIGMENT[e.type] ?? '#54627F';
             const hasConflict = contradictions.has(e.id);
+            // Провисание: самый длинный пропуск между первым и последним появлением.
+            const presentIdx = sortedChapters.map((c, i) => (cells.has(c.id) ? i : -1)).filter(i => i >= 0);
+            const firstIdx = presentIdx.length ? presentIdx[0] : -1;
+            const lastIdx = presentIdx.length ? presentIdx[presentIdx.length - 1] : -1;
+            let maxGap = 0, cur = 0;
+            for (let i = firstIdx; i >= 0 && i <= lastIdx; i++) {
+              if (cells.has(sortedChapters[i].id)) cur = 0; else { cur++; if (cur > maxGap) maxGap = cur; }
+            }
+            const hasLongGap = maxGap >= 3;
             return (
               <div key={e.id} className="flex items-center h-[22px] group">
                 <div
@@ -128,12 +137,22 @@ export function PresenceLens({ entities, events, links, chapters, contradictions
                   <span className={`truncate ${hasConflict ? 'text-[#A14F44] font-medium' : 'text-[#1e2d1f]/80'}`}>
                     {e.name}
                   </span>
+                  {hasLongGap && (
+                    <span className="flex-shrink-0 text-[9px] text-[#A14F44]/70 font-mono" title={`Пропадает на ${maxGap} глав подряд`}>⋯{maxGap}</span>
+                  )}
                 </div>
-                {sortedChapters.map(c => {
+                {sortedChapters.map((c, i) => {
                   const present = cells.has(c.id);
                   const isFirst = firstChapter.get(e.id) === c.id;
                   if (!present) {
-                    return <div key={c.id} className="w-[18px] flex-shrink-0 flex justify-center"><span className="w-1 h-1 rounded-full bg-[#1e2d1f]/[0.07]" /></div>;
+                    const inGap = i > firstIdx && i < lastIdx;
+                    return (
+                      <div key={c.id} className="w-[18px] flex-shrink-0 flex justify-center">
+                        {inGap
+                          ? <span className="w-3 h-[2px] rounded-full" style={{ background: hasLongGap ? 'rgba(161,79,68,0.35)' : 'rgba(30,45,31,0.10)' }} title={hasLongGap ? `Провисание: ${maxGap} глав` : undefined} />
+                          : <span className="w-1 h-1 rounded-full bg-[#1e2d1f]/[0.07]" />}
+                      </div>
+                    );
                   }
                   return (
                     <div key={c.id} className="w-[18px] flex-shrink-0 flex justify-center">
@@ -167,6 +186,10 @@ export function PresenceLens({ entities, events, links, chapters, contradictions
         <span className="flex items-center gap-1">
           <span className="w-2.5 h-2.5 rounded-[2px] bg-[#A14F44] ring-1 ring-offset-1 ring-[#A14F44]" />
           впервые
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-[2px] rounded-full" style={{ background: 'rgba(161,79,68,0.35)' }} />
+          провисание (пропал на 3+ главы)
         </span>
       </div>
     </div>

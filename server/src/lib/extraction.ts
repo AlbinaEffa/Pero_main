@@ -165,6 +165,8 @@ export interface RawContradiction {
   entity: string;
   issue: string;
   severity: string;
+  /** Точная фраза из текста главы, которая противоречит Библии (для подсветки в тексте). */
+  quote?: string;
 }
 
 /**
@@ -191,7 +193,8 @@ ${plainText.trim()}
 
 Верни ТОЛЬКО валидный JSON-массив без markdown-обёртки:
 [
-  { "entity": "Имя сущности из Библии", "issue": "Краткое описание противоречия", "severity": "low|medium|high" }
+  { "entity": "Имя сущности из Библии", "issue": "Краткое описание противоречия", "severity": "low|medium|high",
+    "quote": "точная фраза из текста главы (дословно, как в тексте), которая противоречит Библии — для подсветки" }
 ]`;
 }
 

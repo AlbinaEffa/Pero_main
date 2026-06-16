@@ -328,7 +328,7 @@ export default function Editor() {
   const [isInspectorExpanded, setIsInspectorExpanded] = useState(false);
   const [isCompanionCollapsed, setIsCompanionCollapsed] = useState(false);
   const [companionMode, setCompanionMode] = useState<'scene' | 'chat'>('scene');
-  const [contradictionPopover, setContradictionPopover] = useState<{ name: string; x: number; y: number } | null>(null);
+  const [contradictionPopover, setContradictionPopover] = useState<{ name: string; x: number; y: number; issue?: string; issueChapterId?: string | null } | null>(null);
   const [totalProjectWords, setTotalProjectWords] = useState(0);
   const [isRecheckingAll, setIsRecheckingAll] = useState(false);
   const [isReading, setIsReading] = useState(false);
@@ -490,6 +490,16 @@ export default function Editor() {
         setEntityEvents(data.events ?? []);
       })
       .catch(e => console.error('Failed to load bible entities:', e));
+  }, [projectId]);
+
+  // Отчёт о противоречиях (полный скан P1.2) — для подсветки конкретных фраз в тексте (B2).
+  type ScanIssue = { id: string; chapterId: string | null; entityName: string | null; issue: string; quote: string | null; severity: string; status: string };
+  const [contradictionIssues, setContradictionIssues] = useState<ScanIssue[]>([]);
+  useEffect(() => {
+    if (!projectId) return;
+    api.get<{ issues: ScanIssue[] }>(`/bible/${projectId}/contradictions`)
+      .then(d => setContradictionIssues((d.issues ?? []).filter(i => i.status === 'open')))
+      .catch(() => { /* отчёта ещё нет — подсвечиваем по именам (эвристика) */ });
   }, [projectId]);
 
   // Wrap rawHandleExtract to also optimistically mark the chapter as freshly extracted.
@@ -904,10 +914,12 @@ export default function Editor() {
   useEffect(() => {
     if (!editor) return;
     const names = allApprovedEntities.filter(e => contradictions.has(e.id)).map(e => e.name);
+    // B2: точные конфликтные фразы из отчёта по текущей главе — подсвечиваем их, а не только имена.
+    const quotes = contradictionIssues.filter(i => i.chapterId === chapterId && i.quote).map(i => i.quote!);
     try {
-      editor.view.dispatch(editor.view.state.tr.setMeta(contradictionHighlightKey, { terms: names }));
+      editor.view.dispatch(editor.view.state.tr.setMeta(contradictionHighlightKey, { terms: [...quotes, ...names] }));
     } catch { /* редактор ещё не готов — без подсветки */ }
-  }, [editor, contradictions, allApprovedEntities, chapterId, isLoadingContent]);
+  }, [editor, contradictions, allApprovedEntities, chapterId, isLoadingContent, contradictionIssues]);
 
   const isCreatingChapterRef = useRef(false);
 
@@ -1241,7 +1253,14 @@ export default function Editor() {
             const mark = (e.target as HTMLElement).closest('.contradiction-mark');
             if (mark) {
               const r = mark.getBoundingClientRect();
-              setContradictionPopover({ name: (mark.textContent || '').trim(), x: r.left, y: r.bottom });
+              const text = (mark.textContent || '').trim();
+              const hit = contradictionIssues.find(i => i.quote && i.quote.trim().toLowerCase() === text.toLowerCase());
+              setContradictionPopover({
+                name: hit?.entityName || text,
+                x: r.left, y: r.bottom,
+                issue: hit?.issue,
+                issueChapterId: hit?.chapterId ?? null,
+              });
             }
           }}
         >
@@ -1680,6 +1699,8 @@ export default function Editor() {
         <ContradictionPopover
           name={contradictionPopover.name}
           group={allApprovedEntities.filter(e => e.name.trim().toLowerCase() === contradictionPopover.name.toLowerCase())}
+          issueText={contradictionPopover.issue}
+          issueChapterId={contradictionPopover.issueChapterId}
           chapters={chapters.map(c => ({ id: c.id, title: c.title, order: c.order }))}
           x={contradictionPopover.x}
           y={contradictionPopover.y}

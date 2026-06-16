@@ -312,6 +312,7 @@ async function handleScanContradictions(
           chapterTitle: ch.title,
           entityName: (typeof it.entity === 'string' ? it.entity : '').slice(0, 200) || null,
           issue: it.issue.trim().slice(0, 1000),
+          quote: (typeof it.quote === 'string' ? it.quote.trim().slice(0, 300) : '') || null,
           severity: VALID_SEVERITY.has(it.severity) ? it.severity : 'medium',
           status: 'open' as const,
         }));

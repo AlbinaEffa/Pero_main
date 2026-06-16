@@ -16,6 +16,9 @@ interface Props {
   onOpenWorld: () => void;
   /** Пометить «не нестыковка» — больше не подсвечивать. */
   onDismiss: () => void;
+  /** Текст конкретной нестыковки из скана (B2), если кликнули по фразе. */
+  issueText?: string;
+  issueChapterId?: string | null;
 }
 
 /**
@@ -23,7 +26,7 @@ interface Props {
  * Показывает расходящиеся описания по главам и даёт перейти к ним. «Вау» нативно:
  * автор видит конфликт прямо там, где пишет, и сразу прыгает разбираться.
  */
-export function ContradictionPopover({ name, group, chapters, x, y, onClose, onJump, onOpenWorld, onDismiss }: Props) {
+export function ContradictionPopover({ name, group, chapters, x, y, onClose, onJump, onOpenWorld, onDismiss, issueText }: Props) {
   useEffect(() => {
     const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onEsc);
@@ -50,6 +53,9 @@ export function ContradictionPopover({ name, group, chapters, x, y, onClose, onJ
         </div>
         <div className="p-3">
           <div className="text-[13px] font-medium text-[#1e2d1f] mb-2">{name}</div>
+          {issueText && (
+            <div className="text-[12px] text-[#A14F44] leading-snug mb-2.5 bg-[#A14F44]/[0.06] rounded-lg px-2.5 py-2">{issueText}</div>
+          )}
           <div className="flex flex-col gap-2">
             {group.map(e => {
               const ch = chapterTitle(e.chapterId);

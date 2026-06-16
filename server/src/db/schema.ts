@@ -161,6 +161,7 @@ export const contradictionIssues = pgTable('contradiction_issues', {
   chapterTitle: text('chapter_title'),
   entityName:   text('entity_name'),
   issue:        text('issue').notNull(),
+  quote:        text('quote'),   // точная конфликтная фраза из текста главы (для подсветки)
   severity:     text('severity').notNull().default('medium'), // low | medium | high
   status:       text('status').notNull().default('open'),     // open | dismissed
   createdAt:    timestamp('created_at').defaultNow().notNull(),

@@ -268,8 +268,8 @@ export function StoryBiblePanel({
 
       </div>
 
-      {/* Переключатель линз + scope «эта глава / весь проект» */}
-      <div className="flex items-center gap-1.5 px-3 py-2 border-b border-[#1e2d1f]/5 bg-white/20 overflow-x-auto hide-scrollbar">
+      {/* Переключатель линз + scope — переносится, ничего не уезжает вбок */}
+      <div className="flex items-center flex-wrap gap-1.5 px-3 py-2 border-b border-[#1e2d1f]/5 bg-white/20">
         {LENSES.map(l => (
           <button
             key={l.id}
@@ -309,9 +309,9 @@ export function StoryBiblePanel({
                   className={`px-2 py-0.5 rounded-md transition-colors ${
                     scope === s ? 'bg-white text-[#1e2d1f] shadow-sm' : 'text-[#1e2d1f]/50 hover:text-[#1e2d1f]'
                   } ${s === 'chapter' && !currentChapterId ? 'opacity-40 cursor-default' : ''}`}
-                  title={s === 'chapter' ? 'Только эта глава' : 'Весь проект'}
+                  title={s === 'chapter' ? 'Показать только эту главу' : 'Показать всю книгу'}
                 >
-                  {s === 'chapter' ? 'глава' : 'проект'}
+                  {s === 'chapter' ? 'Эта глава' : 'Вся книга'}
                 </button>
               ))}
             </div>

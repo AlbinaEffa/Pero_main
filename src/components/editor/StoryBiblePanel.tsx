@@ -528,7 +528,7 @@ export function StoryBiblePanel({
         )}
 
         {/* ── КАТАЛОГ: одна лента секций по типам / карточка-деталь ── */}
-        {(() => {
+        {activeBibleTab !== 'inbox' && activeBibleTab !== 'updates' && (() => {
           const detail = selectedEntityId ? approvedEntities.find(e => e.id === selectedEntityId) : null;
           if (detail) return (
             <EntityDetailView

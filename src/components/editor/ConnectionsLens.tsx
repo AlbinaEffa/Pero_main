@@ -72,8 +72,9 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
     [edges, shownIdSet],
   );
 
-  const W = 600;
-  const H = expanded ? 460 : 340;
+  // viewBox под режим: развёрнуто шире (полный граф), свёрнуто компактнее (эго).
+  const W = expanded ? 680 : 360;
+  const H = expanded ? 460 : 320;
 
   const pos = useMemo(() => {
     const p = new Map<string, { x: number; y: number }>();
@@ -89,7 +90,7 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
       });
     } else {
       const ringR: Record<string, number> = {
-        major: minDim * 0.15, moderate: minDim * 0.31, minor: minDim * 0.44,
+        major: minDim * 0.14, moderate: minDim * 0.28, minor: minDim * 0.40,
       };
       (['major', 'moderate', 'minor'] as const).forEach(tier => {
         const ns = shownNodes.filter(n => (n.significance ?? 'minor') === tier);
@@ -132,19 +133,29 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
       </div>
 
       <div className="rounded-xl bg-white/40 border border-[#1e2d1f]/5 overflow-hidden">
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ display: 'block' }}>
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          preserveAspectRatio="xMidYMid meet"
+          className="w-full"
+          style={{ display: 'block', height: expanded ? 'min(62vh, 540px)' : 300 }}
+        >
           {shownEdges.map(e => {
             const a = pos.get(e.sourceEntityId), b = pos.get(e.targetEntityId);
             if (!a || !b) return null;
-            const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+            // Подпись ближе к источнику (не в центре) — так подписи разных рёбер из одного
+            // узла расходятся и меньше наезжают.
+            const lx = a.x + (b.x - a.x) * 0.42, ly = a.y + (b.y - a.y) * 0.42;
             return (
               <g key={e.id}>
-                <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#1e2d1f" strokeOpacity={0.18} strokeWidth={1.5}>
+                <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#1e2d1f" strokeOpacity={0.16} strokeWidth={1.5}>
                   <title>{e.relation}</title>
                 </line>
                 {expanded && (
-                  <text x={mx} y={my - 2} textAnchor="middle" fontSize={9} fill="#1e2d1f" fillOpacity={0.4} fontFamily="JetBrains Mono, monospace">
-                    {e.relation}
+                  <text x={lx} y={ly} textAnchor="middle" fontSize={8.5} fill="#1e2d1f" fillOpacity={0.55}
+                        fontFamily="JetBrains Mono, monospace"
+                        stroke="#f5f0e8" strokeWidth={3} paintOrder="stroke"
+                        style={{ pointerEvents: 'none' }}>
+                    {e.relation.length > 18 ? e.relation.slice(0, 17) + '…' : e.relation}
                   </text>
                 )}
               </g>
@@ -163,8 +174,9 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
                 {conflict && <circle cx={p.x} cy={p.y} r={r + 3} fill="none" stroke="#A14F44" strokeWidth={2} />}
                 <circle cx={p.x} cy={p.y} r={r} fill={pigment} stroke="#f5f0e8" strokeWidth={isFocus ? 3 : 1.5} />
                 <text x={p.x} y={p.y + r + 11} textAnchor="middle" fontSize={10.5} fill="#1e2d1f" fontFamily="Golos Text, system-ui"
-                      style={{ fontWeight: isFocus ? 600 : 500 }}>
-                  {n.name.length > 14 ? n.name.slice(0, 13) + '…' : n.name}
+                      stroke="#f5f0e8" strokeWidth={2.5} paintOrder="stroke"
+                      style={{ fontWeight: isFocus ? 600 : 500, pointerEvents: 'none' }}>
+                  {n.name.length > 16 ? n.name.slice(0, 15) + '…' : n.name}
                 </text>
                 <title>{n.name}{n.chapterId ? ' — клик: в текст' : ''}</title>
               </g>

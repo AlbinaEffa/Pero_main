@@ -291,6 +291,7 @@ export function StoryBiblePanel({
       )}
 
       <div className="flex-1 overflow-y-auto p-4">
+        <div className={isExpanded ? 'max-w-[940px] mx-auto' : ''}>
         {lensMode === 'presence' ? (
           <PresenceLens
             entities={visibleEntities}
@@ -489,7 +490,7 @@ export function StoryBiblePanel({
                     <span className="text-[10px] font-bold uppercase tracking-widest text-[#1e2d1f]/55">{group.title}</span>
                     <span className="text-[10px] text-[#1e2d1f]/55 font-medium">· {group.items.length}</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(140px,1fr))]">
                     {group.items.map(char => (
                       <div key={char.id} onClick={() => setSelectedCharId(char.id)}
                         className="cursor-pointer rounded-xl p-3 transition-all bg-white border border-transparent hover:border-ink/10 hover:shadow-sm flex flex-col items-center text-center">
@@ -550,7 +551,7 @@ export function StoryBiblePanel({
             </div>
           );
           return (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(140px,1fr))]">
               {locs.map(loc => (
                 <div key={loc.id} onClick={() => setSelectedLocId(loc.id)}
                   className="cursor-pointer rounded-xl p-3 transition-all bg-white border border-transparent hover:border-ink/10 hover:shadow-sm flex flex-col items-center text-center">
@@ -608,7 +609,7 @@ export function StoryBiblePanel({
             </div>
           );
           return (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(140px,1fr))]">
               {items.map(item => (
                 <div key={item.id} onClick={() => setSelectedItemId(item.id)}
                   className="cursor-pointer rounded-xl p-3 transition-all bg-white border border-transparent hover:border-ink/10 hover:shadow-sm flex flex-col items-center text-center">
@@ -680,6 +681,7 @@ export function StoryBiblePanel({
           );
         })()}
         </>)}
+        </div>
       </div>
     </div>
   );

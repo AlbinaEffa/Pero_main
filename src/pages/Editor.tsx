@@ -1227,6 +1227,9 @@ export default function Editor() {
             onToggleDictation={toggleListening}
             isFocusMode={isFocusMode}
             onToggleFocusMode={handleToggleFocusMode}
+            isCompanionOpen={!isCompanionCollapsed}
+            onToggleCompanion={() => setIsCompanionCollapsed(v => !v)}
+            companionBadge={suggestions.some(s => s.chapterId === chapterId) || contradictions.size > 0}
           />
 
           {/* ── Match navigation bar ── */}

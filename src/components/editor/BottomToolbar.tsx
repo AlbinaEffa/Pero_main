@@ -1,4 +1,4 @@
-import { Mic, MicOff, Maximize2, Minimize2 } from 'lucide-react';
+import { Mic, MicOff, Maximize2, Minimize2, Feather } from 'lucide-react';
 
 interface Props {
   isDictating: boolean;
@@ -7,12 +7,16 @@ interface Props {
   onToggleDictation: () => void;
   isFocusMode: boolean;
   onToggleFocusMode: () => void;
+  /** Спутник «Перо» вызывается отсюда (правого рельса нет). */
+  isCompanionOpen: boolean;
+  onToggleCompanion: () => void;
+  /** Подсветка кнопки «Перо», когда есть находки/нестыковки. */
+  companionBadge?: boolean;
 }
 
 /**
- * Нижняя панель — только действие письма (Диктовка) и Фокус. Всё, что было раньше
- * (Перо/Мир/Справочник/Поиск по миру/Синхронизация/Статистика), переехало в пульс-рельс
- * справа: состояние всегда видно, инструменты вызываются оттуда. Низ больше не лоток фич.
+ * Нижняя панель — действие письма (Диктовка), вызов спутника «Перо» и Фокус.
+ * Отдельного правого рельса нет: спутник призывается отсюда.
  */
 export function BottomToolbar({
   isDictating,
@@ -21,6 +25,9 @@ export function BottomToolbar({
   onToggleDictation,
   isFocusMode,
   onToggleFocusMode,
+  isCompanionOpen,
+  onToggleCompanion,
+  companionBadge,
 }: Props) {
   return (
     <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40">
@@ -59,6 +66,26 @@ export function BottomToolbar({
             <span className="hidden sm:inline text-[10px] font-semibold uppercase tracking-wide text-[#9ca3af]/70 bg-[#f3f4f6] rounded px-1 py-0.5 leading-none">—</span>
           </div>
         )}
+
+        <div className="w-px h-6 bg-[#1e2d1f]/10 mx-1 shrink-0" />
+
+        <button
+          data-hint="coauthor"
+          onClick={onToggleCompanion}
+          title={isCompanionOpen ? 'Скрыть Перо' : 'Перо — спутник: что в сцене, находки, спросить'}
+          aria-label="Перо"
+          className={`relative flex items-center justify-center h-[36px] whitespace-nowrap gap-2 px-3 sm:px-4 py-2 text-sm font-medium rounded-lg shrink-0 transition-colors outline-none focus:outline-none focus:ring-0 ${
+            isCompanionOpen
+              ? 'bg-[#1e2d1f] text-white'
+              : 'bg-transparent text-[#6b7280] hover:bg-[#f5f0e8] hover:text-[#1e2d1f]'
+          }`}
+        >
+          <Feather size={16} className="flex-shrink-0" />
+          <span className="hidden sm:inline">Перо</span>
+          {companionBadge && !isCompanionOpen && (
+            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#71597F]" />
+          )}
+        </button>
 
         <div className="w-px h-6 bg-[#1e2d1f]/10 mx-1 shrink-0" />
 

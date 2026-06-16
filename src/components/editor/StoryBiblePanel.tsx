@@ -266,87 +266,6 @@ export function StoryBiblePanel({
           </button>
         </div>
 
-        {/* Статус чтения — всегда виден: это и есть цикл «Перо читает рукопись».
-            Полуавто: при изменении/новой главе показываем «Прочитать» (один клик). */}
-        <div className="mt-2.5 flex items-center gap-2 text-[12px] leading-snug">
-          {isExtracting ? (
-            <span className="flex items-center gap-1.5 text-[#1e2d1f]/55">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#1e2d1f]/40 inline-block animate-pulse" />
-              Перо читает главу…
-            </span>
-          ) : chapterFreshnessStatus === 'stale' ? (
-            <>
-              <span className="text-amber-800">Глава изменилась после анализа</span>
-              <button
-                onClick={onRecheck}
-                className="ml-auto flex-shrink-0 font-semibold text-amber-800 bg-amber-100 hover:bg-amber-200 rounded-lg px-2.5 py-1 transition-colors"
-              >
-                Прочитать
-              </button>
-            </>
-          ) : chapterFreshnessStatus === 'unknown' ? (
-            <>
-              <span className="text-[#1e2d1f]/55">Глава ещё не прочитана Пером</span>
-              <button
-                onClick={onExtract}
-                className="ml-auto flex-shrink-0 font-semibold text-[#f5f0e8] bg-[#1e2d1f] hover:bg-[#2a3f2b] rounded-lg px-2.5 py-1 transition-colors"
-              >
-                Прочитать
-              </button>
-            </>
-          ) : (
-            <span className="flex items-center gap-1.5 text-[#4D6B4D]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#4D6B4D] inline-block" />
-              Перо прочитало эту главу
-            </span>
-          )}
-        </div>
-
-        {/* Состояние мира + инбокс + охват — всё в одной мета-строке шапки */}
-        {(worldStats.total > 0 || pendingTotal > 0) && (
-          <div className="mt-2.5 flex items-center gap-3 flex-wrap text-[11px] text-[#1e2d1f]/60">
-            {(['character', 'location', 'item', 'rule'] as const).map(t =>
-              worldStats.byType[t] ? (
-                <span key={t} className="flex items-center gap-1" title={TYPE_META[t].label}>
-                  <span className="w-2 h-2 rounded-full" style={{ background: TYPE_META[t].pigment }} />
-                  {worldStats.byType[t]}
-                </span>
-              ) : null,
-            )}
-            {worldStats.links > 0 && (
-              <span className="flex items-center gap-1" title="связей"><Share2 size={11} className="text-[#1e2d1f]/40" />{worldStats.links}</span>
-            )}
-            {worldStats.events > 0 && (
-              <span className="flex items-center gap-1" title="событий"><Clock size={11} className="text-[#1e2d1f]/40" />{worldStats.events}</span>
-            )}
-            {pendingTotal > 0 && (
-              <button
-                onClick={() => onTabChange('inbox')}
-                className="flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold bg-[#71597F]/12 text-[#71597F] hover:bg-[#71597F]/20 transition-colors"
-                title="Новые находки на одобрение"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-[#71597F]" /> {pendingTotal} новое
-              </button>
-            )}
-            {worldStats.total > 0 && (
-              <div className="ml-auto flex items-center rounded-lg bg-[#1e2d1f]/[0.06] p-0.5 text-[10.5px] font-medium">
-                {(['chapter', 'project'] as const).map(s => (
-                  <button
-                    key={s}
-                    onClick={() => setScope(s)}
-                    disabled={s === 'chapter' && !currentChapterId}
-                    className={`px-2 py-0.5 rounded-md transition-colors ${
-                      scope === s ? 'bg-white text-[#1e2d1f] shadow-sm' : 'text-[#1e2d1f]/50 hover:text-[#1e2d1f]'
-                    } ${s === 'chapter' && !currentChapterId ? 'opacity-40 cursor-default' : ''}`}
-                    title={s === 'chapter' ? 'Только эта глава' : 'Весь проект'}
-                  >
-                    {s === 'chapter' ? 'глава' : 'проект'}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Переключатель линз + scope «эта глава / весь проект» */}
@@ -369,6 +288,35 @@ export function StoryBiblePanel({
             {l.label}{l.soon ? ' · скоро' : ''}
           </button>
         ))}
+
+        <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+          {pendingTotal > 0 && (
+            <button
+              onClick={() => onTabChange('inbox')}
+              className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold bg-[#71597F]/12 text-[#71597F] hover:bg-[#71597F]/20 transition-colors"
+              title="Новые находки на одобрение"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-[#71597F]" /> {pendingTotal}
+            </button>
+          )}
+          {worldStats.total > 0 && (
+            <div className="flex items-center rounded-lg bg-[#1e2d1f]/[0.06] p-0.5 text-[10.5px] font-medium">
+              {(['chapter', 'project'] as const).map(s => (
+                <button
+                  key={s}
+                  onClick={() => setScope(s)}
+                  disabled={s === 'chapter' && !currentChapterId}
+                  className={`px-2 py-0.5 rounded-md transition-colors ${
+                    scope === s ? 'bg-white text-[#1e2d1f] shadow-sm' : 'text-[#1e2d1f]/50 hover:text-[#1e2d1f]'
+                  } ${s === 'chapter' && !currentChapterId ? 'opacity-40 cursor-default' : ''}`}
+                  title={s === 'chapter' ? 'Только эта глава' : 'Весь проект'}
+                >
+                  {s === 'chapter' ? 'глава' : 'проект'}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">

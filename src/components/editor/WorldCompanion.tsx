@@ -61,17 +61,18 @@ export function WorldCompanion({
 
   if (collapsed) {
     return (
-      <div className="hidden md:flex flex-col items-center gap-3 w-11 py-3 flex-shrink-0 border-l border-[#1e2d1f]/10 bg-[#f5f0e8]/80">
-        <button onClick={onToggleCollapse} title="Открыть Перо" aria-label="Открыть спутник Перо"
-          className="p-2 rounded-lg text-[#1e2d1f]/55 hover:bg-[#1e2d1f]/[0.06] hover:text-[#1e2d1f] transition-colors">
-          <ChevronsLeft size={18} />
-        </button>
-        <div className="relative text-[#1e2d1f]/55"><Feather size={18} />
+      <button
+        onClick={onToggleCollapse}
+        title="Открыть Перо" aria-label="Открыть спутник Перо"
+        className="hidden md:flex flex-col items-center gap-3 w-11 py-3 flex-shrink-0 border-l border-[#1e2d1f]/10 bg-[#f5f0e8]/80 text-[#1e2d1f]/55 hover:bg-[#1e2d1f]/[0.04] hover:text-[#1e2d1f] transition-colors"
+      >
+        <ChevronsLeft size={18} />
+        <span className="relative"><Feather size={18} />
           {(findingsHere.length > 0 || sceneConflicts.length > 0) && (
             <span className="absolute -top-1 -right-1.5 w-2 h-2 rounded-full" style={{ background: sceneConflicts.length ? '#A14F44' : '#71597F' }} />
           )}
-        </div>
-      </div>
+        </span>
+      </button>
     );
   }
 

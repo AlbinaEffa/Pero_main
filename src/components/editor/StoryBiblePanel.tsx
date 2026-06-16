@@ -84,34 +84,45 @@ const TYPE_META: Record<string, { Icon: typeof Users; pigment: string; label: st
   rule:      { Icon: Globe,  pigment: '#54627F', label: 'ПРАВИЛО' },
 };
 
-/** Сетка плиток сущностей, сгруппированная по значимости. Одинаковая во всех вкладках. */
+const SIG_RANK: Record<string, number> = { major: 0, moderate: 1, minor: 2 };
+
+function entityFact(e: Entity): string {
+  const a = e.attributes as Record<string, string> | null | undefined;
+  const pick = a?.appearance || a?.role || a?.physicalDetails || a?.properties || a?.scope || '';
+  const text = (pick || e.description || '').trim();
+  return text.length > 64 ? text.slice(0, 63) + '…' : text;
+}
+
+/** Чистый список сущностей одного типа (как в спутнике) — без тяжёлых плиток. */
 function EntityTileGrid({ type, items, onSelect }: {
   type: string; items: Entity[]; onSelect: (id: string) => void;
 }) {
   const meta = TYPE_META[type] ?? TYPE_META.rule;
   const Icon = meta.Icon;
+  const sorted = [...items].sort((a, b) =>
+    (SIG_RANK[a.significance ?? 'minor'] ?? 2) - (SIG_RANK[b.significance ?? 'minor'] ?? 2)
+    || a.name.localeCompare(b.name, 'ru'));
   return (
-    <div className="space-y-5">
-      {groupBySignificance(items).map(group => (
-        <div key={group.key}>
-          <div className="flex items-center gap-1.5 mb-2 ml-1">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-[#1e2d1f]/55">{group.title}</span>
-            <span className="text-[10px] text-[#1e2d1f]/55 font-medium">· {group.items.length}</span>
-          </div>
-          <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(140px,1fr))]">
-            {group.items.map(e => (
-              <button key={e.id} onClick={() => onSelect(e.id)}
-                className="cursor-pointer rounded-xl p-3 transition-all bg-white border border-transparent hover:border-ink/10 hover:shadow-sm flex flex-col items-center text-center">
-                <div className="w-12 h-12 rounded-full flex items-center justify-center mb-3" style={{ background: meta.pigment + '1a' }}>
-                  <Icon size={20} style={{ color: meta.pigment }} />
-                </div>
-                <h3 className="font-bold text-[13px] text-[#1E2D1F] truncate w-full">{e.name}</h3>
-                <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: meta.pigment }}>{meta.label}</p>
-              </button>
-            ))}
-          </div>
-        </div>
-      ))}
+    <div className="flex flex-col gap-1.5">
+      {sorted.map(e => {
+        const fact = entityFact(e);
+        return (
+          <button key={e.id} onClick={() => onSelect(e.id)}
+            className="flex items-center gap-3 text-left rounded-xl bg-white/70 hover:bg-white border border-transparent hover:border-[#1e2d1f]/10 transition-all px-3 py-2.5">
+            <span className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: meta.pigment + '1a' }}>
+              <Icon size={15} style={{ color: meta.pigment }} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-1.5">
+                <span className="text-[13px] font-medium text-[#1e2d1f] truncate">{e.name}</span>
+                {e.significance === 'major' && <span className="text-[9px] font-semibold text-[#1e2d1f]/40 uppercase tracking-wide flex-shrink-0">главн.</span>}
+              </span>
+              {fact && <span className="block text-[11px] text-[#1e2d1f]/55 truncate">{fact}</span>}
+            </span>
+            <ChevronRight size={15} className="text-[#1e2d1f]/25 flex-shrink-0" />
+          </button>
+        );
+      })}
     </div>
   );
 }

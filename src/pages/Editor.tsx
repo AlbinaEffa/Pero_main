@@ -43,8 +43,8 @@ import Settings from './Settings';
 
 import { Chapter, Entity, EntityLink, EntityEvent } from '../components/editor/types';
 import { AhaCelebration } from '../components/AhaCelebration';
-import { Users, MapPin, Box, Scale, Bookmark, X, AlertTriangle, ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
-  Eye, Bell, BookOpen, Feather, Telescope, BarChart2, Search, FolderSearch, Download, Maximize2, Settings as SettingsIcon } from 'lucide-react';
+import { Users, MapPin, Box, Scale, Bookmark, X, AlertTriangle, ChevronUp, ChevronDown,
+  Eye, Bell, BookOpen, Feather, Telescope, BarChart2, Search, FolderSearch, Download, Maximize2, Minimize2, Settings as SettingsIcon } from 'lucide-react';
 
 type EditorFontName = 'cormorant' | 'literata' | 'source-serif';
 
@@ -1322,27 +1322,29 @@ export default function Editor() {
             onClick={closeAllSidePanels}
           />
         )}
-        {/* Инспектор = оверлей: наезжает поверх текста справа (слева от пульс-рельса),
-            не раздвигает письмо. «Развернуть» — выходит на первый план до левого края
-            (как в NotebookLM). Закрытие — Esc / крестик / тап по затемнению (на узких). */}
+        {/* Инспектор = оверлей справа (слева от пульс-рельса), не раздвигает письмо.
+            «Развернуть» — центрированный блок до левого меню (не на весь экран, с отступами).
+            Закрытие — Esc / крестик / тап по затемнению (на узких). */}
         <aside
-          className={`bg-[#f5f0e8] border-[#1e2d1f]/10 transition-all duration-300 ease-in-out overflow-hidden absolute top-14 bottom-0 right-12 max-md:right-0 max-md:top-0 z-40 border-l border-t max-md:border-t-0 ${
-            (!isFocusMode && isAnySidePanelOpen) && isInspectorExpanded
-              ? 'left-0 max-md:left-0 opacity-100 translate-x-0 shadow-2xl pointer-events-auto'
-              : (!isFocusMode && isAnySidePanelOpen)
-              ? 'w-[min(92vw,360px)] opacity-100 translate-x-0 shadow-2xl pointer-events-auto'
-              : 'w-[min(92vw,360px)] opacity-0 translate-x-full pointer-events-none'
+          className={`bg-[#f5f0e8] border-[#1e2d1f]/10 transition-all duration-300 ease-in-out overflow-hidden absolute z-40 shadow-2xl ${
+            !(!isFocusMode && isAnySidePanelOpen)
+              ? 'top-14 bottom-0 right-12 w-[min(92vw,360px)] border-l opacity-0 translate-x-full pointer-events-none'
+              : isInspectorExpanded
+              ? `top-16 bottom-6 max-md:top-12 max-md:bottom-3 right-[68px] max-md:right-3 left-6 max-md:left-3 ${isChaptersCollapsed ? '' : 'lg:left-[244px]'} rounded-2xl border opacity-100 translate-x-0 pointer-events-auto`
+              : 'top-14 bottom-0 right-12 max-md:right-0 max-md:top-0 w-[min(92vw,360px)] border-l border-t max-md:border-t-0 opacity-100 translate-x-0 pointer-events-auto'
           }`}
         >
-          {/* Развернуть / свернуть инспектор (как в NotebookLM) — «ручка» на левом крае */}
-          <button
-            onClick={() => setIsInspectorExpanded(v => !v)}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-50 w-5 h-12 flex items-center justify-center rounded-r-lg bg-white/70 hover:bg-white text-[#1e2d1f]/45 hover:text-[#1e2d1f] shadow-sm border border-l-0 border-[#1e2d1f]/10 transition-colors"
-            title={isInspectorExpanded ? 'Свернуть панель' : 'Развернуть на первый план'}
-            aria-label={isInspectorExpanded ? 'Свернуть панель' : 'Развернуть панель'}
-          >
-            {isInspectorExpanded ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
-          </button>
+          {/* Развернуть / свернуть — рядом с крестиком панели */}
+          {(!isFocusMode && isAnySidePanelOpen) && (
+            <button
+              onClick={() => setIsInspectorExpanded(v => !v)}
+              className="absolute top-3.5 right-[54px] z-50 p-1.5 rounded-md text-[#1e2d1f]/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/5 transition-colors"
+              title={isInspectorExpanded ? 'Свернуть панель' : 'Развернуть'}
+              aria-label={isInspectorExpanded ? 'Свернуть панель' : 'Развернуть панель'}
+            >
+              {isInspectorExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            </button>
+          )}
           <div className="w-full h-full flex flex-col absolute top-0 left-0">
           {isBibleOpen && (
             <StoryBiblePanel

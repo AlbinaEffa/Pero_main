@@ -6,12 +6,18 @@ import {
 } from 'lucide-react';
 import { BIBLE_MENU_ITEMS } from './constants';
 import { PresenceLens } from './PresenceLens';
+import { ConnectionsLens } from './ConnectionsLens';
+import { TimelineLens } from './TimelineLens';
+import { MapLens } from './MapLens';
+import { Clock, Map as MapIcon } from 'lucide-react';
 
-type LensMode = 'catalog' | 'presence';
-const LENSES: { id: LensMode | 'links'; label: string; icon: typeof BookOpen; soon?: boolean }[] = [
+type LensMode = 'catalog' | 'presence' | 'links' | 'timeline' | 'map';
+const LENSES: { id: LensMode; label: string; icon: typeof BookOpen; soon?: boolean }[] = [
   { id: 'catalog',  label: 'Каталог',     icon: BookOpen },
   { id: 'presence', label: 'Присутствие', icon: LayoutGrid },
-  { id: 'links',    label: 'Связи',       icon: Share2, soon: true },
+  { id: 'links',    label: 'Связи',       icon: Share2 },
+  { id: 'timeline', label: 'Таймлайн',    icon: Clock },
+  { id: 'map',      label: 'Карта',       icon: MapIcon },
 ];
 import { Entity, EntityLink, EntityEvent, BibleUpdateSuggestion } from './types';
 import {
@@ -50,6 +56,10 @@ interface Props {
   onOpenInEditor: (chapterId: string, searchHighlight: string, searchQuery: string) => void;
   /** Entity ids flagged with a possible contradiction (highlighted on lenses). */
   contradictions: Set<string>;
+  /** Current chapter — for the «эта глава / весь проект» scope toggle. */
+  currentChapterId?: string | null;
+  /** Inspector expanded to foreground — lenses render their rich layout. */
+  isExpanded?: boolean;
   onClose: () => void;
 }
 
@@ -83,9 +93,12 @@ export function StoryBiblePanel({
   onApproveSuggestion, onRejectSuggestion,
   onAcceptUpdate, onRejectUpdate, onDismissUpdate,
   onBulkDismissChapter, onBulkRejectChapter,
-  onOpenInEditor, contradictions, onClose,
+  onOpenInEditor, contradictions, currentChapterId, isExpanded, onClose,
 }: Props) {
   const [lensMode, setLensMode] = useState<LensMode>('catalog');
+  const [scope, setScope] = useState<'project' | 'chapter'>('project');
+  /** Линза «Таймлайн», отфильтрованная на одну сущность = арка героя. */
+  const [focusEntityId, setFocusEntityId] = useState<string | null>(null);
   const [selectedCharId, setSelectedCharId]   = useState<string | null>(null);
   const [selectedLocId,  setSelectedLocId]    = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId]   = useState<string | null>(null);
@@ -103,6 +116,23 @@ export function StoryBiblePanel({
   }
 
   const pendingUpdates = updateSuggestions.filter(u => u.status === 'pending');
+
+  // Scope «эта глава»: сущности, у которых есть появление/событие/связь в текущей главе.
+  const chapterEntityIds = useMemo(() => {
+    if (!currentChapterId) return new Set<string>();
+    const ids = new Set<string>();
+    approvedEntities.forEach(e => { if (e.chapterId === currentChapterId) ids.add(e.id); });
+    entityEvents.forEach(ev => { if (ev.chapterId === currentChapterId) ids.add(ev.entityId); });
+    entityLinks.forEach(l => {
+      if (l.chapterId === currentChapterId) { ids.add(l.sourceEntityId); ids.add(l.targetEntityId); }
+    });
+    return ids;
+  }, [currentChapterId, approvedEntities, entityEvents, entityLinks]);
+
+  const visibleEntities = useMemo(
+    () => (scope === 'project' ? approvedEntities : approvedEntities.filter(e => chapterEntityIds.has(e.id))),
+    [scope, approvedEntities, chapterEntityIds],
+  );
 
   // Group pending updates by chapter, sorted by chapter order
   const chapterLookup = useMemo(
@@ -190,14 +220,14 @@ export function StoryBiblePanel({
         </div>
       </div>
 
-      {/* Переключатель линз: Каталог · Присутствие · Связи(скоро) */}
-      <div className="flex gap-1.5 px-3 py-2 border-b border-[#1e2d1f]/5 bg-white/20">
+      {/* Переключатель линз + scope «эта глава / весь проект» */}
+      <div className="flex items-center gap-1.5 px-3 py-2 border-b border-[#1e2d1f]/5 bg-white/20 overflow-x-auto hide-scrollbar">
         {LENSES.map(l => (
           <button
             key={l.id}
             onClick={() => { if (!l.soon) setLensMode(l.id as LensMode); }}
             disabled={l.soon}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
+            className={`flex-shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
               l.soon
                 ? 'text-[#1e2d1f]/30 cursor-default'
                 : lensMode === l.id
@@ -210,6 +240,21 @@ export function StoryBiblePanel({
             {l.label}{l.soon ? ' · скоро' : ''}
           </button>
         ))}
+        <div className="ml-auto flex-shrink-0 flex items-center rounded-lg bg-[#1e2d1f]/[0.06] p-0.5 text-[10.5px] font-medium">
+          {(['chapter', 'project'] as const).map(s => (
+            <button
+              key={s}
+              onClick={() => setScope(s)}
+              disabled={s === 'chapter' && !currentChapterId}
+              className={`px-2 py-0.5 rounded-md transition-colors ${
+                scope === s ? 'bg-white text-[#1e2d1f] shadow-sm' : 'text-[#1e2d1f]/50 hover:text-[#1e2d1f]'
+              } ${s === 'chapter' && !currentChapterId ? 'opacity-40 cursor-default' : ''}`}
+              title={s === 'chapter' ? 'Только эта глава' : 'Весь проект'}
+            >
+              {s === 'chapter' ? 'глава' : 'проект'}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Tabs (только для линзы «Каталог») */}
@@ -248,11 +293,34 @@ export function StoryBiblePanel({
       <div className="flex-1 overflow-y-auto p-4">
         {lensMode === 'presence' ? (
           <PresenceLens
-            entities={approvedEntities}
+            entities={visibleEntities}
             events={entityEvents}
             links={entityLinks}
             chapters={chapters}
             contradictions={contradictions}
+            onJumpToChapter={(chapterId, name) => onOpenInEditor(chapterId, name, name)}
+          />
+        ) : lensMode === 'links' ? (
+          <ConnectionsLens
+            entities={visibleEntities}
+            links={entityLinks}
+            contradictions={contradictions}
+            expanded={!!isExpanded}
+            onJumpToChapter={(chapterId, name) => onOpenInEditor(chapterId, name, name)}
+          />
+        ) : lensMode === 'timeline' ? (
+          <TimelineLens
+            entities={visibleEntities}
+            events={entityEvents}
+            chapters={chapters}
+            focusEntityId={focusEntityId}
+            onSetFocus={setFocusEntityId}
+            onJumpToChapter={(chapterId, name) => onOpenInEditor(chapterId, name, name)}
+          />
+        ) : lensMode === 'map' ? (
+          <MapLens
+            entities={visibleEntities}
+            links={entityLinks}
             onJumpToChapter={(chapterId, name) => onOpenInEditor(chapterId, name, name)}
           />
         ) : (<>
@@ -369,7 +437,7 @@ export function StoryBiblePanel({
 
         {/* ── CHARACTERS TAB ── */}
         {activeBibleTab === 'characters' && (() => {
-          const chars = approvedEntities.filter(e => e.type === 'character');
+          const chars = visibleEntities.filter(e => e.type === 'character');
           const selected = chars.find(c => c.id === selectedCharId);
           if (selected) return (
             <div className="flex flex-col gap-4">
@@ -441,7 +509,7 @@ export function StoryBiblePanel({
 
         {/* ── LOCATIONS TAB ── */}
         {activeBibleTab === 'locations' && (() => {
-          const locs = approvedEntities.filter(e => e.type === 'location');
+          const locs = visibleEntities.filter(e => e.type === 'location');
           const selected = locs.find(l => l.id === selectedLocId);
           if (selected) return (
             <div className="flex flex-col">
@@ -499,7 +567,7 @@ export function StoryBiblePanel({
 
         {/* ── ITEMS TAB ── */}
         {activeBibleTab === 'items' && (() => {
-          const items = approvedEntities.filter(e => e.type === 'item');
+          const items = visibleEntities.filter(e => e.type === 'item');
           const selected = items.find(i => i.id === selectedItemId);
           if (selected) return (
             <div className="flex flex-col">
@@ -557,7 +625,7 @@ export function StoryBiblePanel({
 
         {/* ── RULES TAB ── */}
         {activeBibleTab === 'rules' && (() => {
-          const rules = approvedEntities.filter(e => e.type === 'rule');
+          const rules = visibleEntities.filter(e => e.type === 'rule');
           const selected = rules.find(r => r.id === selectedRuleId);
           if (selected) return (
             <div className="flex flex-col">

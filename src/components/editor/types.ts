@@ -70,6 +70,10 @@ export type EntityEvent = {
   title: string;
   description?: string | null;
   eventType?: EntityEventType | string | null;
+  /** Сюжетная хронология (извлекается AI): текстовый маркер времени из текста. */
+  timeLabel?: string | null;
+  /** Когда событие происходит в истории относительно повествования. */
+  timeHint?: 'past' | 'present' | 'future' | 'flashback' | string | null;
 };
 
 export type ChatMessage = {

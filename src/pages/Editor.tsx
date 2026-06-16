@@ -1367,6 +1367,8 @@ export default function Editor() {
               onBulkRejectChapter={bulkRejectChapter}
               onOpenInEditor={handleOpenInEditor}
               contradictions={contradictions}
+              currentChapterId={chapterId}
+              isExpanded={isInspectorExpanded}
               onClose={() => setIsBibleOpen(false)}
             />
           )}

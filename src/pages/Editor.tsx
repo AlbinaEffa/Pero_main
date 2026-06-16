@@ -21,7 +21,7 @@ import { useRevision } from '../hooks/useRevision';
 import { ChapterSidebar } from '../components/editor/ChapterSidebar';
 import { EditorCanvas } from '../components/editor/EditorCanvas';
 import { BottomToolbar } from '../components/editor/BottomToolbar';
-import { PulseRail } from '../components/editor/PulseRail';
+import { WorldCompanion } from '../components/editor/WorldCompanion';
 import { CommandPalette, Command } from '../components/editor/CommandPalette';
 import { EntitySelectionMenu } from '../components/editor/EntitySelectionMenu';
 import { StoryBiblePanel } from '../components/editor/StoryBiblePanel';
@@ -324,6 +324,8 @@ export default function Editor() {
   const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [isCommandOpen, setIsCommandOpen] = useState(false);
   const [isInspectorExpanded, setIsInspectorExpanded] = useState(false);
+  const [isCompanionCollapsed, setIsCompanionCollapsed] = useState(false);
+  const [companionMode, setCompanionMode] = useState<'scene' | 'chat'>('scene');
   const [totalProjectWords, setTotalProjectWords] = useState(0);
   const [isRecheckingAll, setIsRecheckingAll] = useState(false);
   const [isReading, setIsReading] = useState(false);
@@ -954,9 +956,9 @@ export default function Editor() {
   };
 
   const handleToggleCoauthor = () => {
-    const next = !isCoauthoring;
-    setIsCoauthoring(next);
-    if (next) { setIsBibleOpen(false); setIsReferenceOpen(false); setIsRevisionOpen(false); setIsSyncOpen(false); setIsStatsOpen(false); }
+    // Чат теперь живёт в правом спутнике — открываем его на вкладке «Спросить».
+    setIsCompanionCollapsed(false);
+    setCompanionMode('chat');
   };
 
   const handleToggleRevision = () => {
@@ -1419,31 +1421,6 @@ export default function Editor() {
             />
           )}
 
-          {isCoauthoring && (
-            <CoauthorPanel
-              chatMessages={chatMessages}
-              isHistoryLoaded={isHistoryLoaded}
-              chatInput={chatInput}
-              onChatInputChange={setChatInput}
-              isAiLoading={isAiLoading}
-              isCheckingConsistency={isCheckingConsistency}
-              isExtracting={isExtracting}
-              chatEndRef={chatEndRef}
-              selectedText={selectedText}
-              onSendMessage={handleSendMessage}
-              onSendPrompt={handleSendPrompt}
-              onCheckConsistency={handleCheckConsistency}
-              onExtractBible={async () => {
-                await handleExtract();
-                setIsBibleOpen(true);
-                setIsCoauthoring(false);
-                setActiveBibleTab('inbox');
-              }}
-              onInsertText={handleInsertText}
-              onClose={() => setIsCoauthoring(false)}
-            />
-          )}
-
           {isReferenceOpen && (
             <div className="flex flex-col h-full w-full">
               {/* Header */}
@@ -1571,26 +1548,46 @@ export default function Editor() {
           </div>
         </aside>
 
-        {/* Пульс мира — тонкий всегда-видимый рельс (скрыт в фокусе) */}
+        {/* Правый спутник «Перо» — память сцены + находки/нестыковки + чат (скрыт в фокусе) */}
         {!isFocusMode && (
-          <PulseRail
+          <WorldCompanion
+            collapsed={isCompanionCollapsed}
+            onToggleCollapse={() => setIsCompanionCollapsed(v => !v)}
             freshness={currentChapterFreshness}
             isExtracting={isExtracting}
             onRead={currentChapterFreshness === 'stale' ? handleRecheckChapter : handleExtract}
-            findingsCount={suggestions.length + updateSuggestions.filter(u => u.status === 'pending').length}
-            onOpenFindings={() => handleBibleMenuClick('inbox')}
-            contradictionsCount={contradictions.size}
-            onOpenContradictions={() => { if (!isReferenceOpen) handleToggleReference(); }}
+            sceneEntities={[...chapterLinkedEntities, ...chapterMentionedEntities]}
+            findingsHere={suggestions.filter(s => s.chapterId === chapterId)}
+            onApproveFinding={approveSuggestion}
+            onRejectFinding={rejectSuggestion}
+            contradictionIds={contradictions}
+            onOpenEntity={() => handleBibleMenuClick('characters')}
             onOpenWorld={() => handleBibleMenuClick('characters')}
-            isWorldOpen={isBibleOpen}
-            onOpenCoauthor={handleToggleCoauthor}
-            isCoauthorOpen={isCoauthoring}
-            onOpenReference={handleToggleReference}
-            isReferenceOpen={isReferenceOpen}
-            onOpenRevision={handleToggleRevision}
-            isRevisionOpen={isRevisionOpen}
-            onOpenStats={handleToggleStats}
-            isStatsOpen={isStatsOpen}
+            mode={companionMode}
+            onModeChange={setCompanionMode}
+            chat={
+              <CoauthorPanel
+                chatMessages={chatMessages}
+                isHistoryLoaded={isHistoryLoaded}
+                chatInput={chatInput}
+                onChatInputChange={setChatInput}
+                isAiLoading={isAiLoading}
+                isCheckingConsistency={isCheckingConsistency}
+                isExtracting={isExtracting}
+                chatEndRef={chatEndRef}
+                selectedText={selectedText}
+                onSendMessage={handleSendMessage}
+                onSendPrompt={handleSendPrompt}
+                onCheckConsistency={handleCheckConsistency}
+                onExtractBible={async () => {
+                  await handleExtract();
+                  setIsBibleOpen(true);
+                  setActiveBibleTab('inbox');
+                }}
+                onInsertText={handleInsertText}
+                onClose={() => setCompanionMode('scene')}
+              />
+            }
           />
         )}
       </div>

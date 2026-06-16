@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Share2 } from 'lucide-react';
+import { useMemo, useState, useRef, useEffect } from 'react';
+import { Share2, Maximize } from 'lucide-react';
 import { Entity, EntityLink } from './types';
 
 interface Props {
@@ -104,6 +104,40 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
     return p;
   }, [shownNodes, expanded, focusId, H]);
 
+  // ── Зум/пан ────────────────────────────────────────────────────────────────
+  const [t, setT] = useState({ k: 1, x: 0, y: 0 });
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const drag = useRef({ active: false, sx: 0, sy: 0, ox: 0, oy: 0 });
+  const moved = useRef(false);
+
+  // Сброс вида при смене раскладки (режим/фокус).
+  useEffect(() => { setT({ k: 1, x: 0, y: 0 }); }, [expanded, focusId, showMinor]);
+
+  const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+  const onWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+    setT(prev => {
+      const k2 = clamp(prev.k * factor, 0.5, 4);
+      const cx = W / 2, cy = H / 2;
+      return { k: k2, x: prev.x + (prev.k - k2) * cx, y: prev.y + (prev.k - k2) * cy };
+    });
+  };
+  const onPointerDown = (e: React.PointerEvent) => {
+    drag.current = { active: true, sx: e.clientX, sy: e.clientY, ox: t.x, oy: t.y };
+    moved.current = false;
+    (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!drag.current.active) return;
+    const vbPerPx = W / (svgRef.current?.clientWidth || W);
+    const dx = (e.clientX - drag.current.sx) * vbPerPx;
+    const dy = (e.clientY - drag.current.sy) * vbPerPx;
+    if (Math.abs(dx) + Math.abs(dy) > 2) moved.current = true;
+    setT(p => ({ ...p, x: drag.current.ox + dx, y: drag.current.oy + dy }));
+  };
+  const onPointerUp = () => { drag.current.active = false; };
+
   if (nodes0.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center text-center px-6 py-12 text-[#1e2d1f]/45">
@@ -119,7 +153,7 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
     <div className="text-[12px]">
       <div className="flex items-center justify-between mb-2">
         <p className="text-[11px] text-[#1e2d1f]/45 leading-snug">
-          {expanded ? 'Граф связей. Клик по узлу — в текст.' : `Связи «${byId.get(focusId ?? '')?.name ?? ''}». Разверни панель для полного графа.`}
+          {expanded ? 'Граф связей. Клик — в текст · колесо/перетаскивание — масштаб.' : `Связи «${byId.get(focusId ?? '')?.name ?? ''}». Разверни панель для полного графа.`}
         </p>
         <button
           onClick={() => setShowMinor(v => !v)}
@@ -132,13 +166,29 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
         </button>
       </div>
 
-      <div className="rounded-xl bg-white/40 border border-[#1e2d1f]/5 overflow-hidden">
+      <div className="relative rounded-xl bg-white/40 border border-[#1e2d1f]/5 overflow-hidden">
+        {(t.k !== 1 || t.x !== 0 || t.y !== 0) && (
+          <button
+            onClick={() => setT({ k: 1, x: 0, y: 0 })}
+            className="absolute top-2 right-2 z-10 flex items-center gap-1 text-[10.5px] px-2 py-1 rounded-md bg-white/80 hover:bg-white text-[#1e2d1f]/60 shadow-sm border border-[#1e2d1f]/10"
+            title="Сбросить масштаб"
+          >
+            <Maximize size={11} /> сброс
+          </button>
+        )}
         <svg
+          ref={svgRef}
           viewBox={`0 0 ${W} ${H}`}
           preserveAspectRatio="xMidYMid meet"
-          className="w-full"
-          style={{ display: 'block', height: expanded ? 'min(62vh, 540px)' : 300 }}
+          className="w-full select-none"
+          style={{ display: 'block', height: expanded ? 'min(62vh, 540px)' : 300, cursor: drag.current.active ? 'grabbing' : 'grab', touchAction: 'none' }}
+          onWheel={onWheel}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerLeave={onPointerUp}
         >
+          <g transform={`translate(${t.x} ${t.y}) scale(${t.k})`}>
           {shownEdges.map(e => {
             const a = pos.get(e.sourceEntityId), b = pos.get(e.targetEntityId);
             if (!a || !b) return null;
@@ -170,7 +220,7 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
             const isFocus = n.id === focusId;
             return (
               <g key={n.id} style={{ cursor: n.chapterId ? 'pointer' : 'default' }}
-                 onClick={() => { if (n.chapterId) onJumpToChapter(n.chapterId, n.name); }}>
+                 onClick={() => { if (moved.current) return; if (n.chapterId) onJumpToChapter(n.chapterId, n.name); }}>
                 {conflict && <circle cx={p.x} cy={p.y} r={r + 3} fill="none" stroke="#A14F44" strokeWidth={2} />}
                 <circle cx={p.x} cy={p.y} r={r} fill={pigment} stroke="#f5f0e8" strokeWidth={isFocus ? 3 : 1.5} />
                 <text x={p.x} y={p.y + r + 11} textAnchor="middle" fontSize={10.5} fill="#1e2d1f" fontFamily="Golos Text, system-ui"
@@ -182,6 +232,7 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
               </g>
             );
           })}
+          </g>
         </svg>
       </div>
 

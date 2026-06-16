@@ -85,6 +85,46 @@ function entityTypeColor(type: string) {
   return 'bg-blue-100 text-blue-800';
 }
 
+/** Единый визуальный язык каталога: пигмент + иконка + ярлык — те же, что в линзах. */
+const TYPE_META: Record<string, { Icon: typeof Users; pigment: string; label: string }> = {
+  character: { Icon: Users,  pigment: '#A14F44', label: 'ПЕРСОНАЖ' },
+  location:  { Icon: MapPin, pigment: '#4A5D4E', label: 'ЛОКАЦИЯ' },
+  item:      { Icon: Box,    pigment: '#91682E', label: 'ПРЕДМЕТ' },
+  rule:      { Icon: Globe,  pigment: '#54627F', label: 'ПРАВИЛО' },
+};
+
+/** Сетка плиток сущностей, сгруппированная по значимости. Одинаковая во всех вкладках. */
+function EntityTileGrid({ type, items, onSelect }: {
+  type: string; items: Entity[]; onSelect: (id: string) => void;
+}) {
+  const meta = TYPE_META[type] ?? TYPE_META.rule;
+  const Icon = meta.Icon;
+  return (
+    <div className="space-y-5">
+      {groupBySignificance(items).map(group => (
+        <div key={group.key}>
+          <div className="flex items-center gap-1.5 mb-2 ml-1">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[#1e2d1f]/55">{group.title}</span>
+            <span className="text-[10px] text-[#1e2d1f]/55 font-medium">· {group.items.length}</span>
+          </div>
+          <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(140px,1fr))]">
+            {group.items.map(e => (
+              <button key={e.id} onClick={() => onSelect(e.id)}
+                className="cursor-pointer rounded-xl p-3 transition-all bg-white border border-transparent hover:border-ink/10 hover:shadow-sm flex flex-col items-center text-center">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center mb-3" style={{ background: meta.pigment + '1a' }}>
+                  <Icon size={20} style={{ color: meta.pigment }} />
+                </div>
+                <h3 className="font-bold text-[13px] text-[#1E2D1F] truncate w-full">{e.name}</h3>
+                <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: meta.pigment }}>{meta.label}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function StoryBiblePanel({
   activeBibleTab, onTabChange, isExtracting,
   suggestions, approvedEntities, updateSuggestions,
@@ -133,6 +173,13 @@ export function StoryBiblePanel({
     () => (scope === 'project' ? approvedEntities : approvedEntities.filter(e => chapterEntityIds.has(e.id))),
     [scope, approvedEntities, chapterEntityIds],
   );
+
+  // Сводка мира — «что это и сколько всего» при открытии.
+  const worldStats = useMemo(() => {
+    const byType: Record<string, number> = {};
+    approvedEntities.forEach(e => { byType[e.type] = (byType[e.type] ?? 0) + 1; });
+    return { byType, links: entityLinks.length, events: entityEvents.length, total: approvedEntities.length };
+  }, [approvedEntities, entityLinks, entityEvents]);
 
   // Group pending updates by chapter, sorted by chapter order
   const chapterLookup = useMemo(
@@ -218,6 +265,26 @@ export function StoryBiblePanel({
             </span>
           )}
         </div>
+
+        {/* Состояние мира — что это и сколько всего набралось */}
+        {worldStats.total > 0 && (
+          <div className="mt-2.5 flex items-center gap-3 flex-wrap text-[11px] text-[#1e2d1f]/60">
+            {(['character', 'location', 'item', 'rule'] as const).map(t =>
+              worldStats.byType[t] ? (
+                <span key={t} className="flex items-center gap-1" title={TYPE_META[t].label}>
+                  <span className="w-2 h-2 rounded-full" style={{ background: TYPE_META[t].pigment }} />
+                  {worldStats.byType[t]}
+                </span>
+              ) : null,
+            )}
+            {worldStats.links > 0 && (
+              <span className="flex items-center gap-1" title="связей"><Share2 size={11} className="text-[#1e2d1f]/40" />{worldStats.links}</span>
+            )}
+            {worldStats.events > 0 && (
+              <span className="flex items-center gap-1" title="событий"><Clock size={11} className="text-[#1e2d1f]/40" />{worldStats.events}</span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Переключатель линз + scope «эта глава / весь проект» */}
@@ -482,30 +549,7 @@ export function StoryBiblePanel({
               <p className="text-sm text-[#1e2d1f]/50">Персонажи появятся здесь после одобрения во вкладке «Новое»</p>
             </div>
           );
-          return (
-            <div className="space-y-5">
-              {groupBySignificance(chars).map(group => (
-                <div key={group.key}>
-                  <div className="flex items-center gap-1.5 mb-2 ml-1">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#1e2d1f]/55">{group.title}</span>
-                    <span className="text-[10px] text-[#1e2d1f]/55 font-medium">· {group.items.length}</span>
-                  </div>
-                  <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(140px,1fr))]">
-                    {group.items.map(char => (
-                      <div key={char.id} onClick={() => setSelectedCharId(char.id)}
-                        className="cursor-pointer rounded-xl p-3 transition-all bg-white border border-transparent hover:border-ink/10 hover:shadow-sm flex flex-col items-center text-center">
-                        <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center mb-3">
-                          <Users size={20} className="text-rose-500" />
-                        </div>
-                        <h3 className="font-bold text-[13px] text-[#1E2D1F] truncate w-full">{char.name}</h3>
-                        <p className="text-[9px] font-bold text-rose-400 uppercase tracking-wider">ПЕРСОНАЖ</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          );
+          return <EntityTileGrid type="character" items={chars} onSelect={setSelectedCharId} />;
         })()}
 
         {/* ── LOCATIONS TAB ── */}
@@ -550,20 +594,7 @@ export function StoryBiblePanel({
               <p className="text-sm text-[#1e2d1f]/50">Локации появятся здесь после одобрения во вкладке «Новое»</p>
             </div>
           );
-          return (
-            <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(140px,1fr))]">
-              {locs.map(loc => (
-                <div key={loc.id} onClick={() => setSelectedLocId(loc.id)}
-                  className="cursor-pointer rounded-xl p-3 transition-all bg-white border border-transparent hover:border-ink/10 hover:shadow-sm flex flex-col items-center text-center">
-                  <div className="w-12 h-12 rounded-full bg-[#e3e8e3] flex items-center justify-center mb-3">
-                    <MapPin size={20} className="text-[#4a5d4e]" />
-                  </div>
-                  <h3 className="font-bold text-[13px] text-[#1E2D1F] truncate w-full">{loc.name}</h3>
-                  <p className="text-[9px] font-bold text-[#4a5d4e] uppercase tracking-wider">ЛОКАЦИЯ</p>
-                </div>
-              ))}
-            </div>
-          );
+          return <EntityTileGrid type="location" items={locs} onSelect={setSelectedLocId} />;
         })()}
 
         {/* ── ITEMS TAB ── */}
@@ -608,20 +639,7 @@ export function StoryBiblePanel({
               <p className="text-sm text-[#1e2d1f]/50">Предметы появятся здесь после одобрения во вкладке «Новое»</p>
             </div>
           );
-          return (
-            <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(140px,1fr))]">
-              {items.map(item => (
-                <div key={item.id} onClick={() => setSelectedItemId(item.id)}
-                  className="cursor-pointer rounded-xl p-3 transition-all bg-white border border-transparent hover:border-ink/10 hover:shadow-sm flex flex-col items-center text-center">
-                  <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mb-3">
-                    <Box size={20} className="text-amber-600" />
-                  </div>
-                  <h3 className="font-bold text-[13px] text-[#1E2D1F] truncate w-full">{item.name}</h3>
-                  <p className="text-[9px] font-bold text-amber-500 uppercase tracking-wider">ПРЕДМЕТ</p>
-                </div>
-              ))}
-            </div>
-          );
+          return <EntityTileGrid type="item" items={items} onSelect={setSelectedItemId} />;
         })()}
 
         {/* ── RULES TAB ── */}
@@ -663,22 +681,7 @@ export function StoryBiblePanel({
               <p className="text-sm text-[#1e2d1f]/50">Правила мира появятся здесь после одобрения во вкладке «Новое»</p>
             </div>
           );
-          return (
-            <div className="flex flex-col gap-3">
-              {rules.map(rule => (
-                <div key={rule.id} onClick={() => setSelectedRuleId(rule.id)}
-                  className="cursor-pointer rounded-xl p-4 transition-all bg-white border border-transparent hover:border-ink/10 hover:shadow-sm flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
-                    <Globe size={20} className="text-blue-500" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-[14px] text-[#1E2D1F] mb-0.5 truncate">{rule.name}</h3>
-                    <p className="text-[9px] font-bold text-blue-400 uppercase tracking-wider">ПРАВИЛО</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          );
+          return <EntityTileGrid type="rule" items={rules} onSelect={setSelectedRuleId} />;
         })()}
         </>)}
         </div>

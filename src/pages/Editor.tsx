@@ -495,12 +495,23 @@ export default function Editor() {
   // Отчёт о противоречиях (полный скан P1.2) — для подсветки конкретных фраз в тексте (B2).
   type ScanIssue = { id: string; chapterId: string | null; entityName: string | null; issue: string; quote: string | null; severity: string; status: string };
   const [contradictionIssues, setContradictionIssues] = useState<ScanIssue[]>([]);
-  useEffect(() => {
+  const loadContradictions = useCallback(() => {
     if (!projectId) return;
     api.get<{ issues: ScanIssue[] }>(`/bible/${projectId}/contradictions`)
       .then(d => setContradictionIssues((d.issues ?? []).filter(i => i.status === 'open')))
       .catch(() => { /* отчёта ещё нет — подсвечиваем по именам (эвристика) */ });
   }, [projectId]);
+  useEffect(() => { loadContradictions(); }, [loadContradictions]);
+
+  /** Запустить полный скан книги на нестыковки (worker), затем подтянуть отчёт. */
+  const runContradictionScan = useCallback(async () => {
+    if (!projectId) return;
+    try {
+      await api.post(`/bible/${projectId}/contradictions/scan`, {});
+      // скан идёт в фоне — подтягиваем отчёт через паузы
+      [4000, 10000, 20000].forEach(ms => setTimeout(loadContradictions, ms));
+    } catch { /* квота/ошибка — тихо */ }
+  }, [projectId, loadContradictions]);
 
   // Wrap rawHandleExtract to also optimistically mark the chapter as freshly extracted.
   const handleExtract = useCallback(async () => {
@@ -1167,6 +1178,8 @@ export default function Editor() {
       run: () => handleBibleMenuClick('characters') },
     { id: 'ask', label: 'Перо — спросить про историю', icon: Feather, keywords: 'чат вопрос аналитик суммируй',
       run: () => { if (!isCoauthoring) handleToggleCoauthor(); } },
+    { id: 'scan', label: 'Проверить всю книгу на нестыковки', icon: AlertTriangle, keywords: 'скан проверка противоречия нестыковки вся книга',
+      run: () => { runContradictionScan(); } },
     { id: 'reference', label: 'Справочник / Нестыковки этой главы', icon: Bookmark, keywords: 'справка нестыковки противоречия глава',
       run: () => { if (!isReferenceOpen) handleToggleReference(); } },
     { id: 'revision', label: 'Поиск по миру — где встречается, арка', icon: Telescope, keywords: 'ревизия трейс арка найти',
@@ -1184,7 +1197,7 @@ export default function Editor() {
     { id: 'settings', label: 'Настройки', icon: SettingsIcon, keywords: 'настройки аккаунт профиль',
       run: () => setIsSettingsOpen(true) },
   ], [currentChapterFreshness, isCoauthoring, isReferenceOpen, isRevisionOpen, isStatsOpen, isFocusMode,
-      handleRecheckChapter, handleExtract, handleRecheckAllStale, handleToggleCoauthor, handleToggleReference, handleToggleRevision, handleToggleStats, handleToggleFocusMode]);
+      handleRecheckChapter, handleExtract, handleRecheckAllStale, handleToggleCoauthor, handleToggleReference, handleToggleRevision, handleToggleStats, handleToggleFocusMode, runContradictionScan]);
 
   return (
     <>

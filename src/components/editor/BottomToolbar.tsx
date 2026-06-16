@@ -10,8 +10,8 @@ interface Props {
   /** Спутник «Перо» вызывается отсюда (правого рельса нет). */
   isCompanionOpen: boolean;
   onToggleCompanion: () => void;
-  /** Подсветка кнопки «Перо», когда есть находки/нестыковки. */
-  companionBadge?: boolean;
+  /** Счётчик «требует внимания»: находки + нестыковки в этой главе. */
+  companionCount?: number;
 }
 
 /**
@@ -27,7 +27,7 @@ export function BottomToolbar({
   onToggleFocusMode,
   isCompanionOpen,
   onToggleCompanion,
-  companionBadge,
+  companionCount = 0,
 }: Props) {
   return (
     <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40">
@@ -82,8 +82,10 @@ export function BottomToolbar({
         >
           <Feather size={16} className="flex-shrink-0" />
           <span className="hidden sm:inline">Перо</span>
-          {companionBadge && !isCompanionOpen && (
-            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#71597F]" />
+          {companionCount > 0 && !isCompanionOpen && (
+            <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] flex items-center justify-center bg-[#71597F] text-white text-[9px] font-bold rounded-full leading-none px-1">
+              {companionCount > 9 ? '9+' : companionCount}
+            </span>
           )}
         </button>
 

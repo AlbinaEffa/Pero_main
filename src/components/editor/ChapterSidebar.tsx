@@ -26,6 +26,8 @@ interface Props {
   editorFont: EditorFontName;
   /** «Библия истории» открывает инспектор в редакторе (а не страницу /bible). */
   onOpenBible?: () => void;
+  /** Счётчик на «Мир»: находки + нестыковки по проекту. */
+  bibleBadge?: number;
   /** Свернуть боковую панель (на десктопе). */
   onCollapse?: () => void;
 }
@@ -47,6 +49,7 @@ export function ChapterSidebar({
   saveError,
   editorFont,
   onOpenBible,
+  bibleBadge,
   onCollapse,
 }: Props) {
   const navigate = useNavigate();
@@ -172,6 +175,7 @@ export function ChapterSidebar({
       projectId={projectId}
       active="editor"
       onOpenBible={onOpenBible}
+      bibleBadge={bibleBadge}
       onCollapse={onCollapse}
       bottomExtra={saveStatus}
     >

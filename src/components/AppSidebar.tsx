@@ -33,6 +33,8 @@ interface AppSidebarProps {
   /** Если задан — «Мир» открывает инспектор прямо в редакторе
       (а не уводит на отдельную страницу /bible). REORG_PLAN шаг 3. */
   onOpenBible?: () => void;
+  /** Счётчик на «Мир»: новые находки + нестыковки по всему проекту. */
+  bibleBadge?: number;
   /** Если задан — показывается кнопка сворачивания панели. */
   onCollapse?: () => void;
   /** Середина: список глав (режим проекта). На глобальных страницах не передаётся. */
@@ -46,7 +48,7 @@ const navIdle = 'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm fon
 const navActive = 'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold bg-white/15 text-white';
 
 export function AppSidebar({
-  projectId, active, onOpenBible, onCollapse, children, bottomExtra,
+  projectId, active, onOpenBible, bibleBadge = 0, onCollapse, children, bottomExtra,
 }: AppSidebarProps) {
   return (
     <aside className="w-[220px] bg-[#1e2d1f] text-white/80 flex flex-col flex-shrink-0 shadow-xl z-20">
@@ -92,11 +94,21 @@ export function AppSidebar({
               <button onClick={onOpenBible} className={active === 'bible' ? navActive : navIdle}>
                 <BookOpen size={16} className="text-white/55" />
                 Мир
+                {bibleBadge > 0 && (
+                  <span className="ml-auto min-w-[18px] h-[18px] flex items-center justify-center bg-[#71597F] text-white text-[10px] font-bold rounded-full px-1 leading-none">
+                    {bibleBadge > 99 ? '99+' : bibleBadge}
+                  </span>
+                )}
               </button>
             ) : (
               <Link to={`/bible/${projectId}`} className={active === 'bible' ? navActive : navIdle}>
                 <BookOpen size={16} className="text-white/55" />
                 Мир
+                {bibleBadge > 0 && (
+                  <span className="ml-auto min-w-[18px] h-[18px] flex items-center justify-center bg-[#71597F] text-white text-[10px] font-bold rounded-full px-1 leading-none">
+                    {bibleBadge > 99 ? '99+' : bibleBadge}
+                  </span>
+                )}
               </Link>
             )}
 

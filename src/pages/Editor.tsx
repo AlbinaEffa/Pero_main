@@ -32,6 +32,7 @@ import { WritingStatsPanel } from '../components/editor/WritingStatsPanel';
 import { FindReplacePopup } from '../components/FindReplacePopup';
 import { SearchPanel } from '../components/editor/SearchPanel';
 import { SearchHighlightExtension, searchHighlightKey } from '../components/editor/searchHighlightExtension';
+import { ContradictionHighlightExtension, contradictionHighlightKey } from '../components/editor/contradictionHighlightExtension';
 import { ToolbarSelectionExtension } from '../components/editor/toolbarSelectionExtension';
 import { TextAlignExtension } from '../components/editor/TextAlignExtension';
 import { SuperscriptExtension } from '../components/editor/SuperscriptExtension';
@@ -418,6 +419,7 @@ export default function Editor() {
         showOnlyCurrent: true,
       }),
       SearchHighlightExtension,
+      ContradictionHighlightExtension,
       ToolbarSelectionExtension,
     ],
     content: '',
@@ -872,6 +874,16 @@ export default function Editor() {
     return flagged;
   }, [allApprovedEntities]);
 
+  // Подсветка нестыковок прямо в тексте: имена сущностей с возможным противоречием
+  // подчёркиваются в рукописи (сигнал приходит к автору, а не прячется в панели).
+  useEffect(() => {
+    if (!editor) return;
+    const names = allApprovedEntities.filter(e => contradictions.has(e.id)).map(e => e.name);
+    try {
+      editor.view.dispatch(editor.view.state.tr.setMeta(contradictionHighlightKey, { terms: names }));
+    } catch { /* редактор ещё не готов — без подсветки */ }
+  }, [editor, contradictions, allApprovedEntities, chapterId, isLoadingContent]);
+
   const isCreatingChapterRef = useRef(false);
 
   const handleCreateChapter = async (type: import('../components/editor/types').ChapterType = 'chapter') => {
@@ -1150,6 +1162,12 @@ export default function Editor() {
           border-radius: 2px;
           box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.28);
         }
+        /* Нестыковка — волнистое подчёркивание прямо в тексте (как у проверки орфографии) */
+        .contradiction-mark {
+          text-decoration: underline wavy #A14F44;
+          text-decoration-skip-ink: none;
+          text-underline-offset: 3px;
+        }
       `}</style>
 
       <div className="relative flex h-screen w-full bg-[#f5f0e8] overflow-hidden font-sans text-[#1e2d1f]">
@@ -1182,6 +1200,11 @@ export default function Editor() {
             saveError={saveError}
             editorFont={editorFont}
             onOpenBible={() => handleBibleMenuClick('characters')}
+            bibleBadge={
+              suggestions.length
+              + updateSuggestions.filter(u => u.status === 'pending').length
+              + contradictions.size
+            }
             onCollapse={() => setIsChaptersCollapsed(true)}
           />
           </div>
@@ -1229,7 +1252,10 @@ export default function Editor() {
             onToggleFocusMode={handleToggleFocusMode}
             isCompanionOpen={!isCompanionCollapsed}
             onToggleCompanion={() => setIsCompanionCollapsed(v => !v)}
-            companionBadge={suggestions.some(s => s.chapterId === chapterId) || contradictions.size > 0}
+            companionCount={
+              suggestions.filter(s => s.chapterId === chapterId).length
+              + [...chapterLinkedEntities, ...chapterMentionedEntities].filter(e => contradictions.has(e.id)).length
+            }
           />
 
           {/* ── Match navigation bar ── */}

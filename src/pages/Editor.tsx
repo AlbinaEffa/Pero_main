@@ -1725,8 +1725,8 @@ export default function Editor() {
             onApproveFinding={approveSuggestion}
             onRejectFinding={rejectSuggestion}
             contradictionIds={contradictions}
-            onOpenEntity={() => handleBibleMenuClick('characters')}
-            onOpenWorld={() => handleBibleMenuClick('characters')}
+            onOpenEntity={() => { handleBibleMenuClick('characters'); setIsCompanionCollapsed(true); }}
+            onOpenWorld={() => { handleBibleMenuClick('characters'); setIsCompanionCollapsed(true); }}
             mode={companionMode}
             onModeChange={setCompanionMode}
             chat={

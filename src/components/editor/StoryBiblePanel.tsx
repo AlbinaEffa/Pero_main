@@ -4,7 +4,6 @@ import {
   ChevronRight, RotateCcw, ExternalLink,
   BookOpen, LayoutGrid, Share2,
 } from 'lucide-react';
-import { BIBLE_MENU_ITEMS } from './constants';
 import { PresenceLens } from './PresenceLens';
 import { ConnectionsLens } from './ConnectionsLens';
 import { TimelineLens } from './TimelineLens';
@@ -63,14 +62,6 @@ interface Props {
   onClose: () => void;
 }
 
-/** Map entity type → панельная вкладка, used when following a connection link. */
-const TYPE_TO_TAB: Record<string, string> = {
-  character: 'characters',
-  location:  'locations',
-  item:      'items',
-  rule:      'rules',
-};
-
 function entityTypeLabel(type: string) {
   if (type === 'character') return 'ПЕРСОНАЖ';
   if (type === 'location')  return 'ЛОКАЦИЯ';
@@ -125,6 +116,46 @@ function EntityTileGrid({ type, items, onSelect }: {
   );
 }
 
+/** Единая карточка-деталь сущности (любой тип) — открывается из плитки или связи. */
+function EntityDetailView({ entity, links, allEntities, events, chapters, onBack, onSelectEntity }: {
+  entity: Entity; links: EntityLink[]; allEntities: Entity[]; events: EntityEvent[];
+  chapters: ChapterSummary[]; onBack: () => void; onSelectEntity: (e: Entity) => void;
+}) {
+  const meta = TYPE_META[entity.type] ?? TYPE_META.rule;
+  const Icon = meta.Icon;
+  return (
+    <div className="flex flex-col gap-4">
+      <button onClick={onBack} className="flex items-center gap-2 text-xs text-[#1e2d1f]/60 hover:text-[#1e2d1f] transition-colors self-start">
+        <ChevronLeft size={14} /> Назад к Миру
+      </button>
+      <div className="flex flex-col items-center text-center">
+        <div className="w-20 h-20 rounded-full flex items-center justify-center mb-4" style={{ background: meta.pigment + '1a' }}>
+          <Icon size={32} style={{ color: meta.pigment }} />
+        </div>
+        <h2 className="text-xl font-bold text-[#1E2D1F] mb-1">{entity.name}</h2>
+        <div className="flex items-center justify-center gap-1.5 flex-wrap mb-2">
+          <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: meta.pigment }}>{meta.label}</span>
+          {entity.significance && (
+            <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${significanceColor(entity.significance)}`}>
+              {significanceLabel(entity.significance)}
+            </span>
+          )}
+        </div>
+        <FirstAppearanceLine entity={entity} chapters={chapters} />
+      </div>
+      <div>
+        <h4 className="text-[10px] font-bold text-ink/55 uppercase tracking-wider mb-2 ml-1">Описание</h4>
+        <div className={`bg-white p-4 rounded-xl border border-ink/5 shadow-sm text-[13px] leading-relaxed text-ink/80 ${entity.type === 'rule' ? 'italic font-serif' : ''}`}>
+          {entity.description}
+        </div>
+      </div>
+      <EntityAttributesBlock attributes={entity.attributes} />
+      <EntityConnectionsBlock entity={entity} links={links} entities={allEntities} onSelectEntity={onSelectEntity} />
+      <EntityTimelineBlock entity={entity} events={events} chapters={chapters} />
+    </div>
+  );
+}
+
 export function StoryBiblePanel({
   activeBibleTab, onTabChange, isExtracting,
   suggestions, approvedEntities, updateSuggestions,
@@ -139,23 +170,17 @@ export function StoryBiblePanel({
   const [scope, setScope] = useState<'project' | 'chapter'>('project');
   /** Линза «Таймлайн», отфильтрованная на одну сущность = арка героя. */
   const [focusEntityId, setFocusEntityId] = useState<string | null>(null);
-  const [selectedCharId, setSelectedCharId]   = useState<string | null>(null);
-  const [selectedLocId,  setSelectedLocId]    = useState<string | null>(null);
-  const [selectedItemId, setSelectedItemId]   = useState<string | null>(null);
-  const [selectedRuleId, setSelectedRuleId]   = useState<string | null>(null);
+  /** Выбранная сущность для карточки-детали (единая для всех типов). */
+  const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
 
-  /** Follow a connection: switch tab and select the entity on the other end. */
+  /** Follow a connection: open the entity card on the other end. */
   function openEntity(entity: Entity) {
-    const tab = TYPE_TO_TAB[entity.type];
-    if (!tab) return;
-    if (entity.type === 'character') setSelectedCharId(entity.id);
-    if (entity.type === 'location')  setSelectedLocId(entity.id);
-    if (entity.type === 'item')      setSelectedItemId(entity.id);
-    if (entity.type === 'rule')      setSelectedRuleId(entity.id);
-    onTabChange(tab);
+    setSelectedEntityId(entity.id);
+    if (activeBibleTab === 'inbox' || activeBibleTab === 'updates') onTabChange('characters');
   }
 
   const pendingUpdates = updateSuggestions.filter(u => u.status === 'pending');
+  const pendingTotal = suggestions.length + pendingUpdates.length;
 
   // Scope «эта глава»: сущности, у которых есть появление/событие/связь в текущей главе.
   const chapterEntityIds = useMemo(() => {
@@ -266,8 +291,8 @@ export function StoryBiblePanel({
           )}
         </div>
 
-        {/* Состояние мира — что это и сколько всего набралось */}
-        {worldStats.total > 0 && (
+        {/* Состояние мира + инбокс + охват — всё в одной мета-строке шапки */}
+        {(worldStats.total > 0 || pendingTotal > 0) && (
           <div className="mt-2.5 flex items-center gap-3 flex-wrap text-[11px] text-[#1e2d1f]/60">
             {(['character', 'location', 'item', 'rule'] as const).map(t =>
               worldStats.byType[t] ? (
@@ -282,6 +307,32 @@ export function StoryBiblePanel({
             )}
             {worldStats.events > 0 && (
               <span className="flex items-center gap-1" title="событий"><Clock size={11} className="text-[#1e2d1f]/40" />{worldStats.events}</span>
+            )}
+            {pendingTotal > 0 && (
+              <button
+                onClick={() => onTabChange('inbox')}
+                className="flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold bg-[#71597F]/12 text-[#71597F] hover:bg-[#71597F]/20 transition-colors"
+                title="Новые находки на одобрение"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-[#71597F]" /> {pendingTotal} новое
+              </button>
+            )}
+            {worldStats.total > 0 && (
+              <div className="ml-auto flex items-center rounded-lg bg-[#1e2d1f]/[0.06] p-0.5 text-[10.5px] font-medium">
+                {(['chapter', 'project'] as const).map(s => (
+                  <button
+                    key={s}
+                    onClick={() => setScope(s)}
+                    disabled={s === 'chapter' && !currentChapterId}
+                    className={`px-2 py-0.5 rounded-md transition-colors ${
+                      scope === s ? 'bg-white text-[#1e2d1f] shadow-sm' : 'text-[#1e2d1f]/50 hover:text-[#1e2d1f]'
+                    } ${s === 'chapter' && !currentChapterId ? 'opacity-40 cursor-default' : ''}`}
+                    title={s === 'chapter' ? 'Только эта глава' : 'Весь проект'}
+                  >
+                    {s === 'chapter' ? 'глава' : 'проект'}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
         )}
@@ -307,55 +358,7 @@ export function StoryBiblePanel({
             {l.label}{l.soon ? ' · скоро' : ''}
           </button>
         ))}
-        <div className="ml-auto flex-shrink-0 flex items-center rounded-lg bg-[#1e2d1f]/[0.06] p-0.5 text-[10.5px] font-medium">
-          {(['chapter', 'project'] as const).map(s => (
-            <button
-              key={s}
-              onClick={() => setScope(s)}
-              disabled={s === 'chapter' && !currentChapterId}
-              className={`px-2 py-0.5 rounded-md transition-colors ${
-                scope === s ? 'bg-white text-[#1e2d1f] shadow-sm' : 'text-[#1e2d1f]/50 hover:text-[#1e2d1f]'
-              } ${s === 'chapter' && !currentChapterId ? 'opacity-40 cursor-default' : ''}`}
-              title={s === 'chapter' ? 'Только эта глава' : 'Весь проект'}
-            >
-              {s === 'chapter' ? 'глава' : 'проект'}
-            </button>
-          ))}
-        </div>
       </div>
-
-      {/* Tabs (только для линзы «Каталог») */}
-      {lensMode === 'catalog' && (
-      <div
-        className="flex px-2 pt-2 border-b border-[#1e2d1f]/5 bg-white/40 overflow-x-auto"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-      >
-        {BIBLE_MENU_ITEMS.map(item => (
-          <button
-            key={item.id}
-            onClick={() => onTabChange(item.id)}
-            className={`flex-shrink-0 px-3 pb-2.5 pt-1.5 text-xs font-medium flex items-center justify-center gap-1.5 border-b-2 transition-colors ${
-              activeBibleTab === item.id
-                ? 'border-[#1e2d1f] text-[#1e2d1f]'
-                : 'border-transparent text-[#1e2d1f]/50 hover:text-[#1e2d1f]/80'
-            }`}
-          >
-            <item.icon size={14} />
-            {item.label}
-            {item.id === 'inbox' && suggestions.length > 0 && (
-              <span className="bg-rose-500 text-white text-[9px] px-1.5 py-0.5 rounded-full ml-0.5 leading-none">
-                {suggestions.length}
-              </span>
-            )}
-            {item.id === 'updates' && pendingUpdates.length > 0 && (
-              <span className="bg-amber-500 text-white text-[9px] px-1.5 py-0.5 rounded-full ml-0.5 leading-none">
-                {pendingUpdates.length}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-      )}
 
       <div className="flex-1 overflow-y-auto p-4">
         <div className={isExpanded ? 'max-w-[940px] mx-auto' : ''}>
@@ -392,6 +395,27 @@ export function StoryBiblePanel({
             onJumpToChapter={(chapterId, name) => onOpenInEditor(chapterId, name, name)}
           />
         ) : (<>
+
+        {/* Мини-навигация инбокса (Новое/Обновления) — только в режиме обзора находок */}
+        {(activeBibleTab === 'inbox' || activeBibleTab === 'updates') && (
+          <div className="flex items-center gap-2 mb-4">
+            <button onClick={() => onTabChange('characters')} className="flex items-center gap-1 text-xs text-[#1e2d1f]/55 hover:text-[#1e2d1f] transition-colors mr-1">
+              <ChevronLeft size={14} /> Мир
+            </button>
+            {([['inbox', 'Новое', suggestions.length], ['updates', 'Обновления', pendingUpdates.length]] as const).map(([id, label, n]) => (
+              <button
+                key={id}
+                onClick={() => onTabChange(id)}
+                className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg transition-colors ${
+                  activeBibleTab === id ? 'bg-[#1e2d1f] text-[#f5f0e8]' : 'text-[#1e2d1f]/55 hover:bg-[#1e2d1f]/[0.06]'
+                }`}
+              >
+                {label}
+                {n > 0 && <span className={`text-[9px] leading-none rounded-full px-1.5 py-0.5 ${activeBibleTab === id ? 'bg-white/25' : 'bg-[#71597F]/15 text-[#71597F]'}`}>{n}</span>}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* ── INBOX TAB ── */}
         {activeBibleTab === 'inbox' && (
@@ -503,185 +527,52 @@ export function StoryBiblePanel({
           </div>
         )}
 
-        {/* ── CHARACTERS TAB ── */}
-        {activeBibleTab === 'characters' && (() => {
-          const chars = visibleEntities.filter(e => e.type === 'character');
-          const selected = chars.find(c => c.id === selectedCharId);
-          if (selected) return (
-            <div className="flex flex-col gap-4">
-              <button onClick={() => setSelectedCharId(null)} className="flex items-center gap-2 text-xs text-[#1e2d1f]/60 hover:text-[#1e2d1f] mb-2 transition-colors">
-                <ChevronLeft size={14} /> Назад к списку
-              </button>
-              <div className="flex flex-col items-center text-center">
-                <div className="w-20 h-20 rounded-full bg-rose-100 flex items-center justify-center mb-4">
-                  <Users size={32} className="text-rose-500" />
-                </div>
-                <h2 className="text-xl font-bold text-[#1E2D1F] mb-1">{selected.name}</h2>
-                <div className="flex items-center justify-center gap-1.5 flex-wrap mb-2">
-                  <span className="text-[9px] font-bold text-rose-500 uppercase tracking-wider">ПЕРСОНАЖ</span>
-                  {selected.significance && (
-                    <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${significanceColor(selected.significance)}`}>
-                      {significanceLabel(selected.significance)}
-                    </span>
-                  )}
-                </div>
-                <FirstAppearanceLine entity={selected} chapters={chapters} />
-              </div>
-              <div>
-                <h4 className="text-[10px] font-bold text-ink/55 uppercase tracking-wider mb-2 ml-1">Описание</h4>
-                <div className="bg-white p-4 rounded-xl border border-ink/5 shadow-sm text-[13px] leading-relaxed text-ink/80">
-                  {selected.description}
-                </div>
-              </div>
-              <EntityAttributesBlock attributes={selected.attributes} />
-              <EntityConnectionsBlock
-                entity={selected}
-                links={entityLinks}
-                entities={approvedEntities}
-                onSelectEntity={openEntity}
-              />
-              <EntityTimelineBlock entity={selected} events={entityEvents} chapters={chapters} />
-            </div>
+        {/* ── КАТАЛОГ: одна лента секций по типам / карточка-деталь ── */}
+        {(() => {
+          const detail = selectedEntityId ? approvedEntities.find(e => e.id === selectedEntityId) : null;
+          if (detail) return (
+            <EntityDetailView
+              entity={detail}
+              links={entityLinks}
+              allEntities={approvedEntities}
+              events={entityEvents}
+              chapters={chapters}
+              onBack={() => setSelectedEntityId(null)}
+              onSelectEntity={openEntity}
+            />
           );
-          if (chars.length === 0) return (
+          if (visibleEntities.length === 0) return (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Users size={32} className="text-[#1e2d1f]/20 mb-4" />
-              <p className="text-sm text-[#1e2d1f]/50">Персонажи появятся здесь после одобрения во вкладке «Новое»</p>
+              <BookOpen size={32} className="text-[#1e2d1f]/20 mb-4" />
+              <p className="text-sm text-[#1e2d1f]/50">
+                {scope === 'chapter' ? 'В этой главе пока нет сущностей.' : 'Мир пуст. Нажмите «Прочитать» на главе — Перо извлечёт сущности.'}
+              </p>
             </div>
           );
-          return <EntityTileGrid type="character" items={chars} onSelect={setSelectedCharId} />;
-        })()}
-
-        {/* ── LOCATIONS TAB ── */}
-        {activeBibleTab === 'locations' && (() => {
-          const locs = visibleEntities.filter(e => e.type === 'location');
-          const selected = locs.find(l => l.id === selectedLocId);
-          if (selected) return (
-            <div className="flex flex-col">
-              <button onClick={() => setSelectedLocId(null)} className="flex items-center gap-2 text-xs text-[#1e2d1f]/60 hover:text-[#1e2d1f] mb-6 transition-colors">
-                <ChevronLeft size={14} /> Назад к списку
-              </button>
-              <div className="flex flex-col items-center text-center mb-6">
-                <div className="w-20 h-20 rounded-full bg-[#e3e8e3] flex items-center justify-center mb-4">
-                  <MapPin size={32} className="text-[#4a5d4e]" />
-                </div>
-                <h2 className="text-xl font-bold text-[#1E2D1F] mb-1">{selected.name}</h2>
-                <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                  <span className="text-[9px] font-bold text-[#4a5d4e] uppercase tracking-wider">ЛОКАЦИЯ</span>
-                  {selected.significance && (
-                    <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${significanceColor(selected.significance)}`}>
-                      {significanceLabel(selected.significance)}
-                    </span>
-                  )}
-                </div>
-                <div className="mt-2 flex justify-center">
-                  <FirstAppearanceLine entity={selected} chapters={chapters} />
-                </div>
-              </div>
-              <h4 className="text-[10px] font-bold text-ink/55 uppercase tracking-wider mb-2 ml-1">Описание</h4>
-              <div className="bg-white p-4 rounded-xl border border-ink/5 shadow-sm text-[13px] leading-relaxed text-ink/80 mb-4">
-                {selected.description}
-              </div>
-              <div className="space-y-4">
-                <EntityAttributesBlock attributes={selected.attributes} />
-                <EntityConnectionsBlock entity={selected} links={entityLinks} entities={approvedEntities} onSelectEntity={openEntity} />
-              </div>
+          const SECTIONS = [
+            { type: 'character', label: 'Персонажи' },
+            { type: 'location',  label: 'Локации' },
+            { type: 'item',      label: 'Предметы' },
+            { type: 'rule',      label: 'Правила мира' },
+          ] as const;
+          return (
+            <div className="flex flex-col gap-7">
+              {SECTIONS.map(s => {
+                const list = visibleEntities.filter(e => e.type === s.type);
+                if (list.length === 0) return null;
+                return (
+                  <div key={s.type} id={`world-section-${s.type}`}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ background: TYPE_META[s.type].pigment }} />
+                      <span className="text-[12px] font-bold uppercase tracking-wider" style={{ color: TYPE_META[s.type].pigment }}>{s.label}</span>
+                      <span className="text-[11px] text-[#1e2d1f]/45 font-medium">· {list.length}</span>
+                    </div>
+                    <EntityTileGrid type={s.type} items={list} onSelect={setSelectedEntityId} />
+                  </div>
+                );
+              })}
             </div>
           );
-          if (locs.length === 0) return (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <MapPin size={32} className="text-[#1e2d1f]/20 mb-4" />
-              <p className="text-sm text-[#1e2d1f]/50">Локации появятся здесь после одобрения во вкладке «Новое»</p>
-            </div>
-          );
-          return <EntityTileGrid type="location" items={locs} onSelect={setSelectedLocId} />;
-        })()}
-
-        {/* ── ITEMS TAB ── */}
-        {activeBibleTab === 'items' && (() => {
-          const items = visibleEntities.filter(e => e.type === 'item');
-          const selected = items.find(i => i.id === selectedItemId);
-          if (selected) return (
-            <div className="flex flex-col">
-              <button onClick={() => setSelectedItemId(null)} className="flex items-center gap-2 text-xs text-[#1e2d1f]/60 hover:text-[#1e2d1f] mb-6 transition-colors">
-                <ChevronLeft size={14} /> Назад к списку
-              </button>
-              <div className="flex flex-col items-center text-center mb-6">
-                <div className="w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center mb-4">
-                  <Box size={32} className="text-amber-600" />
-                </div>
-                <h2 className="text-xl font-bold text-[#1E2D1F] mb-1">{selected.name}</h2>
-                <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                  <span className="text-[9px] font-bold text-amber-500 uppercase tracking-wider">ПРЕДМЕТ</span>
-                  {selected.significance && (
-                    <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${significanceColor(selected.significance)}`}>
-                      {significanceLabel(selected.significance)}
-                    </span>
-                  )}
-                </div>
-                <div className="mt-2 flex justify-center">
-                  <FirstAppearanceLine entity={selected} chapters={chapters} />
-                </div>
-              </div>
-              <h4 className="text-[10px] font-bold text-ink/55 uppercase tracking-wider mb-2 ml-1">Описание</h4>
-              <div className="bg-white p-4 rounded-xl border border-ink/5 shadow-sm text-[13px] leading-relaxed text-ink/80 mb-4">
-                {selected.description}
-              </div>
-              <div className="space-y-4">
-                <EntityAttributesBlock attributes={selected.attributes} />
-                <EntityConnectionsBlock entity={selected} links={entityLinks} entities={approvedEntities} onSelectEntity={openEntity} />
-              </div>
-            </div>
-          );
-          if (items.length === 0) return (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Box size={32} className="text-[#1e2d1f]/20 mb-4" />
-              <p className="text-sm text-[#1e2d1f]/50">Предметы появятся здесь после одобрения во вкладке «Новое»</p>
-            </div>
-          );
-          return <EntityTileGrid type="item" items={items} onSelect={setSelectedItemId} />;
-        })()}
-
-        {/* ── RULES TAB ── */}
-        {activeBibleTab === 'rules' && (() => {
-          const rules = visibleEntities.filter(e => e.type === 'rule');
-          const selected = rules.find(r => r.id === selectedRuleId);
-          if (selected) return (
-            <div className="flex flex-col">
-              <button onClick={() => setSelectedRuleId(null)} className="flex items-center gap-2 text-xs text-[#1e2d1f]/60 hover:text-[#1e2d1f] mb-6 transition-colors">
-                <ChevronLeft size={14} /> Назад к списку
-              </button>
-              <div className="flex flex-col items-center text-center mb-6">
-                <div className="w-20 h-20 rounded-2xl bg-blue-100 flex items-center justify-center mb-4">
-                  <Globe size={32} className="text-blue-500" />
-                </div>
-                <h2 className="text-xl font-bold text-[#1E2D1F] mb-1">{selected.name}</h2>
-                <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                  <span className="text-[9px] font-bold text-blue-500 uppercase tracking-wider">ПРАВИЛО МИРА</span>
-                  {selected.significance && (
-                    <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${significanceColor(selected.significance)}`}>
-                      {significanceLabel(selected.significance)}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <h4 className="text-[10px] font-bold text-ink/55 uppercase tracking-wider mb-2 ml-1">Описание</h4>
-              <div className="bg-white p-4 rounded-xl border border-ink/5 shadow-sm text-[13px] leading-relaxed text-ink/80 italic font-serif mb-4">
-                {selected.description}
-              </div>
-              <div className="space-y-4">
-                <EntityAttributesBlock attributes={selected.attributes} />
-                <EntityConnectionsBlock entity={selected} links={entityLinks} entities={approvedEntities} onSelectEntity={openEntity} />
-              </div>
-            </div>
-          );
-          if (rules.length === 0) return (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Globe size={32} className="text-[#1e2d1f]/20 mb-4" />
-              <p className="text-sm text-[#1e2d1f]/50">Правила мира появятся здесь после одобрения во вкладке «Новое»</p>
-            </div>
-          );
-          return <EntityTileGrid type="rule" items={rules} onSelect={setSelectedRuleId} />;
         })()}
         </>)}
         </div>

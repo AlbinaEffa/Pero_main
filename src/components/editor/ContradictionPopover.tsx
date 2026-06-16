@@ -16,6 +16,8 @@ interface Props {
   onOpenWorld: () => void;
   /** Пометить «не нестыковка» — больше не подсвечивать. */
   onDismiss: () => void;
+  /** Слить дубли одного имени в одну сущность (если их несколько). */
+  onMerge?: () => void;
   /** Текст конкретной нестыковки из скана (B2), если кликнули по фразе. */
   issueText?: string;
   issueChapterId?: string | null;
@@ -26,7 +28,7 @@ interface Props {
  * Показывает расходящиеся описания по главам и даёт перейти к ним. «Вау» нативно:
  * автор видит конфликт прямо там, где пишет, и сразу прыгает разбираться.
  */
-export function ContradictionPopover({ name, group, chapters, x, y, onClose, onJump, onOpenWorld, onDismiss, issueText }: Props) {
+export function ContradictionPopover({ name, group, chapters, x, y, onClose, onJump, onOpenWorld, onDismiss, onMerge, issueText }: Props) {
   useEffect(() => {
     const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onEsc);
@@ -79,6 +81,11 @@ export function ContradictionPopover({ name, group, chapters, x, y, onClose, onJ
               Не нестыковка
             </button>
           </div>
+          {onMerge && group.length >= 2 && (
+            <button onClick={onMerge} className="mt-2 w-full text-[11.5px] font-medium text-[#71597F] hover:bg-[#71597F]/[0.08] rounded-lg py-1.5 transition-colors" title="Это один объект, записанный дважды — слить в одну запись">
+              Это один объект — объединить записи
+            </button>
+          )}
         </div>
       </div>
     </>

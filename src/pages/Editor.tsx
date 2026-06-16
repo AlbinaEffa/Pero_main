@@ -1760,6 +1760,18 @@ export default function Editor() {
           onJump={(chapterId, name) => { setContradictionPopover(null); handleOpenInEditor(chapterId, name, name); }}
           onOpenWorld={() => { setContradictionPopover(null); handleBibleMenuClick('characters'); }}
           onDismiss={() => { dismissContradiction(contradictionPopover.name); setContradictionPopover(null); }}
+          onMerge={async () => {
+            const name = contradictionPopover.name;
+            setContradictionPopover(null);
+            if (!projectId) return;
+            try {
+              await api.post(`/bible/${projectId}/merge`, { name });
+              const data = await api.get<{ entities: Entity[]; links?: EntityLink[]; events?: EntityEvent[] }>(`/bible/${projectId}`);
+              setBibleEntities((data.entities ?? []).filter(e => e.status === 'approved'));
+              setEntityLinks(data.links ?? []);
+              setEntityEvents(data.events ?? []);
+            } catch { /* ошибка слияния — тихо */ }
+          }}
         />
       )}
 

@@ -987,6 +987,39 @@ router.patch('/:entityId', authenticateToken, async (req: any, res) => {
   }
 });
 
+// ── POST /api/bible/:projectId/merge — слить дубли одного имени в одну сущность ──
+// Лечит корень нестыковок: один герой записан несколько раз с разными описаниями.
+router.post('/:projectId/merge', authenticateToken, async (req: any, res) => {
+  try {
+    const { projectId } = req.params;
+    const { name } = req.body ?? {};
+    if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
+    if (typeof name !== 'string' || !name.trim()) return res.status(400).json({ error: 'name is required' });
+
+    const isOwner = await assertProjectOwnership(projectId, req.user.userId);
+    if (!isOwner) return res.status(403).json({ error: 'Access denied to this project' });
+
+    const ents = await db.select().from(schema.storyEntities)
+      .where(and(eq(schema.storyEntities.projectId, projectId), eq(schema.storyEntities.status, 'approved')));
+    const group = ents.filter(e => e.name.trim().toLowerCase() === name.trim().toLowerCase());
+    if (group.length < 2) return res.json({ merged: 0 });
+
+    // Выживший — с самым длинным описанием (больше всего фактов).
+    const survivor = group.reduce((a, b) => ((b.description?.length ?? 0) > (a.description?.length ?? 0) ? b : a));
+    const otherIds = group.filter(e => e.id !== survivor.id).map(e => e.id);
+
+    await db.update(schema.entityLinks).set({ sourceEntityId: survivor.id }).where(inArray(schema.entityLinks.sourceEntityId, otherIds));
+    await db.update(schema.entityLinks).set({ targetEntityId: survivor.id }).where(inArray(schema.entityLinks.targetEntityId, otherIds));
+    await db.update(schema.entityEvents).set({ entityId: survivor.id }).where(inArray(schema.entityEvents.entityId, otherIds));
+    await db.delete(schema.storyEntities).where(inArray(schema.storyEntities.id, otherIds));
+
+    res.json({ merged: otherIds.length, survivorId: survivor.id });
+  } catch (error) {
+    console.error('Error merging entities:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // ── DELETE /api/bible/links/:linkId — remove a wrong connection ──────────────
 
 router.delete('/links/:linkId', authenticateToken, async (req: any, res) => {

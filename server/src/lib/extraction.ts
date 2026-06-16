@@ -255,11 +255,15 @@ events — ТОЛЬКО для character: 0–3 сюжетно значимых 
   В ЭТОЙ главе. Не пересказ сцены, а перелом: конфликт, перемена статуса, важное решение,
   раскрытие тайны, сдвиг в отношениях.
   Каждое событие: { "title": "2–4 слова", "description": "одно предложение",
-                    "eventType": "conflict" | "relationship" | "status" | "revelation" | "other" }
+                    "eventType": "conflict" | "relationship" | "status" | "revelation" | "other",
+                    "timeLabel": "маркер времени из текста, если есть (напр. «за год до», «той же ночью», «в детстве»), иначе опусти",
+                    "timeHint": "когда событие в истории: 'present' (сейчас по сюжету) | 'flashback' (воспоминание/ретроспектива) | 'past' | 'future'. По умолчанию 'present'." }
 
 relations — связи между сущностями ответа, ЯВНО подтверждённые текстом:
   [{ "from": "Имя", "to": "Имя", "relation": "краткий тип" }]
   relation читается от from к to: «мать», «наставник», «соперник», «владеет», «живёт в».
+  Для ЛОКАЦИЙ обязательно добавляй связи вложенности, если текст их даёт:
+  relation «находится в» / «часть» (меньшее место → большее), напр. { "from": "Таверна", "to": "Нижний город", "relation": "находится в" }.
   Не выдумывай связи и не включай неопределённые («знаком с»).
 
 Ответ — строго JSON, без markdown-обёртки:
@@ -295,6 +299,8 @@ export interface AiEvent {
   title?: string;
   description?: string;
   eventType?: string;
+  timeLabel?: string;
+  timeHint?: string;
 }
 
 export interface AiEntity {
@@ -320,6 +326,7 @@ export interface ProcessResult {
 }
 
 const VALID_EVENT_TYPES = new Set(['conflict', 'relationship', 'status', 'revelation', 'other']);
+const VALID_TIME_HINTS = new Set(['past', 'present', 'future', 'flashback']);
 const MAX_EVENTS_PER_ENTITY = 3;
 
 /** True for null, '', whitespace-only strings and empty arrays. */
@@ -499,6 +506,7 @@ export async function processExtractionResults(
         if (seenEvents.has(dedupeKey)) continue;
         seenEvents.add(dedupeKey);
 
+        const timeHint = VALID_TIME_HINTS.has(ev?.timeHint ?? '') ? ev!.timeHint! : null;
         await db.insert(schema.entityEvents).values({
           projectId,
           entityId,
@@ -507,6 +515,8 @@ export async function processExtractionResults(
           title,
           description: (ev?.description ?? '').trim().slice(0, 500) || null,
           eventType: VALID_EVENT_TYPES.has(ev?.eventType ?? '') ? ev!.eventType! : 'other',
+          timeLabel: (ev?.timeLabel ?? '').trim().slice(0, 80) || null,
+          timeHint,
         });
         newEvents++;
       }

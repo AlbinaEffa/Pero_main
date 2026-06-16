@@ -125,9 +125,12 @@ ${list}
   Для character доступны также: background (предыстория), motivations (мотивация),
   speech (манера речи), secrets (тайны), plotRelevance (зачем сюжету).
 • Для character добавь events: 0–3 сюжетно значимых события персонажа В ЭТОЙ главе
-  ({ "title": "2–4 слова", "description": "одно предложение", "eventType": "conflict"|"relationship"|"status"|"revelation"|"other" }).
+  ({ "title": "2–4 слова", "description": "одно предложение", "eventType": "conflict"|"relationship"|"status"|"revelation"|"other",
+     "timeLabel": "маркер времени из текста, если есть («за год до», «той же ночью»), иначе опусти",
+     "timeHint": "'present' | 'flashback' | 'past' | 'future' (по умолчанию 'present')" }).
 • Добавь relations: связи между сущностями (из списка или новыми), ЯВНО подтверждённые текстом:
   [{ "from": "Имя", "to": "Имя", "relation": "краткий тип («мать», «наставник», «живёт в»)" }].
+  Для ЛОКАЦИЙ добавляй вложенность: relation «находится в»/«часть» (меньшее место → большее).
 
 Ответ — строго JSON, без markdown:
 {
@@ -178,8 +181,9 @@ ${list}
 
 НЕ анализируй то, что не изменилось. Описание — строго из текста.
 Для каждой сущности добавь significance ("major"/"moderate"/"minor") и attributes (только подтверждённые текстом поля).
-Для character добавь events (0–3 события персонажа в изменённых фрагментах) и
-relations (связи, явно подтверждённые текстом) — по общим правилам.
+Для character добавь events (0–3 события персонажа в изменённых фрагментах; если есть
+маркер времени — timeLabel + timeHint 'flashback'/'present') и relations (связи, явно
+подтверждённые текстом; для локаций — вложенность «находится в»/«часть») — по общим правилам.
 
 Ответ — строго JSON, без markdown:
 {
@@ -231,9 +235,10 @@ ${list}
 • Для каждой сущности добавь significance ("major"/"moderate"/"minor") и attributes (только подтверждённые текстом поля).
   Для character доступны также: background, motivations, speech, secrets, plotRelevance.
 • Для character добавь events: 0–3 сюжетно значимых события персонажа в данной главе
-  ({ "title": "2–4 слова", "description": "одно предложение", "eventType": "conflict"|"relationship"|"status"|"revelation"|"other" }).
+  ({ "title": "2–4 слова", "description": "одно предложение", "eventType": "conflict"|"relationship"|"status"|"revelation"|"other",
+     "timeLabel": "маркер времени из текста, если есть, иначе опусти", "timeHint": "'present'|'flashback'|'past'|'future'" }).
 • Для каждой главы добавь relations: связи между сущностями, ЯВНО подтверждённые текстом
-  ([{ "from": "Имя", "to": "Имя", "relation": "краткий тип" }]).
+  ([{ "from": "Имя", "to": "Имя", "relation": "краткий тип" }]). Для локаций — вложенность «находится в»/«часть».
 
 ${chapterBlocks}
 

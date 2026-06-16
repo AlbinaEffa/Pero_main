@@ -133,6 +133,9 @@ export const entityEvents = pgTable('entity_events', {
   title:        text('title').notNull(),
   description:  text('description'),
   eventType:    text('event_type'),
+  // Сюжетная хронология (PRD: видеть флешбеки и реальный порядок событий)
+  timeLabel:    text('time_label'),   // маркер времени из текста: «за год до», «той же ночью»
+  timeHint:     text('time_hint'),    // 'past' | 'present' | 'future' | 'flashback'
   createdAt:    timestamp('created_at').defaultNow().notNull(),
 });
 

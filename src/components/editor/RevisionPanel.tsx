@@ -78,7 +78,7 @@ export function RevisionPanel({
   onClose,
 }: Props) {
   return (
-    <div className="flex flex-col h-full w-[320px]">
+    <div className="flex flex-col h-full w-full">
       {/* Header */}
       <div className="p-5 border-b border-[#1e2d1f]/5 flex justify-between items-center bg-white/40 flex-shrink-0">
         <div className="flex items-center gap-2">

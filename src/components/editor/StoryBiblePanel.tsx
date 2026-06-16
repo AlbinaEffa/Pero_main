@@ -141,7 +141,7 @@ export function StoryBiblePanel({
   }, [pendingUpdates, chapterLookup]);
 
   return (
-    <div className="flex flex-col h-full w-[320px]">
+    <div className="flex flex-col h-full w-full">
       <div className="px-5 py-4 border-b border-[#1e2d1f]/5 bg-white/40">
         <div className="flex justify-between items-center">
           <h2 className="font-sans text-base font-semibold text-[#1e2d1f]">Мир</h2>

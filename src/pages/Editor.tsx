@@ -43,7 +43,7 @@ import Settings from './Settings';
 
 import { Chapter, Entity, EntityLink, EntityEvent } from '../components/editor/types';
 import { AhaCelebration } from '../components/AhaCelebration';
-import { Users, MapPin, Box, Scale, Bookmark, X, AlertTriangle, ChevronUp, ChevronDown,
+import { Users, MapPin, Box, Scale, Bookmark, X, AlertTriangle, ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
   Eye, Bell, BookOpen, Feather, Telescope, BarChart2, Search, FolderSearch, Download, Maximize2, Settings as SettingsIcon } from 'lucide-react';
 
 type EditorFontName = 'cormorant' | 'literata' | 'source-serif';
@@ -323,6 +323,7 @@ export default function Editor() {
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [isCommandOpen, setIsCommandOpen] = useState(false);
+  const [isInspectorExpanded, setIsInspectorExpanded] = useState(false);
   const [totalProjectWords, setTotalProjectWords] = useState(0);
   const [isRecheckingAll, setIsRecheckingAll] = useState(false);
   const [isReading, setIsReading] = useState(false);
@@ -752,6 +753,7 @@ export default function Editor() {
     setIsRevisionOpen(false);
     setIsSyncOpen(false);
     setIsStatsOpen(false);
+    setIsInspectorExpanded(false);
   }, []);
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
@@ -1064,6 +1066,7 @@ export default function Editor() {
       setIsExportOpen(false);
       setIsSearchOpen(false);
       setIsGlobalSearchOpen(false);
+      setIsInspectorExpanded(false);
     }
   };
 
@@ -1320,15 +1323,27 @@ export default function Editor() {
           />
         )}
         {/* Инспектор = оверлей: наезжает поверх текста справа (слева от пульс-рельса),
-            не раздвигает письмо. Закрытие — Esc / крестик / тап по затемнению (на узких). */}
+            не раздвигает письмо. «Развернуть» — выходит на первый план до левого края
+            (как в NotebookLM). Закрытие — Esc / крестик / тап по затемнению (на узких). */}
         <aside
-          className={`bg-[#f5f0e8] border-[#1e2d1f]/10 transition-all duration-300 ease-in-out overflow-hidden absolute top-14 bottom-0 right-12 max-md:right-0 max-md:top-0 z-40 w-[320px] border-l border-t max-md:border-t-0 ${
-            (!isFocusMode && isAnySidePanelOpen)
-              ? 'opacity-100 translate-x-0 shadow-2xl pointer-events-auto'
-              : 'opacity-0 translate-x-full pointer-events-none'
+          className={`bg-[#f5f0e8] border-[#1e2d1f]/10 transition-all duration-300 ease-in-out overflow-hidden absolute top-14 bottom-0 right-12 max-md:right-0 max-md:top-0 z-40 border-l border-t max-md:border-t-0 ${
+            (!isFocusMode && isAnySidePanelOpen) && isInspectorExpanded
+              ? 'left-0 max-md:left-0 opacity-100 translate-x-0 shadow-2xl pointer-events-auto'
+              : (!isFocusMode && isAnySidePanelOpen)
+              ? 'w-[min(92vw,360px)] opacity-100 translate-x-0 shadow-2xl pointer-events-auto'
+              : 'w-[min(92vw,360px)] opacity-0 translate-x-full pointer-events-none'
           }`}
         >
-          <div className="w-[320px] h-full flex flex-col absolute top-0 left-0">
+          {/* Развернуть / свернуть инспектор (как в NotebookLM) — «ручка» на левом крае */}
+          <button
+            onClick={() => setIsInspectorExpanded(v => !v)}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-50 w-5 h-12 flex items-center justify-center rounded-r-lg bg-white/70 hover:bg-white text-[#1e2d1f]/45 hover:text-[#1e2d1f] shadow-sm border border-l-0 border-[#1e2d1f]/10 transition-colors"
+            title={isInspectorExpanded ? 'Свернуть панель' : 'Развернуть на первый план'}
+            aria-label={isInspectorExpanded ? 'Свернуть панель' : 'Развернуть панель'}
+          >
+            {isInspectorExpanded ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+          </button>
+          <div className="w-full h-full flex flex-col absolute top-0 left-0">
           {isBibleOpen && (
             <StoryBiblePanel
               activeBibleTab={activeBibleTab}
@@ -1426,7 +1441,7 @@ export default function Editor() {
           )}
 
           {isReferenceOpen && (
-            <div className="flex flex-col h-full w-[320px]">
+            <div className="flex flex-col h-full w-full">
               {/* Header */}
               <div className="p-5 border-b border-[#1e2d1f]/5 flex justify-between items-center bg-white/40">
                 <div className="flex items-center gap-2">

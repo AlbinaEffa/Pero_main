@@ -795,6 +795,12 @@ export default function Editor() {
         setIsCommandOpen(v => !v);
       }
 
+      // Cmd/Ctrl+J — вызвать/скрыть спутника «Перо»
+      if (mod && e.key === 'j') {
+        e.preventDefault();
+        setIsCompanionCollapsed(v => !v);
+      }
+
       // Cmd/Ctrl+F — open find/replace
       if (mod && e.key === 'f') {
         e.preventDefault();

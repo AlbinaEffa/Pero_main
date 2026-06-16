@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, RefObject } from 'react';
 import {
   X, Sparkles, Send, ShieldCheck, FileText, TrendingUp, BookOpen, MessageCircle,
-  Copy, CornerDownLeft, MousePointer2,
+  Copy, CornerDownLeft, MousePointer2, Users,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { ChatMessage } from './types';
@@ -11,7 +11,7 @@ import { useAiQuota } from '../../hooks/useAiQuota';
 
 // Перо — аналитик, а не генератор: только «прочитать и ответить / сверить / извлечь
 // в библию». Трансформации текста (Плотнее/Диалог/Усиль/Сократи) убраны (REORG_PLAN шаг 5).
-type QuickActionId = 'summarize' | 'consistency' | 'changes' | 'bible';
+type QuickActionId = 'summarize' | 'consistency' | 'changes' | 'bible' | 'whohere';
 
 interface QuickAction {
   id: QuickActionId;
@@ -22,8 +22,9 @@ interface QuickAction {
 }
 
 const QUICK_ACTIONS: QuickAction[] = [
+  { id: 'whohere',     label: 'Кто в сцене?',     icon: Users,         selectionAware: false  },
+  { id: 'consistency', label: 'Сверь сцену',      icon: ShieldCheck,   special: 'consistency' },
   { id: 'summarize',   label: 'Суммируй',         icon: FileText,      selectionAware: true  },
-  { id: 'consistency', label: 'Противоречия',     icon: ShieldCheck,   special: 'consistency' },
   { id: 'changes',     label: 'Что изменилось',   icon: TrendingUp,    selectionAware: false  },
   { id: 'bible',       label: 'Извлечь в Мир',    icon: BookOpen,      special: 'bible'       },
 ];
@@ -45,6 +46,8 @@ function buildPrompt(actionId: QuickActionId, selectedText: string): string {
       return sel
         ? `Суммируй следующий фрагмент кратко:\n\n${sel}`
         : 'Сделай краткое резюме текущей главы: ключевые события, развитие персонажей, важные детали.';
+    case 'whohere':
+      return 'Кто и что из мира встречается в этой главе? Перечисли персонажей, локации и предметы и кратко напомни ключевые факты о каждом.';
     case 'changes':
       return 'Что произошло с ключевыми персонажами в этой главе? Как они изменились и развились?';
     case 'bible':

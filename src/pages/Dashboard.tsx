@@ -545,7 +545,7 @@ function NewProjectModal({ onClose, onCreate, onImport }: { onClose: () => void;
                   У меня уже есть рукопись
                 </span>
                 <span style={{ display: 'block', fontSize: '12px', color: 'rgba(30,45,31,0.5)', marginTop: '1px' }}>
-                  Импорт docx, fb2, epub, pdf или txt — Перо прочитает и построит библию
+                  Импорт docx, fb2, epub, pdf или txt — Перо прочитает и построит Мир
                 </span>
               </span>
             </button>

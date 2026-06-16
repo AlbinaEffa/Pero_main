@@ -264,7 +264,7 @@ export function SearchPanel({ projectId, onClose }: Props) {
 
           {query.trim().length < 2 && (
             <div style={{ padding: '20px 20px 24px', color: 'rgba(30,45,31,0.55)', fontSize: '13px', textAlign: 'center' }}>
-              Введите минимум 2 символа — ищем по главам и Библии
+              Введите минимум 2 символа — ищем по главам и Миру
             </div>
           )}
 

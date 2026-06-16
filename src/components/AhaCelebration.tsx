@@ -80,7 +80,7 @@ export function AhaCelebration() {
       ))}
       <div className="absolute left-1/2 top-[20%] -translate-x-1/2 animate-[ahaToast_3s_ease_forwards]">
         <div className="bg-[#1e2d1f] text-[#f5f0e8] rounded-2xl px-6 py-3.5 shadow-xl text-center">
-          <p className="font-serif text-lg font-semibold">Ваша библия задышала</p>
+          <p className="font-serif text-lg font-semibold">Ваш Мир задышал</p>
           <p className="text-xs text-[#f5f0e8]/70 mt-0.5">Перо теперь следит за миром само</p>
         </div>
       </div>

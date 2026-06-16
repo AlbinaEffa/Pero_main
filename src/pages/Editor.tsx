@@ -1670,7 +1670,7 @@ export default function Editor() {
                     <div className="flex flex-col items-center justify-center py-16 text-[#1e2d1f]/55 text-center">
                       <Bookmark size={32} className="mb-3 opacity-40" />
                       <p className="text-sm font-medium">
-                        Библия пуста — используйте ИИ-извлечение в нижней панели
+                        Мир пуст — используйте ИИ-извлечение в нижней панели
                       </p>
                     </div>
                   ) : (

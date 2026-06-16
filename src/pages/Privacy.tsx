@@ -29,8 +29,8 @@ export default function Privacy() {
           <p className="text-[10px] font-bold uppercase tracking-widest text-ink/55 mb-4">Главное — в трёх строчках</p>
           <ul className="space-y-3 text-[15px] leading-relaxed">
             <li className="flex gap-3"><span className="text-[var(--color-accent)] font-bold">1.</span><span>Ваши тексты <b>не используются для обучения</b> моделей искусственного интеллекта.</span></li>
-            <li className="flex gap-3"><span className="text-[var(--color-accent)] font-bold">2.</span><span>Все права на рукописи и построенную библию <b>остаются у вас</b>. Перо не претендует ни на что из написанного.</span></li>
-            <li className="flex gap-3"><span className="text-[var(--color-accent)] font-bold">3.</span><span>Удалили проект — он <b>удалён безвозвратно</b>, вместе с библией и историей работы над ним.</span></li>
+            <li className="flex gap-3"><span className="text-[var(--color-accent)] font-bold">2.</span><span>Все права на рукописи и построенный Мир <b>остаются у вас</b>. Перо не претендует ни на что из написанного.</span></li>
+            <li className="flex gap-3"><span className="text-[var(--color-accent)] font-bold">3.</span><span>Удалили проект — он <b>удалён безвозвратно</b>, вместе с Миром и историей работы над ним.</span></li>
           </ul>
         </div>
 
@@ -39,7 +39,7 @@ export default function Privacy() {
             <h2 className="font-serif text-2xl font-semibold text-ink mb-3">Что мы храним</h2>
             <p>
               Только то, что нужно для работы студии: ваши рукописи и главы, построенную по ним
-              библию истории (персонажи, локации, связи, таймлайны), настройки проектов
+              Мир (персонажи, локации, связи, таймлайны), настройки проектов
               и данные аккаунта — электронную почту и имя автора, если вы его указали.
               Мы не запрашиваем и не храним паспортные данные, телефон или адрес.
             </p>
@@ -64,7 +64,7 @@ export default function Privacy() {
             <h2 className="font-serif text-2xl font-semibold text-ink mb-3">Права на написанное</h2>
             <p>
               Всё, что вы написали, надиктовали или загрузили в Перо, — ваша интеллектуальная
-              собственность. Это относится и к библии истории, построенной инструментом по
+              собственность. Это относится и к Миру, построенному инструментом по
               вашей рукописи: она производна от вашего текста и принадлежит вам.
               Экспортируйте свои данные в любой момент — docx, markdown, txt или полный zip-бэкап.
             </p>
@@ -73,7 +73,7 @@ export default function Privacy() {
           <div>
             <h2 className="font-serif text-2xl font-semibold text-ink mb-3">Удаление</h2>
             <p>
-              Удаление проекта удаляет рукопись, главы, библию, связи, таймлайны и историю
+              Удаление проекта удаляет рукопись, главы, Мир, связи, таймлайны и историю
               ревизий безвозвратно — восстановить их не сможем ни вы, ни мы. Удаление аккаунта
               удаляет все проекты и данные аккаунта.
             </p>

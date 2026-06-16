@@ -128,14 +128,14 @@ export function RevisionPanel({
                   <span>
                     {traceSemantic
                       ? 'Не найдено в проиндексированных главах'
-                      : 'Нет упоминаний в Библии. Откройте главы в редакторе для индексации.'}
+                      : 'Нет упоминаний в Мире. Откройте главы в редакторе для индексации.'}
                   </span>
                 </div>
               ) : (
                 <div className="space-y-2">
                   <p className="text-[11px] text-[#1e2d1f]/55 font-medium">
                     {traceResults.length} {traceResults.length === 1 ? 'глава' : 'главы'}
-                    {traceSemantic ? ' (семантический поиск)' : ' (по Библии)'}
+                    {traceSemantic ? ' (семантический поиск)' : ' (по Миру)'}
                   </p>
                   {traceResults.map(ch => (
                     <div key={ch.id} className="rounded-xl bg-white/60 border border-[#1e2d1f]/5 p-3">
@@ -177,7 +177,7 @@ export function RevisionPanel({
         </Section>
 
         {/* ── Section 2: Bible sync ── */}
-        <Section title="Обновить Библию" icon={BookOpen} defaultOpen={false}>
+        <Section title="Обновить Мир" icon={BookOpen} defaultOpen={false}>
           <p className="text-[12px] text-[#1e2d1f]/60 mb-3 leading-relaxed">
             ИИ сравнит текущую главу с одобренными фактами и предложит обновления.
           </p>
@@ -197,7 +197,7 @@ export function RevisionPanel({
           {bibleDone && bibleSuggestions.length === 0 && (
             <div className="flex items-center gap-2 text-emerald-600 text-[12px]">
               <CheckCircle2 size={14} />
-              <span>Библия актуальна — изменений не требуется</span>
+              <span>Мир актуален — изменений не требуется</span>
             </div>
           )}
 

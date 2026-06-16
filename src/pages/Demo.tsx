@@ -131,7 +131,7 @@ export default function Demo() {
             </h1>
             <p className="text-ink/65 leading-relaxed mb-9 max-w-md mx-auto">
               Загрузите рукопись — Перо прочитает первую главу и на ваших глазах построит
-              кусочек библии мира: персонажей, локации, предметы. Прямо сейчас, без аккаунта.
+              кусочек Мира: персонажей, локации, предметы. Прямо сейчас, без аккаунта.
             </p>
 
             <div
@@ -270,7 +270,7 @@ function DemoResultView({ result, onRegister, onReset }: { result: DemoResult; o
         <h2 className="font-serif text-2xl font-semibold mb-2">
           {restChapters > 0
             ? `Это только первая глава. Осталось ещё ${restChapters} ${pluralChapters(restChapters)}`
-            : 'Хотите сохранить эту библию?'}
+            : 'Хотите сохранить этот Мир?'}
         </h2>
         <p className="text-[#f5f0e8]/70 leading-relaxed mb-6 max-w-md mx-auto">
           Создайте аккаунт — Перо прочитает книгу целиком, построит связи и таймлайны

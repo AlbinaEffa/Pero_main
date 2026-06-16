@@ -149,7 +149,7 @@ export function WorldMapStep({ projectId, projectTitle, firstChapterId, world }:
           className="flex-1 flex items-center justify-center gap-2 bg-[#1e2d1f] text-[#f5f0e8] py-3.5 rounded-xl text-sm font-medium hover:bg-[#2a3f2b] transition-colors shadow-sm"
         >
           <BookOpen size={16} />
-          Открыть библию истории
+          Открыть Мир
         </button>
         {firstChapterId && (
           <button

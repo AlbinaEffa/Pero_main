@@ -298,7 +298,7 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
                     Попробовать на демо-тексте
                   </div>
                   <div style={{ fontSize: '12px', color: 'rgba(30,45,31,0.45)', lineHeight: 1.5 }}>
-                    Загрузим готовую историю — сразу увидите, как работает Библия и соавтор
+                    Загрузим готовую историю — сразу увидите, как работает Мир и соавтор
                   </div>
                 </div>
               </button>
@@ -424,7 +424,7 @@ export function OnboardingWizard({ onComplete, onSkip, onImport }: Props) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '28px' }}>
               {[
                 { icon: Search, label: 'Извлекаем персонажей, места и предметы' },
-                { icon: BookOpen, label: 'Строим Библию истории' },
+                { icon: BookOpen, label: 'Строим Мир' },
                 { icon: Brain, label: 'Формируем семантическую память соавтора' },
               ].map((item, i) => (
                 <div key={i} style={{

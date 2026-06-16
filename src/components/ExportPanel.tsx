@@ -60,7 +60,7 @@ const FORMATS: Format[] = [
     id: 'backup',
     label: 'Полный архив',
     ext: '.zip',
-    description: 'Рукопись + Библия + метаданные',
+    description: 'Рукопись + Мир + метаданные',
     icon: <Archive size={18} />,
     endpoint: 'backup',
   },
@@ -229,7 +229,7 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
               <BookOpen size={15} color={includeBible ? '#3A4F41' : 'rgba(30,45,31,0.58)'} />
               <div>
                 <div style={{ fontSize: '13px', fontWeight: 600, color: '#1E2D1F' }}>
-                  Приложить Библию истории
+                  Приложить Мир
                 </div>
                 <div style={{ fontSize: '11px', color: 'rgba(30,45,31,0.6)', lineHeight: 1.4 }}>
                   Добавить персонажей, локации и правила мира
@@ -324,7 +324,7 @@ export function ExportPanel({ projectId, projectTitle, onClose }: Props) {
                             fontSize: '10px', color: 'rgba(30,45,31,0.55)',
                             fontStyle: 'italic',
                           }}>
-                            (без Библии)
+                            (без Мира)
                           </span>
                         )}
                       </div>

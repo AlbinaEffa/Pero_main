@@ -81,7 +81,7 @@ export function ProjectSyncPanel({
             Статус глав
           </p>
           <p className="text-[11px] text-[#1e2d1f]/55 mb-2 -mt-1">
-            Актуальность данных для Библии истории
+            Актуальность данных для Мира
           </p>
           <div className="grid grid-cols-2 gap-2">
             <SummaryTile
@@ -119,7 +119,7 @@ export function ProjectSyncPanel({
         >
           <div className="flex items-center gap-2">
             <BookOpen size={15} />
-            <span>Создать библию истории</span>
+            <span>Создать Мир</span>
           </div>
           <ArrowRight size={14} className="flex-shrink-0 text-white/50" />
         </button>
@@ -150,7 +150,7 @@ export function ProjectSyncPanel({
           >
             <div className="flex items-center gap-2">
               <GitCompare size={15} />
-              <span>Обновления Библии истории ({pendingUpdatesCount})</span>
+              <span>Обновления Мира ({pendingUpdatesCount})</span>
             </div>
             <ChevronRight size={14} className="flex-shrink-0 text-purple-400" />
           </button>
@@ -208,7 +208,7 @@ export function ProjectSyncPanel({
         {/* ── Legend ── */}
         <div className="bg-white/60 border border-[#1e2d1f]/6 rounded-xl p-3 space-y-1.5">
           <p className="text-[9px] font-bold uppercase tracking-widest text-[#1e2d1f]/55 mb-2">Что означают статусы</p>
-          <LegendRow dot="bg-emerald-400" label="Актуальна" desc="Библия синхронизирована с текстом" />
+          <LegendRow dot="bg-emerald-400" label="Актуальна" desc="Мир синхронизирован с текстом" />
           <LegendRow dot="bg-amber-400"   label="Устарела"  desc="Текст изменился после последнего анализа" />
           <LegendRow dot="bg-[#1e2d1f]/20" label="Не проверена" desc="Глава ещё не анализировалась" />
         </div>

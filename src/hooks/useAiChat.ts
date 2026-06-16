@@ -174,7 +174,7 @@ export function useAiChat({ projectId, chapterId, getContent }: UseAiChatArgs) {
     setIsCheckingConsistency(true);
     setChatMessages(prev => [
       ...prev,
-      { role: 'ai', text: 'Проверяю главу на противоречия с Библией истории…' },
+      { role: 'ai', text: 'Проверяю главу на противоречия с Миром…' },
     ]);
 
     try {
@@ -190,7 +190,7 @@ export function useAiChat({ projectId, chapterId, getContent }: UseAiChatArgs) {
       if (data.note) {
         resultText = data.note;
       } else if (!data.issues || data.issues.length === 0) {
-        resultText = 'Противоречий не найдено. Глава консистентна с Библией истории.';
+        resultText = 'Противоречий не найдено. Глава консистентна с Миром.';
       } else {
         const lines = data.issues.map(issue => {
           const icon =

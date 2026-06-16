@@ -19,7 +19,7 @@ const DEMO_TO = '/demo';
 // ── Сравнение с конкурентами (по публичным данным, июнь 2026) ────────────────
 type Cell = 'yes' | 'no' | 'partial';
 const COMPARE_ROWS: { label: string; pero: Cell; mythril: Cell; novelcrafter: Cell; campfire: Cell; note?: string }[] = [
-  { label: 'Библия строится сама из готовой рукописи', pero: 'yes', mythril: 'yes', novelcrafter: 'no', campfire: 'no', note: 'NovelCrafter и Campfire — ручное заполнение' },
+  { label: 'Мир строится сам из готовой рукописи', pero: 'yes', mythril: 'yes', novelcrafter: 'no', campfire: 'no', note: 'NovelCrafter и Campfire — ручное заполнение' },
   { label: 'Понимает русский текст', pero: 'yes', mythril: 'partial', novelcrafter: 'partial', campfire: 'partial' },
   { label: 'Редактор и библия в одном окне', pero: 'yes', mythril: 'no', novelcrafter: 'yes', campfire: 'partial', note: 'Mythril — «второй экран» к чужому редактору' },
   { label: 'Соавтор-ИИ, знающий вашу книгу', pero: 'yes', mythril: 'no', novelcrafter: 'partial', campfire: 'no' },

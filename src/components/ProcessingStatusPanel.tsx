@@ -423,7 +423,7 @@ export function ProcessingStatusPanel({
             <>
               <JobSection
                 icon={<BookOpen size={16} color="#3A4F41" />}
-                title="Библия истории"
+                title="Мир"
                 tooltip="Извлечение персонажей, мест и предметов — коавтор узнает, кто населяет ваш мир"
                 counts={detail.byType.extract_entities}
                 state={detail.bibleState}
@@ -453,7 +453,7 @@ export function ProcessingStatusPanel({
                   Что это значит для вас?
                 </strong>
                 {detail.bibleState === 'done'
-                  ? 'Библия готова — откройте Библию истории в меню книги, чтобы просмотреть и одобрить найденных персонажей.'
+                  ? 'Мир готов — откройте Мир в меню книги, чтобы просмотреть и одобрить найденных персонажей.'
                   : detail.bibleState === 'processing'
                     ? 'Персонажи и места извлекаются в фоне. Можно уже открывать редактор — данные появятся автоматически.'
                     : ''}

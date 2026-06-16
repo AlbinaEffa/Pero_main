@@ -52,8 +52,8 @@ function buildPrompt(actionId: QuickActionId, selectedText: string): string {
       return 'Что произошло с ключевыми персонажами в этой главе? Как они изменились и развились?';
     case 'bible':
       return sel
-        ? `Какие факты о персонажах, локациях или мире содержит этот фрагмент? Что добавить в Библию истории?\n\n${sel}`
-        : 'Какие новые факты о персонажах, локациях или правилах мира есть в этой главе? Что добавить в Библию истории?';
+        ? `Какие факты о персонажах, локациях или мире содержит этот фрагмент? Что добавить в Мир?\n\n${sel}`
+        : 'Какие новые факты о персонажах, локациях или правилах мира есть в этой главе? Что добавить в Мир?';
     default:
       return '';
   }
@@ -354,7 +354,7 @@ export function CoauthorPanel({
         {/* Context pills */}
         <div className="flex items-center gap-1.5 mb-2.5">
           <span className="text-[9px] text-[#1e2d1f]/55 font-medium uppercase tracking-widest">Контекст:</span>
-          <span className="text-[9px] text-[#1e2d1f]/60 bg-[#1e2d1f]/5 rounded px-1.5 py-0.5" style={{ display: "inline-flex", alignItems: "center", gap: "3px" }}><BookOpen size={9} /> Библия</span>
+          <span className="text-[9px] text-[#1e2d1f]/60 bg-[#1e2d1f]/5 rounded px-1.5 py-0.5" style={{ display: "inline-flex", alignItems: "center", gap: "3px" }}><BookOpen size={9} /> Мир</span>
           <span className="text-[9px] text-[#1e2d1f]/60 bg-[#1e2d1f]/5 rounded px-1.5 py-0.5" style={{ display: "inline-flex", alignItems: "center", gap: "3px" }}><FileText size={9} /> Глава</span>
           {chatMessages.length > 2 && (
             <span className="text-[9px] text-[#1e2d1f]/60 bg-[#1e2d1f]/5 rounded px-1.5 py-0.5" style={{ display: "inline-flex", alignItems: "center", gap: "3px" }}><MessageCircle size={9} /> История</span>

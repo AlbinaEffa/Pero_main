@@ -24,6 +24,7 @@ import { BottomToolbar } from '../components/editor/BottomToolbar';
 import { WorldCompanion } from '../components/editor/WorldCompanion';
 import { CommandPalette, Command } from '../components/editor/CommandPalette';
 import { EntitySelectionMenu } from '../components/editor/EntitySelectionMenu';
+import { ContradictionPopover } from '../components/editor/ContradictionPopover';
 import { StoryBiblePanel } from '../components/editor/StoryBiblePanel';
 import { CoauthorPanel } from '../components/editor/CoauthorPanel';
 import { RevisionPanel } from '../components/editor/RevisionPanel';
@@ -327,6 +328,7 @@ export default function Editor() {
   const [isInspectorExpanded, setIsInspectorExpanded] = useState(false);
   const [isCompanionCollapsed, setIsCompanionCollapsed] = useState(false);
   const [companionMode, setCompanionMode] = useState<'scene' | 'chat'>('scene');
+  const [contradictionPopover, setContradictionPopover] = useState<{ name: string; x: number; y: number } | null>(null);
   const [totalProjectWords, setTotalProjectWords] = useState(0);
   const [isRecheckingAll, setIsRecheckingAll] = useState(false);
   const [isReading, setIsReading] = useState(false);
@@ -1210,7 +1212,16 @@ export default function Editor() {
           </div>
         )}
 
-        <div className="flex-1 min-w-0 flex flex-col relative">
+        <div
+          className="flex-1 min-w-0 flex flex-col relative"
+          onClick={(e) => {
+            const mark = (e.target as HTMLElement).closest('.contradiction-mark');
+            if (mark) {
+              const r = mark.getBoundingClientRect();
+              setContradictionPopover({ name: (mark.textContent || '').trim(), x: r.left, y: r.bottom });
+            }
+          }}
+        >
           <EditorCanvas
             editor={editor}
             isSaving={isSaving}
@@ -1641,6 +1652,19 @@ export default function Editor() {
           handleTrace(entity.name);
         }}
       />
+
+      {contradictionPopover && (
+        <ContradictionPopover
+          name={contradictionPopover.name}
+          group={allApprovedEntities.filter(e => e.name.trim().toLowerCase() === contradictionPopover.name.toLowerCase())}
+          chapters={chapters.map(c => ({ id: c.id, title: c.title, order: c.order }))}
+          x={contradictionPopover.x}
+          y={contradictionPopover.y}
+          onClose={() => setContradictionPopover(null)}
+          onJump={(chapterId, name) => { setContradictionPopover(null); handleOpenInEditor(chapterId, name, name); }}
+          onOpenWorld={() => { setContradictionPopover(null); handleBibleMenuClick('characters'); }}
+        />
+      )}
 
       <FindReplacePopup
         isOpen={isSearchOpen}

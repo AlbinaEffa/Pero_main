@@ -1361,7 +1361,7 @@ export default function Editor() {
             !(!isFocusMode && isAnySidePanelOpen)
               ? 'top-14 bottom-0 right-12 w-[min(92vw,360px)] border-l opacity-0 translate-x-full pointer-events-none z-40'
               : isBibleOpen
-              ? `z-40 top-16 bottom-16 max-md:top-12 max-md:bottom-3 left-[232px] max-lg:left-3 ${isCompanionCollapsed ? 'right-4' : 'md:right-[300px] right-4'} rounded-2xl border opacity-100 translate-x-0 pointer-events-auto`
+              ? `z-40 top-16 bottom-24 max-md:top-12 max-md:bottom-24 left-[232px] max-lg:left-3 ${isCompanionCollapsed ? 'right-4' : 'md:right-[300px] right-4'} rounded-2xl border opacity-100 translate-x-0 pointer-events-auto`
               : isInspectorExpanded
               ? `z-40 top-16 bottom-6 max-md:top-12 max-md:bottom-3 right-[68px] max-md:right-3 left-6 max-md:left-3 ${isChaptersCollapsed ? '' : 'lg:left-[244px]'} rounded-2xl border opacity-100 translate-x-0 pointer-events-auto`
               : 'z-40 top-14 bottom-0 right-12 max-md:right-0 max-md:top-0 w-[min(92vw,360px)] border-l border-t max-md:border-t-0 opacity-100 translate-x-0 pointer-events-auto'

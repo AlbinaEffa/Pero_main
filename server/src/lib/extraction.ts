@@ -159,6 +159,12 @@ export function sanitizePov(raw: unknown): string | null {
   return v;
 }
 
+/** Подтверждённые алиасы сущности (из слияний) — для авто-дедупа при извлечении. */
+export function aliasesOf(attrs: unknown): string[] {
+  const a = (attrs ?? {}) as Record<string, unknown>;
+  return Array.isArray(a.aliases) ? (a.aliases as unknown[]).filter((x): x is string => typeof x === 'string') : [];
+}
+
 // ── Genre taxonomy (mirror of client src/data/genres.ts — keep in sync) ────────
 
 export const GENRE_TAXONOMY: string[] = [
@@ -528,11 +534,27 @@ export async function processExtractionResults(
     .from(schema.storyEntities)
     .where(and(eq(schema.storyEntities.projectId, projectId), ne(schema.storyEntities.status, 'rejected')));
 
-  const approvedMap = new Map(
-    existingEntities.filter(e => e.status === 'approved').map(e => [e.name.toLowerCase(), e]),
-  );
-  /** Canonical name (lowercase) → entity id, for resolving relations and events. */
-  const nameToId = new Map(existingEntities.map(e => [e.name.toLowerCase(), e.id]));
+  // Авто-дедуп: имена И подтверждённые автором алиасы (из слияний) ведут к одной записи,
+  // чтобы извлечённый «Ризанд» резолвился в «Риз», а не плодил новый pending-дубль.
+  const approvedMap = new Map<string, typeof existingEntities[number]>();
+  /** Каноническое имя + алиасы (lowercase) → entity id, для резолва сущностей, связей и событий. */
+  const nameToId = new Map<string, string>();
+  // Проход 1 — канонические имена (приоритет над алиасами при коллизии).
+  for (const e of existingEntities) {
+    const k = e.name.trim().toLowerCase();
+    if (!k) continue;
+    if (!nameToId.has(k)) nameToId.set(k, e.id);
+    if (e.status === 'approved' && !approvedMap.has(k)) approvedMap.set(k, e);
+  }
+  // Проход 2 — алиасы (только если имя ещё не занято каноническим именем другой сущности).
+  for (const e of existingEntities) {
+    for (const al of aliasesOf(e.attributes)) {
+      const k = al.trim().toLowerCase();
+      if (!k || nameToId.has(k)) continue;
+      nameToId.set(k, e.id);
+      if (e.status === 'approved' && !approvedMap.has(k)) approvedMap.set(k, e);
+    }
+  }
   const newSuggestions: (typeof schema.storyEntities.$inferSelect)[] = [];
   const updateSuggestions: (typeof schema.bibleUpdateSuggestions.$inferSelect)[] = [];
   const safeChapterId = (chapterId && isValidUUID(chapterId)) ? chapterId : null;

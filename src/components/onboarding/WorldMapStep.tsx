@@ -77,7 +77,7 @@ export function WorldMapStep({ projectId, projectTitle, firstChapterId, world }:
   }, [projectId, entities.length > 0]);
 
   const stat = (n: number, label: string, Icon: typeof Users, cls: string) => (
-    <div className="bg-white rounded-2xl border border-[#1e2d1f]/5 shadow-sm px-5 py-4 flex flex-col items-center">
+    <div className="bg-white rounded-2xl border border-[#1e2d1f]/5 px-5 py-4 flex flex-col items-center">
       <div className={`w-9 h-9 rounded-full flex items-center justify-center mb-2 ${cls}`}>
         <Icon size={16} />
       </div>
@@ -96,7 +96,7 @@ export function WorldMapStep({ projectId, projectTitle, firstChapterId, world }:
 
       {/* Письмо от Пера */}
       {letter && (
-        <div className="w-full max-w-xl bg-white rounded-2xl border border-[#1e2d1f]/8 shadow-sm px-7 py-6 mb-10 relative">
+        <div className="w-full max-w-xl bg-white rounded-2xl border border-[#1e2d1f]/8 px-7 py-6 mb-10 relative">
           <div className="absolute -top-3 left-7 bg-[#E7EAE3] text-[#4A5D4E] text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md">
             Письмо от Пера
           </div>
@@ -146,7 +146,7 @@ export function WorldMapStep({ projectId, projectTitle, firstChapterId, world }:
       <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xl">
         <button
           onClick={() => navigate(`/editor/${projectId}?view=world`)}
-          className="flex-1 flex items-center justify-center gap-2 bg-[#1e2d1f] text-[#f5f0e8] py-3.5 rounded-xl text-sm font-medium hover:bg-[#2a3f2b] transition-colors shadow-sm"
+          className="flex-1 flex items-center justify-center gap-2 bg-[#1e2d1f] text-[#f5f0e8] py-3.5 rounded-xl text-sm font-medium hover:bg-[#2a3f2b] transition-colors"
         >
           <BookOpen size={16} />
           Открыть Мир
@@ -184,7 +184,7 @@ function MajorCard({ entity }: { entity: Entity }) {
   const attrs = (entity.attributes ?? {}) as Record<string, unknown>;
   const role = typeof attrs.role === 'string' ? attrs.role : null;
   return (
-    <div className="bg-white rounded-2xl border border-[#1e2d1f]/5 shadow-sm px-5 py-4">
+    <div className="bg-white rounded-2xl border border-[#1e2d1f]/5 px-5 py-4">
       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
         <span className="font-serif text-lg font-semibold text-[#1e2d1f]">{entity.name}</span>
         {entity.significance && (

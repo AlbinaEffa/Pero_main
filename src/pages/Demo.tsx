@@ -158,7 +158,7 @@ export default function Demo() {
 
         {stage === 'reading' && (
           <div className="flex flex-col items-center text-center pt-24">
-            <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center mb-6">
+            <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-6">
               <PeroMark size={30} className="text-[var(--color-accent)] animate-[quill_1.6s_ease-in-out_infinite]" />
             </div>
             <h1 className="font-serif text-3xl font-semibold mb-2">Перо читает первую главу…</h1>
@@ -241,7 +241,7 @@ function DemoResultView({ result, onRegister, onReset }: { result: DemoResult; o
           {visible.map((e, i) => {
             const meta = TYPE_META[e.type] ?? TYPE_META.character;
             return (
-              <div key={i} className="flex items-start gap-3 bg-white rounded-2xl px-4 py-3 border border-ink/6 shadow-sm">
+              <div key={i} className="flex items-start gap-3 bg-white rounded-2xl px-4 py-3 border border-ink/6">
                 <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${meta.cls}`}>
                   <meta.icon size={15} />
                 </div>

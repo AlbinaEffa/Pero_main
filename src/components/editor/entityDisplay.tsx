@@ -82,7 +82,7 @@ export function EntityAttributesBlock({ attributes }: { attributes?: EntityAttri
   return (
     <div>
       <h4 className="text-[10px] font-bold text-ink/55 uppercase tracking-wider mb-2 ml-1">Детали</h4>
-      <div className="bg-white rounded-xl border border-ink/5 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-ink/5 overflow-hidden">
         {entries.map(({ label, value }, i) => (
           <div
             key={label}
@@ -158,7 +158,7 @@ export function EntityConnectionsBlock({ entity, links, entities, onSelectEntity
   return (
     <div>
       <h4 className="text-[10px] font-bold text-ink/55 uppercase tracking-wider mb-2 ml-1">Связи</h4>
-      <div className="bg-white rounded-xl border border-ink/5 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-ink/5 overflow-hidden">
         {rows.map(({ link, other, label }, i) => (
           <div
             key={link.id}
@@ -221,7 +221,7 @@ export function EntityTimelineBlock({ entity, events, chapters, onDeleteEvent }:
   return (
     <div>
       <h4 className="text-[10px] font-bold text-ink/55 uppercase tracking-wider mb-2 ml-1">Таймлайн</h4>
-      <div className="bg-white rounded-xl border border-ink/5 shadow-sm px-4 py-3">
+      <div className="bg-white rounded-xl border border-ink/5 px-4 py-3">
         <div className="relative">
           {own.map((ev, i) => {
             const meta = EVENT_TYPE_META[ev.eventType ?? 'other'] ?? EVENT_TYPE_META.other;

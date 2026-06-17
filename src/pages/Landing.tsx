@@ -77,7 +77,7 @@ export default function Landing() {
               связи, таймлайны. Вы пишете дальше — Перо помнит и ловит противоречия.
             </p>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
-              <Link to={DEMO_TO} className="flex items-center gap-2.5 bg-ink text-[#f5f0e8] px-8 py-4 rounded-2xl text-lg font-medium hover:bg-ink/85 transition-colors shadow-sm">
+              <Link to={DEMO_TO} className="flex items-center gap-2.5 bg-ink text-[#f5f0e8] px-8 py-4 rounded-2xl text-lg font-medium hover:bg-ink/85 transition-colors">
                 Загрузить рукопись бесплатно
                 <MoveRight size={20} />
               </Link>
@@ -182,7 +182,7 @@ export default function Landing() {
 
         {/* ── Не генератор ── */}
         <section className="max-w-5xl mx-auto px-6 py-16">
-          <div className="bg-white rounded-3xl border border-ink/8 shadow-sm px-8 py-10 md:px-12 text-center">
+          <div className="bg-white rounded-3xl border border-ink/8 px-8 py-10 md:px-12 text-center">
             <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-ink/55 mb-4">
               Чтобы не было путаницы
             </p>
@@ -250,7 +250,7 @@ export default function Landing() {
             <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-3 text-center">Начните бесплатно — на своей рукописи</h2>
             <p className="text-ink/55 mb-12 text-center">Полный цикл «импорт → Мир → проверка» доступен без оплаты.</p>
             <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-white rounded-3xl border border-ink/8 p-8 shadow-sm">
+              <div className="bg-white rounded-3xl border border-ink/8 p-8">
                 <h3 className="font-serif text-2xl font-semibold mb-1">Бесплатный</h3>
                 <p className="font-serif text-4xl font-semibold mb-6">0 ₽</p>
                 <ul className="space-y-2.5 text-[14px] text-ink/70 mb-8">
@@ -338,7 +338,7 @@ export default function Landing() {
             Загрузите рукопись — через две минуты увидите карту своего мира
           </h2>
           <p className="text-ink/55 mb-9">Бесплатно, без карты. Перо помнит — автор пишет.</p>
-          <Link to={DEMO_TO} className="inline-flex items-center gap-2.5 bg-ink text-[#f5f0e8] px-9 py-4 rounded-2xl text-lg font-medium hover:bg-ink/85 transition-colors shadow-sm">
+          <Link to={DEMO_TO} className="inline-flex items-center gap-2.5 bg-ink text-[#f5f0e8] px-9 py-4 rounded-2xl text-lg font-medium hover:bg-ink/85 transition-colors">
             Загрузить рукопись бесплатно
             <MoveRight size={20} />
           </Link>

@@ -282,8 +282,8 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({
         {/* Footer */}
         {showReplace && textMatches.length > 0 && (
           <div className="p-3 border-t border-[#1e2d1f]/10 bg-[#f5f0e8]/50 text-xs text-[#1e2d1f]/50 flex items-center justify-center gap-4">
-            <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 bg-white rounded border border-[#1e2d1f]/10 shadow-sm">Enter</kbd> след. совпадение</span>
-            <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 bg-white rounded border border-[#1e2d1f]/10 shadow-sm">Shift</kbd> + <kbd className="px-1.5 py-0.5 bg-white rounded border border-[#1e2d1f]/10 shadow-sm">Enter</kbd> пред. совпадение</span>
+            <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 bg-white rounded border border-[#1e2d1f]/10">Enter</kbd> след. совпадение</span>
+            <span className="flex items-center gap-1"><kbd className="px-1.5 py-0.5 bg-white rounded border border-[#1e2d1f]/10">Shift</kbd> + <kbd className="px-1.5 py-0.5 bg-white rounded border border-[#1e2d1f]/10">Enter</kbd> пред. совпадение</span>
           </div>
         )}
       </div>

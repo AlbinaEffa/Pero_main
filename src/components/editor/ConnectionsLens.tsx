@@ -263,7 +263,7 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
         {(t.k !== 1 || t.x !== 0 || t.y !== 0) && (
           <button
             onClick={() => setT({ k: 1, x: 0, y: 0 })}
-            className="absolute top-2 right-2 z-10 flex items-center gap-1 text-[10.5px] px-2 py-1 rounded-md bg-white/80 hover:bg-white text-[#1e2d1f]/60 shadow-sm border border-[#1e2d1f]/10"
+            className="absolute top-2 right-2 z-10 flex items-center gap-1 text-[10.5px] px-2 py-1 rounded-md bg-white/80 hover:bg-white text-[#1e2d1f]/60 border border-[#1e2d1f]/10"
             title="Сбросить масштаб"
           >
             <Maximize size={11} /> сброс

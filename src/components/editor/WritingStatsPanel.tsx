@@ -84,14 +84,14 @@ export function WritingStatsPanel({
         {/* Today + Streak row */}
         <div className="grid grid-cols-2 gap-3">
           {/* Today's words */}
-          <div className="bg-white rounded-2xl p-4 border border-[#1e2d1f]/8 shadow-sm flex flex-col gap-1">
+          <div className="bg-white rounded-2xl p-4 border border-[#1e2d1f]/8 flex flex-col gap-1">
             <span className="text-[10px] font-semibold uppercase tracking-widest text-[#1e2d1f]/55">Сегодня</span>
             <span className="text-3xl font-bold text-[#1e2d1f] leading-none">{todayWords.toLocaleString('ru-RU')}</span>
             <span className="text-[11px] text-[#1e2d1f]/55">слов</span>
           </div>
 
           {/* Streak */}
-          <div className={`rounded-2xl p-4 border shadow-sm flex flex-col gap-1 ${
+          <div className={`rounded-2xl p-4 border flex flex-col gap-1 ${
             streakActive
               ? 'bg-[#F2E9D8] border-[#91682E]/60'
               : 'bg-white border-[#1e2d1f]/8'
@@ -108,7 +108,7 @@ export function WritingStatsPanel({
         </div>
 
         {/* Current chapter */}
-        <div className="bg-white rounded-2xl p-4 border border-[#1e2d1f]/8 shadow-sm flex items-center justify-between">
+        <div className="bg-white rounded-2xl p-4 border border-[#1e2d1f]/8 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <BookOpen size={16} className="text-[#1e2d1f]/55 flex-shrink-0" />
             <span className="text-sm text-[#1e2d1f]/70 font-medium">Текущая глава</span>
@@ -117,7 +117,7 @@ export function WritingStatsPanel({
         </div>
 
         {/* Project total */}
-        <div className="bg-white rounded-2xl p-4 border border-[#1e2d1f]/8 shadow-sm flex items-center justify-between">
+        <div className="bg-white rounded-2xl p-4 border border-[#1e2d1f]/8 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <TrendingUp size={16} className="text-[#1e2d1f]/55 flex-shrink-0" />
             <span className="text-sm text-[#1e2d1f]/70 font-medium">Всего в проекте</span>
@@ -126,7 +126,7 @@ export function WritingStatsPanel({
         </div>
 
         {/* Word goal card */}
-        <div className="bg-white rounded-2xl p-4 border border-[#1e2d1f]/8 shadow-sm">
+        <div className="bg-white rounded-2xl p-4 border border-[#1e2d1f]/8">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Target size={16} className="text-[#4D6B4D] flex-shrink-0" />

@@ -153,7 +153,7 @@ const ENTITY_SECTIONS = [
 
 function EntityCard({ entity, hasConflict }: { entity: Entity; hasConflict: boolean }) {
   return (
-    <div className={`rounded-xl p-3 shadow-sm border transition-colors cursor-default ${
+    <div className={`rounded-xl p-3 border transition-colors cursor-default ${
       hasConflict
         ? 'bg-[#F2E9D8]/80 border-[#91682E]/60 hover:bg-[#F2E9D8]'
         : 'bg-white/60 border-[#1e2d1f]/5 hover:bg-white'

@@ -281,7 +281,7 @@ export function CoauthorPanel({
                 className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
                   msg.role === 'user'
                     ? 'bg-[#1e2d1f] text-white rounded-br-sm'
-                    : 'bg-white border border-[#1e2d1f]/10 text-[#1e2d1f] rounded-bl-sm shadow-sm ' +
+                    : 'bg-white border border-[#1e2d1f]/10 text-[#1e2d1f] rounded-bl-sm ' +
                       'prose prose-sm prose-p:my-1 prose-strong:text-[#1e2d1f] max-w-none'
                 }`}
               >
@@ -370,7 +370,7 @@ export function CoauthorPanel({
             onKeyDown={handleKeyDown}
             placeholder="Спросите соавтора… (Enter — отправить)"
             disabled={isAiLoading}
-            className="w-full bg-white border border-[#1e2d1f]/10 rounded-2xl pl-4 pr-10 py-2.5 text-sm outline-none focus:border-[#1e2d1f]/30 transition-colors shadow-sm disabled:opacity-50 resize-none overflow-hidden leading-relaxed"
+            className="w-full bg-white border border-[#1e2d1f]/10 rounded-2xl pl-4 pr-10 py-2.5 text-sm outline-none focus:border-[#1e2d1f]/30 transition-colors disabled:opacity-50 resize-none overflow-hidden leading-relaxed"
             style={{ minHeight: '42px' }}
           />
           <button

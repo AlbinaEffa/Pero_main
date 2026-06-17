@@ -67,7 +67,7 @@ export function ReadingStep({ world, quotes, onComplete }: Props) {
     <div className="flex flex-col items-center text-center px-6 pt-16 pb-10 min-h-screen">
       {/* Перо «пишет» */}
       <div className="relative mb-6">
-        <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center">
+        <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center">
           <PeroMark size={30} className="text-[#4A5D4E] animate-[quill_1.6s_ease-in-out_infinite]" />
         </div>
         <style>{`@keyframes quill { 0%,100% { transform: rotate(-6deg) translateY(0); } 50% { transform: rotate(4deg) translateY(-3px); } }`}</style>
@@ -148,7 +148,7 @@ export function ReadingStep({ world, quotes, onComplete }: Props) {
             return (
               <div
                 key={type}
-                className="flex flex-col items-center rounded-2xl bg-white border border-[#1e2d1f]/5 shadow-sm py-3"
+                className="flex flex-col items-center rounded-2xl bg-white border border-[#1e2d1f]/5 py-3"
                 style={{ opacity: n === 0 ? 0.45 : 1 }}
               >
                 <Icon size={15} style={{ color: pigment }} className="mb-1" />
@@ -198,7 +198,7 @@ function FindingCard({ entity, isFresh }: { entity: Entity; isFresh: boolean }) 
   const Icon = meta.icon;
   return (
     <div
-      className={`flex items-center gap-3 bg-white rounded-xl px-4 py-2.5 border border-[#1e2d1f]/5 shadow-sm ${
+      className={`flex items-center gap-3 bg-white rounded-xl px-4 py-2.5 border border-[#1e2d1f]/5 ${
         isFresh ? 'animate-[slideIn_0.5s_ease]' : ''
       }`}
     >

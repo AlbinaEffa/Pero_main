@@ -178,7 +178,7 @@ function EntityDetailView({ entity, links, allEntities, events, chapters, onBack
       </div>
       <div>
         <h4 className="text-[10px] font-bold text-ink/55 uppercase tracking-wider mb-2 ml-1">Описание</h4>
-        <div className={`bg-white p-4 rounded-xl border border-ink/5 shadow-sm text-[13px] leading-relaxed text-ink/80 ${entity.type === 'rule' ? 'italic font-serif' : ''}`}>
+        <div className={`bg-white p-4 rounded-xl border border-ink/5 text-[13px] leading-relaxed text-ink/80 ${entity.type === 'rule' ? 'italic font-serif' : ''}`}>
           {entity.description}
         </div>
       </div>
@@ -329,7 +329,7 @@ export function StoryBiblePanel({
                   onClick={() => setScope(s)}
                   disabled={s === 'chapter' && !currentChapterId}
                   className={`px-2 py-0.5 rounded-md transition-colors ${
-                    scope === s ? 'bg-white text-[#1e2d1f] shadow-sm' : 'text-[#1e2d1f]/50 hover:text-[#1e2d1f]'
+                    scope === s ? 'bg-white text-[#1e2d1f]' : 'text-[#1e2d1f]/50 hover:text-[#1e2d1f]'
                   } ${s === 'chapter' && !currentChapterId ? 'opacity-40 cursor-default' : ''}`}
                   title={s === 'chapter' ? 'Показать только эту главу' : 'Показать всю книгу'}
                 >
@@ -404,7 +404,7 @@ export function StoryBiblePanel({
             {/* Статус чтения главы вынесен в шапку панели (всегда виден) — здесь дубль убран. */}
             {suggestions.length === 0 && !isExtracting ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
-                <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center mb-4 text-[#1e2d1f]/20">
+                <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center mb-4 text-[#1e2d1f]/20">
                   <Sparkles size={24} />
                 </div>
                 <h3 className="font-medium text-[#1e2d1f]/80 mb-2">Нет новых фактов</h3>
@@ -413,7 +413,7 @@ export function StoryBiblePanel({
                 </p>
                 <button
                   onClick={onExtract}
-                  className="bg-[#1e2d1f] text-[#f5f0e8] px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-[#2a3f2b] transition-colors shadow-sm flex items-center gap-2"
+                  className="bg-[#1e2d1f] text-[#f5f0e8] px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-[#2a3f2b] transition-colors flex items-center gap-2"
                 >
                   <Sparkles size={16} />
                   Извлечь факты
@@ -436,7 +436,7 @@ export function StoryBiblePanel({
                   </button>
                 </div>
                 {suggestions.map(suggestion => (
-                  <div key={suggestion.id} className="bg-white rounded-2xl p-4 shadow-sm border border-[#1e2d1f]/5 relative group">
+                  <div key={suggestion.id} className="bg-white rounded-2xl p-4 border border-[#1e2d1f]/5 relative group">
                     <button
                       onClick={() => onRejectSuggestion(suggestion.id)}
                       className="absolute top-3 right-3 p-1 rounded-md text-[#1e2d1f]/55 hover:bg-[#f5f0e8] hover:text-[#1e2d1f] transition-colors opacity-0 group-hover:opacity-100"
@@ -474,7 +474,7 @@ export function StoryBiblePanel({
           <div className="flex flex-col h-full">
             {pendingUpdates.length === 0 && !isExtracting ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
-                <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center mb-4 text-[#1e2d1f]/20">
+                <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center mb-4 text-[#1e2d1f]/20">
                   <Check size={24} />
                 </div>
                 <h3 className="font-medium text-[#1e2d1f]/80 mb-2">Обновлений нет</h3>
@@ -747,7 +747,7 @@ interface UpdateCardProps {
 
 function UpdateCard({ update, onAccept, onReject, onDismiss, onOpenInEditor }: UpdateCardProps) {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-[#1e2d1f]/5 overflow-hidden">
+    <div className="bg-white rounded-2xl border border-[#1e2d1f]/5 overflow-hidden">
       {/* Header */}
       <div className="p-3.5 pb-3">
         <div className="flex items-start justify-between gap-2 mb-2">

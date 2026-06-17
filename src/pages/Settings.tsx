@@ -138,7 +138,7 @@ export default function Settings({
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className="flex items-center gap-2 bg-[#1E2D1F] hover:bg-[#16221A] disabled:opacity-50 text-white px-5 py-2.5 rounded-xl font-medium transition-colors shadow-sm"
+              className="flex items-center gap-2 bg-[#1E2D1F] hover:bg-[#16221A] disabled:opacity-50 text-white px-5 py-2.5 rounded-xl font-medium transition-colors"
             >
               <Save size={18} />
               {isSaving ? 'Сохраняем...' : 'Сохранить'}
@@ -153,7 +153,7 @@ export default function Settings({
             {/* Profile Photo */}
             <div className="flex items-center gap-6">
               <div className="relative">
-                <div className="w-24 h-24 rounded-full overflow-hidden bg-[#E8E2D5] border-4 border-white shadow-sm">
+                <div className="w-24 h-24 rounded-full overflow-hidden bg-[#E8E2D5] border-4 border-white">
                   <img 
                     src={user?.photoURL || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80"} 
                     alt="Profile" 
@@ -161,7 +161,7 @@ export default function Settings({
                     referrerPolicy="no-referrer"
                   />
                 </div>
-                <button className="absolute bottom-0 right-0 bg-white p-2 rounded-full shadow-md border border-ink/10 text-ink/60 hover:text-ink transition-colors">
+                <button className="absolute bottom-0 right-0 bg-white p-2 rounded-full border border-ink/10 text-ink/60 hover:text-ink transition-colors">
                   <Pencil size={14} />
                 </button>
               </div>
@@ -179,7 +179,7 @@ export default function Settings({
                   type="text" 
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 focus:border-[#1e2d1f]/20 focus:bg-white/90 focus:ring-4 focus:ring-[#1e2d1f]/5 outline-none transition-all text-[#1e2d1f] shadow-sm"
+                  className="w-full px-4 py-3 rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 focus:border-[#1e2d1f]/20 focus:bg-white/90 focus:ring-4 focus:ring-[#1e2d1f]/5 outline-none transition-all text-[#1e2d1f]"
                 />
               </div>
               
@@ -191,7 +191,7 @@ export default function Settings({
                   disabled
                   rows={4}
                   placeholder="Будет доступно в следующей версии"
-                  className="w-full px-4 py-3 rounded-xl bg-white/40 border border-white/50 outline-none transition-all text-[#1e2d1f] resize-none shadow-sm"
+                  className="w-full px-4 py-3 rounded-xl bg-white/40 border border-white/50 outline-none transition-all text-[#1e2d1f] resize-none"
                 />
               </div>
 
@@ -203,7 +203,7 @@ export default function Settings({
                   disabled
                   type="text"
                   placeholder="Будет доступно в следующей версии"
-                  className="w-full px-4 py-3 rounded-xl bg-white/40 border border-white/50 outline-none transition-all text-[#1e2d1f] shadow-sm"
+                  className="w-full px-4 py-3 rounded-xl bg-white/40 border border-white/50 outline-none transition-all text-[#1e2d1f]"
                 />
               </div>
             </div>
@@ -212,7 +212,7 @@ export default function Settings({
           {/* Right Column - Settings Cards */}
           <div className="space-y-8">
             {/* Тариф */}
-            <div className="bg-white/40 backdrop-blur-xl rounded-3xl p-8 shadow-sm border border-white/60">
+            <div className="bg-white/40 backdrop-blur-xl rounded-3xl p-8 border border-white/60">
               <h2 className="text-xl font-bold text-[#1E2D1F] mb-6">Тариф</h2>
 
               <div className="flex items-start gap-4 mb-6">
@@ -241,7 +241,7 @@ export default function Settings({
               <button
                 onClick={handleCheckout}
                 disabled={isCheckingOut || !billing}
-                className="flex items-center gap-2.5 px-5 py-3 bg-[#1E2D1F] hover:bg-[#16221A] disabled:opacity-50 text-white rounded-xl font-medium text-sm transition-colors shadow-sm"
+                className="flex items-center gap-2.5 px-5 py-3 bg-[#1E2D1F] hover:bg-[#16221A] disabled:opacity-50 text-white rounded-xl font-medium text-sm transition-colors"
               >
                 {isCheckingOut ? <Loader2 size={16} className="animate-spin" /> : <Crown size={16} />}
                 {billing?.plan === 'pro'
@@ -255,14 +255,14 @@ export default function Settings({
             </div>
 
             {/* Studio Settings */}
-            <div className="bg-white/40 backdrop-blur-xl rounded-3xl p-8 shadow-sm border border-white/60">
+            <div className="bg-white/40 backdrop-blur-xl rounded-3xl p-8 border border-white/60">
               <h2 className="text-xl font-bold text-[#1E2D1F] mb-6">Настройки студии</h2>
               
               <div className="space-y-6">
                 {/* Dark Theme — coming soon */}
                 <div className="flex items-center justify-between opacity-40 pointer-events-none">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-white/60 border border-white/80 shadow-sm flex items-center justify-center text-[#1e2d1f]/60">
+                    <div className="w-10 h-10 rounded-full bg-white/60 border border-white/80 flex items-center justify-center text-[#1e2d1f]/60">
                       <Moon size={20} />
                     </div>
                     <div>
@@ -278,7 +278,7 @@ export default function Settings({
                 {/* Background Sounds — coming soon */}
                 <div className="flex items-center justify-between opacity-40 pointer-events-none">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-white/60 border border-white/80 shadow-sm flex items-center justify-center text-[#1e2d1f]/60">
+                    <div className="w-10 h-10 rounded-full bg-white/60 border border-white/80 flex items-center justify-center text-[#1e2d1f]/60">
                       <Volume2 size={20} />
                     </div>
                     <div>
@@ -294,7 +294,7 @@ export default function Settings({
                 {/* Smart Hints — coming soon */}
                 <div className="flex items-center justify-between opacity-40 pointer-events-none">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-white/60 border border-white/80 shadow-sm flex items-center justify-center text-[#1e2d1f]/60">
+                    <div className="w-10 h-10 rounded-full bg-white/60 border border-white/80 flex items-center justify-center text-[#1e2d1f]/60">
                       <Sparkles size={20} />
                     </div>
                     <div>
@@ -310,7 +310,7 @@ export default function Settings({
                 {/* Show Word Count */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-white/60 border border-white/80 shadow-sm flex items-center justify-center text-[#1e2d1f]/60">
+                    <div className="w-10 h-10 rounded-full bg-white/60 border border-white/80 flex items-center justify-center text-[#1e2d1f]/60">
                       <Type size={20} />
                     </div>
                     <div>
@@ -329,7 +329,7 @@ export default function Settings({
                 {/* Indent Paragraphs */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-white/60 border border-white/80 shadow-sm flex items-center justify-center text-[#1e2d1f]/60">
+                    <div className="w-10 h-10 rounded-full bg-white/60 border border-white/80 flex items-center justify-center text-[#1e2d1f]/60">
                       <AlignLeft size={20} />
                     </div>
                     <div>
@@ -348,13 +348,13 @@ export default function Settings({
             </div>
 
             {/* Security */}
-            <div className="bg-white/40 backdrop-blur-xl rounded-3xl p-8 shadow-sm border border-white/60">
+            <div className="bg-white/40 backdrop-blur-xl rounded-3xl p-8 border border-white/60">
               <h2 className="text-xl font-bold text-[#1E2D1F] mb-6">Безопасность</h2>
               
               <div className="space-y-4">
                 <button className="w-full flex items-center justify-between p-2 hover:bg-white/60 rounded-xl transition-colors group">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl border border-white/80 shadow-sm bg-white/50 flex items-center justify-center text-[#1e2d1f]/80 group-hover:bg-white/80 transition-colors">
+                    <div className="w-10 h-10 rounded-xl border border-white/80 bg-white/50 flex items-center justify-center text-[#1e2d1f]/80 group-hover:bg-white/80 transition-colors">
                       <Lock size={18} />
                     </div>
                     <span className="text-[16px] font-medium text-[#1E2D1F]">Смена пароля</span>
@@ -364,7 +364,7 @@ export default function Settings({
 
                 <button className="w-full flex items-center justify-between p-2 hover:bg-white/60 rounded-xl transition-colors group">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl border border-white/80 shadow-sm bg-white/50 flex items-center justify-center text-[#1e2d1f]/80 group-hover:bg-white/80 transition-colors">
+                    <div className="w-10 h-10 rounded-xl border border-white/80 bg-white/50 flex items-center justify-center text-[#1e2d1f]/80 group-hover:bg-white/80 transition-colors">
                       <Shield size={18} />
                     </div>
                     <span className="text-[16px] font-medium text-[#1E2D1F]">Двухфакторная аутентификация</span>
@@ -379,7 +379,7 @@ export default function Settings({
         {/* Data & Export section */}
         <div className="mb-12">
           <h2 className="text-xl font-bold text-[#1E2D1F] mb-4">Ваши данные</h2>
-          <div className="bg-white/40 backdrop-blur-xl rounded-3xl p-8 shadow-sm border border-white/60">
+          <div className="bg-white/40 backdrop-blur-xl rounded-3xl p-8 border border-white/60">
             <div className="flex items-start gap-4 mb-6">
               <div className="w-10 h-10 rounded-full bg-[#E5EBE0] flex items-center justify-center text-[#4D6B4D] shrink-0">
                 <Shield size={20} />
@@ -419,7 +419,7 @@ export default function Settings({
                 }
               }}
               disabled={isDownloadingAll}
-              className="flex items-center gap-2.5 px-5 py-3 bg-white/60 hover:bg-white/90 shadow-sm border border-white/80 disabled:opacity-50 rounded-xl font-medium text-[#1e2d1f] text-sm transition-colors"
+              className="flex items-center gap-2.5 px-5 py-3 bg-white/60 hover:bg-white/90 border border-white/80 disabled:opacity-50 rounded-xl font-medium text-[#1e2d1f] text-sm transition-colors"
             >
               {isDownloadingAll
                 ? <Loader2 size={16} className="animate-spin" />

@@ -25,7 +25,7 @@ export default function Privacy() {
         <p className="text-ink/60 text-sm mb-12">Обновлено: 12 июня 2026</p>
 
         {/* Главное — коротко */}
-        <div className="bg-white rounded-2xl border border-ink/8 shadow-sm p-7 mb-12">
+        <div className="bg-white rounded-2xl border border-ink/8 p-7 mb-12">
           <p className="text-[10px] font-bold uppercase tracking-widest text-ink/55 mb-4">Главное — в трёх строчках</p>
           <ul className="space-y-3 text-[16px] leading-relaxed">
             <li className="flex gap-3"><span className="text-[var(--color-accent)] font-bold">1.</span><span>Ваши тексты <b>не используются для обучения</b> моделей искусственного интеллекта.</span></li>

@@ -845,7 +845,7 @@ export default function Dashboard() {
   const getProcessing = (id: string) => getProjectStatus(id).isProcessing;
 
   const handleBible = (projectId: string) => {
-    navigate(`/bible/${projectId}`);
+    navigate(`/editor/${projectId}?view=world`);
   };
 
   /** Navigate to the project's last-edited chapter; fall back to /editor/:id */

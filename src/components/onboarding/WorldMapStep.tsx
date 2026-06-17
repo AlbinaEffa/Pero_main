@@ -132,7 +132,7 @@ export function WorldMapStep({ projectId, projectTitle, firstChapterId, world }:
       {/* Тизер вопросов к миру */}
       {updatesCount > 0 && (
         <button
-          onClick={() => navigate(`/bible/${projectId}`)}
+          onClick={() => navigate(`/editor/${projectId}?view=world`)}
           className="w-full max-w-xl bg-violet-50 border border-violet-200 rounded-2xl px-6 py-4 mb-10 flex items-center gap-3 text-left hover:bg-violet-100/60 transition-colors"
         >
           <Sparkles size={18} className="text-violet-600 flex-shrink-0" />
@@ -145,7 +145,7 @@ export function WorldMapStep({ projectId, projectTitle, firstChapterId, world }:
       {/* CTA */}
       <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xl">
         <button
-          onClick={() => navigate(`/bible/${projectId}`)}
+          onClick={() => navigate(`/editor/${projectId}?view=world`)}
           className="flex-1 flex items-center justify-center gap-2 bg-[#1e2d1f] text-[#f5f0e8] py-3.5 rounded-xl text-sm font-medium hover:bg-[#2a3f2b] transition-colors shadow-sm"
         >
           <BookOpen size={16} />

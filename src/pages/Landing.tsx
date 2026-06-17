@@ -7,7 +7,7 @@ import { PeroMark, PeroLogo } from '../components/Logo';
 
 /**
  * Лендинг под позиционирование (PRD P0.7).
- * Один месседж: «Перо само ведёт библию вашей истории».
+ * Один месседж: «Перо само ведёт Мир вашей истории».
  * CTA: «Загрузить рукопись бесплатно». Отстройка: русский язык,
  * библия+редактор+соавтор в одном, локальные цены, приватность.
  */
@@ -21,7 +21,7 @@ type Cell = 'yes' | 'no' | 'partial';
 const COMPARE_ROWS: { label: string; pero: Cell; mythril: Cell; novelcrafter: Cell; campfire: Cell; note?: string }[] = [
   { label: 'Мир строится сам из готовой рукописи', pero: 'yes', mythril: 'yes', novelcrafter: 'no', campfire: 'no', note: 'NovelCrafter и Campfire — ручное заполнение' },
   { label: 'Понимает русский текст', pero: 'yes', mythril: 'partial', novelcrafter: 'partial', campfire: 'partial' },
-  { label: 'Редактор и библия в одном окне', pero: 'yes', mythril: 'no', novelcrafter: 'yes', campfire: 'partial', note: 'Mythril — «второй экран» к чужому редактору' },
+  { label: 'Редактор и Мир в одном окне', pero: 'yes', mythril: 'no', novelcrafter: 'yes', campfire: 'partial', note: 'Mythril — «второй экран» к чужому редактору' },
   { label: 'Соавтор-ИИ, знающий вашу книгу', pero: 'yes', mythril: 'no', novelcrafter: 'partial', campfire: 'no' },
   { label: 'Связи и таймлайны персонажей', pero: 'yes', mythril: 'yes', novelcrafter: 'no', campfire: 'partial' },
   { label: 'Диктовка с расстановкой знаков', pero: 'yes', mythril: 'no', novelcrafter: 'no', campfire: 'no' },
@@ -69,7 +69,7 @@ export default function Landing() {
               </p>
             </div>
             <h1 className="font-serif text-5xl md:text-6xl lg:text-[64px] font-semibold leading-[1.05] mb-7">
-              Перо само ведёт библию вашей&nbsp;истории
+              Перо само ведёт Мир вашей&nbsp;истории
             </h1>
             <p className="text-lg text-ink/65 leading-relaxed max-w-xl mb-9">
               Какого цвета были глаза героини в первой книге? Не листайте тридцать глав.
@@ -147,7 +147,7 @@ export default function Landing() {
             {[
               { n: '1', icon: Upload, t: 'Загрузите рукопись', d: 'docx, fb2, epub, pdf или txt — хоть одну главу, хоть всю серию.' },
               { n: '2', icon: BookOpen, t: 'Перо читает книгу', d: 'Глава за главой — у вас на глазах появляются персонажи, локации, предметы, правила мира.' },
-              { n: '3', icon: Check, t: 'Вы одобряете факты', d: 'ИИ предлагает — решаете вы. Ни одна строчка не попадёт в библию без вашего «да».' },
+              { n: '3', icon: Check, t: 'Вы одобряете факты', d: 'ИИ предлагает — решаете вы. Ни одна строчка не попадёт в Мир без вашего «да».' },
               { n: '4', icon: Sparkles, t: 'Пишете дальше', d: 'Перо следит за новыми главами, дополняет профили и подсвечивает противоречия.' },
             ].map(s => (
               <li key={s.n}>
@@ -171,7 +171,7 @@ export default function Landing() {
             </div>
             <div className="grid md:grid-cols-[1fr_1.2fr] gap-8 items-baseline">
               <h3 className="font-serif text-2xl md:text-3xl font-semibold">Перо — соавтор, который читал вашу книгу</h3>
-              <p className="text-ink/60 leading-relaxed">ИИ-чат и правки текста с полным знанием вашей библии: он не перепутает имена, не забудет, что было в пятой главе, и говорит репликами ваших героев — потому что знает их манеру речи. Перо не пишет за вас — оно помнит за вас.</p>
+              <p className="text-ink/60 leading-relaxed">ИИ-чат и правки текста с полным знанием вашего Мира: он не перепутает имена, не забудет, что было в пятой главе, и говорит репликами ваших героев — потому что знает их манеру речи. Перо не пишет за вас — оно помнит за вас.</p>
             </div>
             <div className="grid md:grid-cols-[1fr_1.2fr] gap-8 items-baseline">
               <h3 className="font-serif text-2xl md:text-3xl font-semibold">Редактор для длинной прозы — в том же окне</h3>
@@ -248,13 +248,13 @@ export default function Landing() {
         <section id="pricing" className="border-y border-ink/8 bg-white/50">
           <div className="max-w-4xl mx-auto px-6 py-20">
             <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-3 text-center">Начните бесплатно — на своей рукописи</h2>
-            <p className="text-ink/55 mb-12 text-center">Полный цикл «импорт → библия → проверка» доступен без оплаты.</p>
+            <p className="text-ink/55 mb-12 text-center">Полный цикл «импорт → Мир → проверка» доступен без оплаты.</p>
             <div className="grid md:grid-cols-2 gap-6">
               <div className="bg-white rounded-3xl border border-ink/8 p-8 shadow-sm">
                 <h3 className="font-serif text-2xl font-semibold mb-1">Бесплатный</h3>
                 <p className="font-serif text-4xl font-semibold mb-6">0 ₽</p>
                 <ul className="space-y-2.5 text-[14px] text-ink/70 mb-8">
-                  {['1 активный проект', 'Авто-библия до 30 глав', '20 ИИ-действий в день', 'Импорт docx, fb2, epub, pdf, txt', 'Экспорт txt и markdown'].map(f => (
+                  {['1 активный проект', 'Авто-Мир до 30 глав', '20 ИИ-действий в день', 'Импорт docx, fb2, epub, pdf, txt', 'Экспорт txt и markdown'].map(f => (
                     <li key={f} className="flex gap-2.5"><Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />{f}</li>
                   ))}
                 </ul>
@@ -269,7 +269,7 @@ export default function Landing() {
                   {['Проекты и главы без лимитов', '300 ИИ-действий в день', 'Отчёт противоречий по всей книге', 'Диктовка с ИИ-обработкой', 'Экспорт в docx и zip-бэкап'].map(f => (
                     <li key={f} className="flex gap-2.5"><Check size={16} className="text-emerald-300 shrink-0 mt-0.5" />{f}</li>
                   ))}
-                  <li className="flex gap-2.5 text-[#f5f0e8]/55"><Clock size={16} className="shrink-0 mt-0.5 opacity-70" />Публичная страница библии по ссылке — скоро</li>
+                  <li className="flex gap-2.5 text-[#f5f0e8]/55"><Clock size={16} className="shrink-0 mt-0.5 opacity-70" />Публичная страница Мира по ссылке — скоро</li>
                 </ul>
                 <Link to={CTA_TO} className="block text-center bg-[#f5f0e8] text-ink rounded-xl py-3 font-semibold hover:bg-white transition-colors">
                   Попробовать Pro
@@ -295,15 +295,15 @@ export default function Landing() {
               },
               {
                 q: 'Снова заводить базу персонажей руками?',
-                a: 'Ничего не нужно вводить руками. Вы загружаете рукопись — библия собирается сама. Вам остаётся только одобрять или править найденное.',
+                a: 'Ничего не нужно вводить руками. Вы загружаете рукопись — Мир собирается сам. Вам остаётся только одобрять или править найденное.',
               },
               {
                 q: 'У меня уже 100 тысяч слов в Word — поздно?',
-                a: 'Наоборот, это лучший момент. Импорт docx/fb2/epub за пару минут превратит готовый текст в библию мира со связями и таймлайнами.',
+                a: 'Наоборот, это лучший момент. Импорт docx/fb2/epub за пару минут превратит готовый текст в Мир со связями и таймлайнами.',
               },
               {
                 q: 'Дорого — и я не плачу в долларах.',
-                a: '599 ₽ в месяц, оплата российской картой, с чеком. А полный цикл «импорт → библия → проверка» на одном проекте доступен бесплатно — попробуйте до оплаты.',
+                a: '599 ₽ в месяц, оплата российской картой, с чеком. А полный цикл «импорт → Мир → проверка» на одном проекте доступен бесплатно — попробуйте до оплаты.',
               },
             ].map(item => (
               <div key={item.q} className="py-5">

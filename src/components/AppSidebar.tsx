@@ -101,7 +101,7 @@ export function AppSidebar({
                 )}
               </button>
             ) : (
-              <Link to={`/bible/${projectId}`} className={active === 'bible' ? navActive : navIdle}>
+              <Link to={`/editor/${projectId}?view=world`} className={active === 'bible' ? navActive : navIdle}>
                 <BookOpen size={16} className="text-white/55" />
                 Мир
                 {bibleBadge > 0 && (

@@ -616,7 +616,7 @@ export default function Editor() {
         if (loaded.length > 0) {
           const validIds = loaded.map(c => c.id);
           if (!chapterId || !validIds.includes(chapterId)) {
-            navigate(`/editor/${projectId}/${loaded[0].id}`, { replace: true });
+            navigate(`/editor/${projectId}/${loaded[0].id}${location.search}`, { replace: true });
           }
         }
       })
@@ -628,9 +628,20 @@ export default function Editor() {
   useEffect(() => {
     if (!chapterId || chapters.length === 0) return;
     if (!chapters.some(c => c.id === chapterId)) {
-      navigate(`/editor/${projectId}/${chapters[0].id}`, { replace: true });
+      navigate(`/editor/${projectId}/${chapters[0].id}${location.search}`, { replace: true });
     }
   }, [chapterId, chapters]);
+
+  // Открыть «Мир» сразу, если пришли с ?view=world (нав «Мир» вне редактора / онбординг).
+  const worldOpenedRef = useRef(false);
+  useEffect(() => {
+    if (worldOpenedRef.current || !chapterId) return;
+    if (new URLSearchParams(location.search).get('view') === 'world') {
+      worldOpenedRef.current = true;
+      handleBibleMenuClick('characters');
+      navigate(location.pathname, { replace: true }); // убрать query, чтобы не повторялось
+    }
+  }, [chapterId, location.search]);
 
   // Keep a ref to the previous chapterId so we can force-save before switching
   const prevChapterIdRef = useRef<string | undefined>(undefined);

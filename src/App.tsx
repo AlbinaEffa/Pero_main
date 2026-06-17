@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import React, { useEffect, Suspense } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
@@ -14,7 +14,6 @@ import Login    from './pages/Login';
 // ── Lazily loaded (heavy pages — split into separate chunks) ──────────────────
 const Dashboard  = React.lazy(() => import('./pages/Dashboard'));
 const Editor     = React.lazy(() => import('./pages/Editor'));
-const StoryBible = React.lazy(() => import('./pages/StoryBible'));
 const Settings   = React.lazy(() => import('./pages/Settings'));
 const IdeaLibrary = React.lazy(() => import('./pages/IdeaLibrary'));
 const Onboarding = React.lazy(() => import('./pages/Onboarding'));
@@ -70,6 +69,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Старая страница /bible убрана — «Мир» живёт в редакторе. Перенаправляем сюда же.
+function BibleRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/editor/${id}?view=world`} replace />;
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -87,7 +92,7 @@ export default function App() {
 
             <Route path="/editor/:projectId/:chapterId" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
             <Route path="/editor/:projectId"            element={<ProtectedRoute><Editor /></ProtectedRoute>} />
-            <Route path="/bible/:id"                    element={<ProtectedRoute><StoryBible /></ProtectedRoute>} />
+            <Route path="/bible/:id"                    element={<ProtectedRoute><BibleRedirect /></ProtectedRoute>} />
             <Route path="/ideas/:projectId"             element={<ProtectedRoute><IdeaLibrary /></ProtectedRoute>} />
             <Route path="/onboarding/:projectId"        element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           </Routes>

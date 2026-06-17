@@ -1696,10 +1696,10 @@ export default function Editor() {
               onDismissUpdate={dismissUpdate}
               onBulkDismissChapter={bulkDismissChapter}
               onBulkRejectChapter={bulkRejectChapter}
-              onMergeDuplicates={async (ids) => {
+              onMergeDuplicates={async (ids, survivorId) => {
                 if (!projectId || ids.length < 2) return;
                 try {
-                  await api.post(`/bible/${projectId}/merge`, { ids });
+                  await api.post(`/bible/${projectId}/merge`, { ids, survivorId });
                   const data = await api.get<{ entities: Entity[]; links?: EntityLink[]; events?: EntityEvent[] }>(`/bible/${projectId}`);
                   setBibleEntities((data.entities ?? []).filter(e => e.status === 'approved'));
                   setEntityLinks(data.links ?? []);

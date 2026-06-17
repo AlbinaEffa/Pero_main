@@ -1006,7 +1006,7 @@ const SIG_RANK_MERGE: Record<string, number> = { major: 0, moderate: 1, minor: 2
 router.post('/:projectId/merge', authenticateToken, async (req: any, res) => {
   try {
     const { projectId } = req.params;
-    const { name, ids } = req.body ?? {};
+    const { name, ids, survivorId } = req.body ?? {};
     if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
 
     const isOwner = await assertProjectOwnership(projectId, req.user.userId);
@@ -1027,8 +1027,10 @@ router.post('/:projectId/merge', authenticateToken, async (req: any, res) => {
     }
     if (group.length < 2) return res.json({ merged: 0 });
 
-    // Выживший — самый «канонический»: по значимости, затем по длине описания.
-    const survivor = group.reduce((a, b) => {
+    // Выживший: явный выбор автора (survivorId) приоритетен; иначе самый «канонический»
+    // по значимости, затем по длине описания.
+    const chosen = typeof survivorId === 'string' ? group.find(e => e.id === survivorId) : undefined;
+    const survivor = chosen ?? group.reduce((a, b) => {
       const ra = SIG_RANK_MERGE[a.significance ?? 'minor'] ?? 2;
       const rb = SIG_RANK_MERGE[b.significance ?? 'minor'] ?? 2;
       if (rb !== ra) return rb < ra ? b : a;

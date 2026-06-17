@@ -62,8 +62,8 @@ interface Props {
   /** Inspector expanded to foreground — lenses render their rich layout. */
   isExpanded?: boolean;
   onClose: () => void;
-  /** Слить вероятные дубли-варианты одного героя (Риз/Ризанд) в одну запись по ids. */
-  onMergeDuplicates?: (ids: string[]) => void;
+  /** Слить вероятные дубли-варианты одного героя в одну запись по ids; survivorId — какое имя оставить каноном. */
+  onMergeDuplicates?: (ids: string[], survivorId?: string) => void;
 }
 
 function entityTypeLabel(type: string) {
@@ -599,15 +599,19 @@ export function StoryBiblePanel({
                     {shownDups.map(g => (
                       <div key={dupKey(g)} className="flex items-center gap-2 bg-white rounded-lg px-2.5 py-1.5">
                         <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: TYPE_META[g[0].type]?.pigment ?? '#54627F' }} />
-                        <span className="min-w-0 flex-1 text-[12px] text-[#1e2d1f] truncate">
-                          {g.map(e => e.name).join(' · ')}
+                        <span className="text-[10px] text-[#1e2d1f]/40 flex-shrink-0 uppercase tracking-wide">оставить</span>
+                        <span className="min-w-0 flex-1 flex flex-wrap gap-1">
+                          {g.map(e => (
+                            <button
+                              key={e.id}
+                              onClick={() => onMergeDuplicates(g.map(x => x.id), e.id)}
+                              title={`Объединить в «${e.name}» — остальные станут алиасами`}
+                              className="text-[12px] font-medium text-[#1e2d1f] hover:text-[#71597F] hover:bg-[#71597F]/10 rounded px-1.5 py-0.5 transition-colors"
+                            >
+                              {e.name}
+                            </button>
+                          ))}
                         </span>
-                        <button
-                          onClick={() => onMergeDuplicates(g.map(e => e.id))}
-                          className="flex-shrink-0 text-[11px] font-medium text-[#71597F] hover:bg-[#71597F]/10 rounded-md px-2 py-0.5 transition-colors"
-                        >
-                          Объединить
-                        </button>
                         <button
                           onClick={() => setDismissedDups(prev => new Set(prev).add(dupKey(g)))}
                           title="Это разные объекты" aria-label="Это разные объекты"

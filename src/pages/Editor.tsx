@@ -1685,7 +1685,7 @@ export default function Editor() {
               updateSuggestions={updateSuggestions}
               entityLinks={entityLinks}
               entityEvents={entityEvents}
-              chapters={chapters.map(c => ({ id: c.id, title: c.title, order: c.order }))}
+              chapters={chapters.map(c => ({ id: c.id, title: c.title, order: c.order, povCharacter: c.povCharacter }))}
               onExtract={handleExtract}
               chapterFreshnessStatus={currentChapterFreshness}
               onRecheck={handleRecheckChapter}

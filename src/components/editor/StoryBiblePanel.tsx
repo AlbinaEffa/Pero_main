@@ -30,6 +30,7 @@ interface ChapterSummary {
   id: string;
   title: string;
   order: number;
+  povCharacter?: string | null;
 }
 
 interface Props {

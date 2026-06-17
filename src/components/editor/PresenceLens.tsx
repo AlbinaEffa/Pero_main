@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle, MoonStar, ChevronDown, ChevronRight } from 'lucide-react';
+import { AlertTriangle, MoonStar, ChevronDown, ChevronRight, Eye } from 'lucide-react';
 import { Entity, EntityLink, EntityEvent } from './types';
 import { MargConstellation } from './Marginalia';
 
@@ -7,6 +7,7 @@ interface ChapterSummary {
   id: string;
   title: string;
   order: number;
+  povCharacter?: string | null;
 }
 
 interface Props {
@@ -146,6 +147,19 @@ export function PresenceLens({ entities, events, links, chapters, contradictions
     return { disappear, gaps };
   }, [recurring]);
 
+  // POV-ribbon: кто рассказывает — соседние главы одного рассказчика в один прогон.
+  const povRuns = useMemo(() => {
+    const runs: { name: string; fromIdx: number; toIdx: number }[] = [];
+    sortedChapters.forEach((c, i) => {
+      const name = c.povCharacter?.trim();
+      if (!name) return;
+      const last = runs[runs.length - 1];
+      if (last && last.name === name && last.toIdx === i - 1) last.toIdx = i;
+      else runs.push({ name, fromIdx: i, toIdx: i });
+    });
+    return runs;
+  }, [sortedChapters]);
+
   if (sortedChapters.length === 0 || allRows.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center text-center px-6 py-12 text-[#1e2d1f]/45">
@@ -161,6 +175,29 @@ export function PresenceLens({ entities, events, links, chapters, contradictions
 
   return (
     <div className="text-[12px]">
+      {/* POV: кто рассказывает какие главы — лента рассказчиков (только если Перо определило) */}
+      {povRuns.length > 0 && (
+        <div className="mb-3">
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#1e2d1f]/45 mb-1.5">
+            <Eye size={12} /> Кто рассказывает
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {povRuns.map((run, i) => (
+              <button
+                key={i}
+                onClick={() => onJumpToChapter(sortedChapters[run.fromIdx].id, run.name)}
+                title={`${run.name} — рассказчик ${run.fromIdx === run.toIdx ? `гл. ${run.fromIdx + 1}` : `гл. ${run.fromIdx + 1}–${run.toIdx + 1}`}. Перейти.`}
+                className="flex items-center gap-1.5 rounded-lg bg-[#A14F44]/[0.08] hover:bg-[#A14F44]/[0.14] px-2 py-1 text-[11px] text-[#1e2d1f] transition-colors"
+              >
+                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#A14F44' }} />
+                <span className="font-medium">{run.name}</span>
+                <span className="text-[#1e2d1f]/45">{run.fromIdx === run.toIdx ? `гл. ${run.fromIdx + 1}` : `гл. ${run.fromIdx + 1}–${run.toIdx + 1}`}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Фильтр по типу — фокус на персонажах/локациях/… */}
       <div className="flex flex-wrap gap-1.5 mb-3">
         {TYPE_CHIPS.map(chip => {

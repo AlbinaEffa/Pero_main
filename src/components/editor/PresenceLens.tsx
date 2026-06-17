@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Telescope, AlertTriangle, MoonStar, ChevronDown, ChevronRight } from 'lucide-react';
+import { AlertTriangle, MoonStar, ChevronDown, ChevronRight } from 'lucide-react';
 import { Entity, EntityLink, EntityEvent } from './types';
+import { MargConstellation } from './Marginalia';
 
 interface ChapterSummary {
   id: string;
@@ -148,7 +149,7 @@ export function PresenceLens({ entities, events, links, chapters, contradictions
   if (sortedChapters.length === 0 || allRows.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center text-center px-6 py-12 text-[#1e2d1f]/45">
-        <Telescope size={26} className="mb-3 text-[#1e2d1f]/25" />
+        <MargConstellation size={56} className="mb-3 text-[#1e2d1f]/30" />
         <p className="text-sm leading-relaxed">
           Присутствие появится, когда Перо прочитает главы и в мире наберутся сущности.
         </p>

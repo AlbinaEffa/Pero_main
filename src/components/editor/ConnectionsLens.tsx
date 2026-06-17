@@ -1,6 +1,7 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
-import { Share2, Maximize } from 'lucide-react';
+import { Maximize } from 'lucide-react';
 import { Entity, EntityLink } from './types';
+import { MargWeb } from './Marginalia';
 
 interface Props {
   entities: Entity[];
@@ -211,7 +212,7 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
   if (nodes0.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center text-center px-6 py-12 text-[#1e2d1f]/45">
-        <Share2 size={26} className="mb-3 text-[#1e2d1f]/25" />
+        <MargWeb size={56} className="mb-3 text-[#1e2d1f]/30" />
         <p className="text-sm leading-relaxed">Связи появятся, когда Перо прочитает главы и найдёт отношения между сущностями.</p>
       </div>
     );

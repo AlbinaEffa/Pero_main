@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Clock, Swords, Heart, Activity, Lightbulb, Circle, X, Rewind, ChevronDown, ChevronRight } from 'lucide-react';
+import { Swords, Heart, Activity, Lightbulb, Circle, X, Rewind, ChevronDown, ChevronRight } from 'lucide-react';
 import { Entity, EntityEvent } from './types';
+import { MargPath } from './Marginalia';
 
 const SIGNIFICANCE_RANK: Record<string, number> = { major: 0, moderate: 1, minor: 2 };
 
@@ -89,7 +90,7 @@ export function TimelineLens({ entities, events, chapters, focusEntityId, onSetF
   if (scoped.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center text-center px-6 py-12 text-[#1e2d1f]/45">
-        <Clock size={26} className="mb-3 text-[#1e2d1f]/25" />
+        <MargPath size={56} className="mb-3 text-[#1e2d1f]/30" />
         <p className="text-sm leading-relaxed">
           {focusEntityId ? 'У этой сущности пока нет событий.' : 'События появятся, когда Перо прочитает главы.'}
         </p>

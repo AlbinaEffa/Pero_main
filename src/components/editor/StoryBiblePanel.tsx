@@ -8,6 +8,7 @@ import { PresenceLens } from './PresenceLens';
 import { ConnectionsLens } from './ConnectionsLens';
 import { TimelineLens } from './TimelineLens';
 import { MapLens } from './MapLens';
+import { MargOpenBook } from './Marginalia';
 import { Clock, Map as MapIcon } from 'lucide-react';
 
 type LensMode = 'catalog' | 'presence' | 'links' | 'timeline' | 'map';
@@ -523,7 +524,7 @@ export function StoryBiblePanel({
           );
           if (visibleEntities.length === 0) return (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <BookOpen size={32} className="text-[#1e2d1f]/20 mb-4" />
+              <MargOpenBook size={60} className="text-[#1e2d1f]/30 mb-4" />
               <p className="text-sm text-[#1e2d1f]/50">
                 {scope === 'chapter' ? 'В этой главе пока нет сущностей.' : 'Мир пуст. Нажмите «Прочитать» на главе — Перо извлечёт сущности.'}
               </p>

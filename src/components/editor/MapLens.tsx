@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Map as MapIcon, MapPin, ChevronRight, ChevronDown } from 'lucide-react';
+import { MapPin, ChevronRight, ChevronDown } from 'lucide-react';
 import { Entity, EntityLink } from './types';
+import { MargCompass } from './Marginalia';
 
 interface Props {
   entities: Entity[];
@@ -55,7 +56,7 @@ export function MapLens({ entities, links, onJumpToChapter }: Props) {
   if (locations.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center text-center px-6 py-12 text-[#1e2d1f]/45">
-        <MapIcon size={26} className="mb-3 text-[#1e2d1f]/25" />
+        <MargCompass size={56} className="mb-3 text-[#1e2d1f]/30" />
         <p className="text-sm leading-relaxed">Карта появится, когда Перо найдёт локации и их вложенность в тексте.</p>
       </div>
     );

@@ -12,6 +12,8 @@ export type Chapter = {
   updatedAt: string;
   /** ISO timestamp of the last successful Story Bible extraction for this chapter. Null if never extracted. */
   lastExtractedAt?: string | null;
+  /** Имя персонажа-рассказчика главы (POV). null/undefined — третье лицо или не определён. */
+  povCharacter?: string | null;
 };
 
 export type EntitySignificance = 'major' | 'moderate' | 'minor';

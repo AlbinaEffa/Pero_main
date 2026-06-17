@@ -12,7 +12,7 @@ import { aiQuota } from '../lib/quota.js';
 import { enqueueJob } from '../jobs/queue.js';
 import {
   isValidUUID, cleanJsonResponse,
-  BASE_EXTRACTION_PROMPT, processExtractionResults,
+  BASE_EXTRACTION_PROMPT, processExtractionResults, sanitizePov,
   type AiEntity, type AiRelation,
 } from '../lib/extraction.js';
 
@@ -132,19 +132,21 @@ ${list}
   [{ "from": "Имя", "to": "Имя", "relation": "краткий тип («мать», «наставник», «живёт в»)" }].
   Для ЛОКАЦИЙ добавляй вложенность: relation «находится в»/«часть» (меньшее место → большее).
 
-Ответ — строго JSON, без markdown:
+Ответ — строго JSON, без markdown. Имена и описания бери ТОЛЬКО из текста
+(не подставляй слова «Имя», «Название», «Описание» как значения).
+Структура (пример на вымышленных данных, не копируй):
 {
   "entities": [
     {
       "type": "character",
-      "name": "Имя из списка или новое",
-      "description": "...",
+      "name": "Кейлен",
+      "description": "Капитан стражи. В этой главе раскрывает свой план побега.",
       "significance": "major",
-      "attributes": { "appearance": "...", "role": "..." },
-      "events": [{ "title": "...", "description": "...", "eventType": "conflict" }]
+      "attributes": { "appearance": "светловолосый", "role": "капитан стражи" },
+      "events": [{ "title": "Раскрытие плана", "description": "Делится планом побега с сестрой.", "eventType": "conflict" }]
     }
   ],
-  "relations": [{ "from": "Имя", "to": "Имя", "relation": "союзник" }],
+  "relations": [{ "from": "Кейлен", "to": "Мира", "relation": "союзник" }],
   "chapterSummary": "Рабочее название главы (2–4 слова)"
 }`;
 }
@@ -185,15 +187,17 @@ ${list}
 маркер времени — timeLabel + timeHint 'flashback'/'present') и relations (связи, явно
 подтверждённые текстом; для локаций — вложенность «находится в»/«часть») — по общим правилам.
 
-Ответ — строго JSON, без markdown:
+Ответ — строго JSON, без markdown. Имена/описания — ТОЛЬКО из текста
+(слова «Имя», «Название», «Описание» как значения не подставляй).
+Структура (пример на вымышленных данных, не копируй):
 {
   "entities": [
     {
       "type": "character",
-      "name": "Имя",
-      "description": "...",
+      "name": "Кейлен",
+      "description": "Капитан стражи; в правке упомянут новый шрам на руке.",
       "significance": "moderate",
-      "attributes": { "appearance": "..." },
+      "attributes": { "appearance": "шрам на правой руке" },
       "events": []
     }
   ],
@@ -242,7 +246,9 @@ ${list}
 
 ${chapterBlocks}
 
-Ответ — строго JSON, без markdown:
+Ответ — строго JSON, без markdown. Имена/описания — ТОЛЬКО из текста глав
+(слова «Имя», «Название», «Описание» как значения не подставляй).
+Структура (пример на вымышленных данных, не копируй):
 {
   "chapters": [
     {
@@ -250,14 +256,14 @@ ${chapterBlocks}
       "entities": [
         {
           "type": "character",
-          "name": "Имя",
-          "description": "...",
+          "name": "Кейлен",
+          "description": "Капитан стражи. Принимает командование гарнизоном.",
           "significance": "major",
-          "attributes": { "appearance": "...", "role": "..." },
-          "events": [{ "title": "...", "description": "...", "eventType": "status" }]
+          "attributes": { "appearance": "светловолосый", "role": "капитан стражи" },
+          "events": [{ "title": "Побег из крепости", "description": "Сбегает через подземный ход.", "eventType": "status" }]
         }
       ],
-      "relations": [{ "from": "Имя", "to": "Имя", "relation": "сестра" }],
+      "relations": [{ "from": "Кейлен", "to": "Мира", "relation": "сестра" }],
       "chapterSummary": "2–4 слова или null"
     }
   ]
@@ -296,7 +302,7 @@ router.post('/extract',
       );
 
       const raw = response.text || '{"entities":[]}';
-      let parsed: { entities: AiEntity[]; relations?: AiRelation[]; chapterSummary?: string };
+      let parsed: { entities: AiEntity[]; relations?: AiRelation[]; chapterSummary?: string; pov?: unknown };
       try {
         parsed = JSON.parse(cleanJsonResponse(raw));
       } catch {
@@ -327,6 +333,8 @@ router.post('/extract',
             if (parsed.chapterSummary && chapterTitle && /^Глава \d+$/.test(chapterTitle.trim())) {
               updatePayload.title = parsed.chapterSummary.substring(0, 100);
             }
+            const pov = sanitizePov(parsed.pov);
+            if (pov) updatePayload.povCharacter = pov;
             await db.update(schema.chapters).set(updatePayload).where(eq(schema.chapters.id, chapterId));
           } catch (e) {
             console.warn('[bible:extract] Failed to update chapter metadata:', e);
@@ -438,7 +446,7 @@ router.post('/recheck/chapter/:chapterId',
       );
 
       const raw = response.text || '{"entities":[]}';
-      let parsed: { entities: AiEntity[]; relations?: AiRelation[]; chapterSummary?: string };
+      let parsed: { entities: AiEntity[]; relations?: AiRelation[]; chapterSummary?: string; pov?: unknown };
       try {
         parsed = JSON.parse(cleanJsonResponse(raw));
       } catch {
@@ -460,6 +468,8 @@ router.post('/recheck/chapter/:chapterId',
         if (parsed.chapterSummary && chapterTitle && /^Глава \d+$/.test(chapterTitle.trim())) {
           updatePayload.title = parsed.chapterSummary.substring(0, 100);
         }
+        const pov = sanitizePov(parsed.pov);
+        if (pov) updatePayload.povCharacter = pov;
         await db.update(schema.chapters).set(updatePayload).where(eq(schema.chapters.id, chapterId));
       } catch (e) {
         console.warn('[bible:recheck] Failed to update chapter metadata:', e);
@@ -570,7 +580,7 @@ router.post('/recheck/batch',
         }
 
         const raw = batchResponse.text || '{"chapters":[]}';
-        let batchParsed: { chapters: { chapterId: string; entities: AiEntity[]; relations?: AiRelation[]; chapterSummary?: string | null }[] };
+        let batchParsed: { chapters: { chapterId: string; entities: AiEntity[]; relations?: AiRelation[]; chapterSummary?: string | null; pov?: unknown }[] };
         try {
           batchParsed = JSON.parse(cleanJsonResponse(raw));
         } catch {
@@ -604,6 +614,8 @@ router.post('/recheck/batch',
             if (chResult.chapterSummary && chMeta.title && /^Глава \d+$/.test(chMeta.title.trim())) {
               updatePayload.title = chResult.chapterSummary.substring(0, 100);
             }
+            const pov = sanitizePov(chResult.pov);
+            if (pov) updatePayload.povCharacter = pov;
             await db.update(schema.chapters).set(updatePayload).where(eq(schema.chapters.id, chResult.chapterId));
           } catch (e) {
             console.warn('[bible:recheck/batch] Failed to update chapter metadata:', e);

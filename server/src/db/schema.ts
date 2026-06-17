@@ -61,6 +61,12 @@ export const chapters = pgTable('chapters', {
    * paragraph-level diff for incremental re-extraction.
    */
   lastExtractedContentHash: text('last_extracted_content_hash'),
+  /**
+   * Имя персонажа, от лица которого ведётся повествование в главе (POV). Определяется
+   * при извлечении. null — третье лицо или POV не определён. Первое лицо «я» в главе
+   * относится к этому персонажу; местоимения сущностями НЕ становятся.
+   */
+  povCharacter: text('pov_character'),
 });
 
 // Permanent Memory Tables

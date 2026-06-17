@@ -22,7 +22,7 @@ import { guardChat, guardEmbed } from '../lib/aiGuard.js';
 import { pool as sharedPool } from '../db/client.js';
 import { getAIProvider, getEmbeddingProvider, type AIProvider } from '../lib/aiProvider.js';
 import {
-  BASE_EXTRACTION_PROMPT, cleanJsonResponse, processExtractionResults,
+  BASE_EXTRACTION_PROMPT, cleanJsonResponse, processExtractionResults, sanitizePov,
   buildStoryBibleContext, buildContradictionPrompt, type RawContradiction,
   type AiEntity, type AiRelation,
 } from '../lib/extraction.js';
@@ -124,14 +124,16 @@ async function handleExtractEntities(
   const raw = response.text ?? '{"entities":[]}';
   const cleaned = cleanJsonResponse(raw);
 
-  let parsed: { entities?: AiEntity[]; relations?: AiRelation[] };
+  let parsed: { entities?: AiEntity[]; relations?: AiRelation[]; pov?: unknown };
   let entities: AiEntity[] = [];
   let relations: AiRelation[] = [];
+  let pov: string | null = null;
   try {
     parsed = JSON.parse(cleaned);
     // Handle both array format (legacy) and new object format
     entities = Array.isArray(parsed) ? parsed : (parsed.entities ?? []);
     relations = Array.isArray(parsed) ? [] : (parsed.relations ?? []);
+    pov = Array.isArray(parsed) ? null : sanitizePov(parsed.pov);
   } catch {
     // Malformed JSON from model — permanent failure, retrying won't help
     throw new WorkerHandlerError(
@@ -157,9 +159,9 @@ async function handleExtractEntities(
     entities, relations, projectId, payload.chapterId, chapterTitle, plainText,
   );
 
-  // Отметить главу как проанализированную — freshness для редактора
+  // Отметить главу как проанализированную — freshness для редактора (+ POV-рассказчик)
   await db.update(schema.chapters)
-    .set({ lastExtractedAt: new Date() })
+    .set({ lastExtractedAt: new Date(), ...(pov ? { povCharacter: pov } : {}) })
     .where(eq(schema.chapters.id, payload.chapterId));
 }
 

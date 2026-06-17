@@ -1,6 +1,8 @@
-import { useMemo } from 'react';
-import { Clock, Swords, Heart, Activity, Lightbulb, Circle, X, Rewind } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Clock, Swords, Heart, Activity, Lightbulb, Circle, X, Rewind, ChevronDown, ChevronRight } from 'lucide-react';
 import { Entity, EntityEvent } from './types';
+
+const SIGNIFICANCE_RANK: Record<string, number> = { major: 0, moderate: 1, minor: 2 };
 
 interface ChapterSummary { id: string; title: string; order: number; }
 
@@ -37,15 +39,38 @@ export function TimelineLens({ entities, events, chapters, focusEntityId, onSetF
   const chapterOrder = useMemo(() => new Map(chapters.map(c => [c.id, c.order])), [chapters]);
   const chapterTitle = useMemo(() => new Map(chapters.map(c => [c.id, c.title])), [chapters]);
 
-  // Сущности, у которых есть события (для чипов-фильтра = арок).
-  const entitiesWithEvents = useMemo(() => {
-    const ids = new Set(events.map(e => e.entityId));
-    return entities.filter(e => ids.has(e.id));
-  }, [entities, events]);
+  const [showAllArcs, setShowAllArcs] = useState(false);
+  const [eventTypeFilter, setEventTypeFilter] = useState<string>('all');
 
-  const scoped = useMemo(
+  // Сущности с событиями = доступные арки. Сортируем по значимости → числу событий,
+  // чтобы важные герои были первыми чипами, а не тонули в алфавите эпизодических.
+  const arcEntities = useMemo(() => {
+    const cnt = new Map<string, number>();
+    events.forEach(e => cnt.set(e.entityId, (cnt.get(e.entityId) ?? 0) + 1));
+    const ids = new Set(events.map(e => e.entityId));
+    return entities
+      .filter(e => ids.has(e.id))
+      .map(e => ({ e, n: cnt.get(e.id) ?? 0 }))
+      .sort((a, b) =>
+        (SIGNIFICANCE_RANK[a.e.significance ?? 'minor'] - SIGNIFICANCE_RANK[b.e.significance ?? 'minor'])
+        || (b.n - a.n) || a.e.name.localeCompare(b.e.name, 'ru'));
+  }, [entities, events]);
+  const ARC_CAP = 12;
+  const shownArcs = showAllArcs ? arcEntities : arcEntities.slice(0, ARC_CAP);
+
+  // Фокус на арке → события героя; иначе вся история. Тип-фильтр сужает дальше.
+  const base = useMemo(
     () => (focusEntityId ? events.filter(e => e.entityId === focusEntityId) : events),
     [events, focusEntityId],
+  );
+  const eventTypeCounts = useMemo(() => {
+    const m: Record<string, number> = { all: base.length };
+    base.forEach(e => { const k = e.eventType ?? 'other'; m[k] = (m[k] ?? 0) + 1; });
+    return m;
+  }, [base]);
+  const scoped = useMemo(
+    () => (eventTypeFilter === 'all' ? base : base.filter(e => (e.eventType ?? 'other') === eventTypeFilter)),
+    [base, eventTypeFilter],
   );
 
   // Группировка по главам в порядке глав; внутри — по timeLabel-наличию (флешбеки помечены, не двигаем).
@@ -74,8 +99,8 @@ export function TimelineLens({ entities, events, chapters, focusEntityId, onSetF
 
   return (
     <div className="text-[12px]">
-      {/* Фильтр-чипы: вся история / арка героя */}
-      <div className="flex flex-wrap gap-1.5 mb-3">
+      {/* Арки: вся история / герой. Показываем значимых, остальных — за «+N арок». */}
+      <div className="flex flex-wrap gap-1.5 mb-2 items-center">
         <button
           onClick={() => onSetFocus(null)}
           className={`text-[11px] px-2.5 py-0.5 rounded-full transition-colors ${
@@ -84,7 +109,11 @@ export function TimelineLens({ entities, events, chapters, focusEntityId, onSetF
         >
           Вся история
         </button>
-        {entitiesWithEvents.map(e => (
+        {/* Если выбранная арка — за пределами показанных, держим её чип видимым. */}
+        {(focusEntityId && !shownArcs.some(a => a.e.id === focusEntityId)
+          ? [...shownArcs, ...arcEntities.filter(a => a.e.id === focusEntityId)]
+          : shownArcs
+        ).map(({ e }) => (
           <button
             key={e.id}
             onClick={() => onSetFocus(focusEntityId === e.id ? null : e.id)}
@@ -97,6 +126,38 @@ export function TimelineLens({ entities, events, chapters, focusEntityId, onSetF
             {focusEntityId === e.id && <X size={11} />}
           </button>
         ))}
+        {arcEntities.length > ARC_CAP && (
+          <button
+            onClick={() => setShowAllArcs(v => !v)}
+            className="flex items-center gap-0.5 text-[11px] px-2 py-0.5 rounded-full text-[#1e2d1f]/50 hover:bg-[#1e2d1f]/[0.06] transition-colors"
+          >
+            {showAllArcs ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+            {showAllArcs ? 'свернуть' : `+${arcEntities.length - ARC_CAP} арок`}
+          </button>
+        )}
+      </div>
+
+      {/* Тип события — сужает длинную ленту (Конфликт / Отношения / …) */}
+      <div className="flex flex-wrap gap-1.5 mb-3">
+        {([['all', 'Все'], ...Object.keys(EVENT_META).map(k => [k, EVENT_META[k].label])] as [string, string][])
+          .filter(([k]) => k === 'all' || (eventTypeCounts[k] ?? 0) > 0)
+          .map(([key, label]) => {
+            const active = eventTypeFilter === key;
+            const color = key === 'all' ? '#1e2d1f' : EVENT_META[key].color;
+            return (
+              <button
+                key={key}
+                onClick={() => setEventTypeFilter(key)}
+                className={`flex items-center gap-1 text-[10.5px] px-2 py-0.5 rounded-md transition-colors ${
+                  active ? 'text-[#f5f0e8]' : 'text-[#1e2d1f]/55 hover:bg-[#1e2d1f]/[0.06]'
+                }`}
+                style={active ? { background: color } : undefined}
+              >
+                {label}
+                <span className={active ? 'text-[#f5f0e8]/60' : 'text-[#1e2d1f]/35'}>{eventTypeCounts[key] ?? 0}</span>
+              </button>
+            );
+          })}
       </div>
 
       {focusEntityId && (

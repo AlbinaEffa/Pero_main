@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
   X, Check, Sparkles, ChevronLeft, Users, MapPin, Box, Globe,
-  ChevronRight, RotateCcw, ExternalLink,
+  ChevronRight, ChevronDown, RotateCcw, ExternalLink,
   BookOpen, LayoutGrid, Share2,
 } from 'lucide-react';
 import { PresenceLens } from './PresenceLens';
@@ -94,35 +94,56 @@ function entityFact(e: Entity): string {
 }
 
 /** Чистый список сущностей одного типа (как в спутнике) — без тяжёлых плиток. */
+function EntityTile({ e, meta, onSelect }: {
+  e: Entity; meta: { pigment: string; Icon: typeof ChevronRight }; onSelect: (id: string) => void;
+}) {
+  const fact = entityFact(e);
+  const Icon = meta.Icon;
+  return (
+    <button onClick={() => onSelect(e.id)}
+      className="flex items-center gap-3 text-left rounded-xl bg-white/70 hover:bg-white border border-transparent hover:border-[#1e2d1f]/10 transition-all px-3 py-2.5 w-full">
+      <span className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: meta.pigment + '1a' }}>
+        <Icon size={15} style={{ color: meta.pigment }} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-1.5">
+          <span className="text-[13px] font-medium text-[#1e2d1f] truncate">{e.name}</span>
+          {e.significance === 'major' && <span className="text-[9px] font-semibold text-[#1e2d1f]/40 uppercase tracking-wide flex-shrink-0">главн.</span>}
+        </span>
+        {fact && <span className="block text-[11px] text-[#1e2d1f]/55 truncate">{fact}</span>}
+      </span>
+      <ChevronRight size={15} className="text-[#1e2d1f]/25 flex-shrink-0" />
+    </button>
+  );
+}
+
 function EntityTileGrid({ type, items, onSelect }: {
   type: string; items: Entity[]; onSelect: (id: string) => void;
 }) {
   const meta = TYPE_META[type] ?? TYPE_META.rule;
-  const Icon = meta.Icon;
+  const [showEpisodic, setShowEpisodic] = useState(false);
   const sorted = [...items].sort((a, b) =>
     (SIG_RANK[a.significance ?? 'minor'] ?? 2) - (SIG_RANK[b.significance ?? 'minor'] ?? 2)
     || a.name.localeCompare(b.name, 'ru'));
+  // Прогрессивное раскрытие, как в линзах: значимые сразу, эпизодических — за «+N».
+  const primary = sorted.filter(e => (e.significance ?? 'minor') !== 'minor');
+  const episodic = sorted.filter(e => (e.significance ?? 'minor') === 'minor');
+  // Если значимых нет вовсе (бывает у предметов/правил) — показываем всё сразу.
+  const shown = primary.length === 0 ? episodic : primary;
+  const hiddenEpisodic = primary.length === 0 ? [] : episodic;
   return (
     <div className="flex flex-col gap-1.5">
-      {sorted.map(e => {
-        const fact = entityFact(e);
-        return (
-          <button key={e.id} onClick={() => onSelect(e.id)}
-            className="flex items-center gap-3 text-left rounded-xl bg-white/70 hover:bg-white border border-transparent hover:border-[#1e2d1f]/10 transition-all px-3 py-2.5">
-            <span className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: meta.pigment + '1a' }}>
-              <Icon size={15} style={{ color: meta.pigment }} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-1.5">
-                <span className="text-[13px] font-medium text-[#1e2d1f] truncate">{e.name}</span>
-                {e.significance === 'major' && <span className="text-[9px] font-semibold text-[#1e2d1f]/40 uppercase tracking-wide flex-shrink-0">главн.</span>}
-              </span>
-              {fact && <span className="block text-[11px] text-[#1e2d1f]/55 truncate">{fact}</span>}
-            </span>
-            <ChevronRight size={15} className="text-[#1e2d1f]/25 flex-shrink-0" />
-          </button>
-        );
-      })}
+      {shown.map(e => <EntityTile key={e.id} e={e} meta={meta} onSelect={onSelect} />)}
+      {showEpisodic && hiddenEpisodic.map(e => <EntityTile key={e.id} e={e} meta={meta} onSelect={onSelect} />)}
+      {hiddenEpisodic.length > 0 && (
+        <button
+          onClick={() => setShowEpisodic(v => !v)}
+          className="flex items-center gap-1 self-start mt-0.5 text-[11px] font-medium text-[#1e2d1f]/50 hover:text-[#1e2d1f] transition-colors"
+        >
+          {showEpisodic ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+          {showEpisodic ? 'свернуть эпизодических' : `показать ещё ${hiddenEpisodic.length} эпизодических`}
+        </button>
+      )}
     </div>
   );
 }

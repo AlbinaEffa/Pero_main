@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import {
   Feather, ChevronsRight, ChevronsLeft, Eye, Loader2, CheckCircle2,
   Sparkles, AlertTriangle, Check, X, BookOpen, ArrowRight,
@@ -24,6 +24,12 @@ interface Props {
   sceneEntities: Entity[];
   /** Ids тех, кто прямо сейчас «в кадре» — в сцене вокруг курсора. */
   inSceneIds: Set<string>;
+  /** POV-рассказчик текущей главы (null — третье лицо/не указан). */
+  povCharacter: string | null;
+  /** Имена персонажей для подсказок выбора POV. */
+  povOptions: string[];
+  /** Сохранить POV главы (строка-имя или null — убрать). */
+  onSetPov: (value: string | null) => void;
   /** Находки Пера в этой главе, ждущие одобрения. */
   findingsHere: Entity[];
   onApproveFinding: (id: string) => void;
@@ -70,6 +76,33 @@ function EntityRow({ e, hasConflict, onOpen, dim }: {
   );
 }
 
+/** Редактор POV главы: имя рассказчика с подсказками или «третье лицо». Авторская правка — авторитет. */
+function PovEditor({ value, options, onSet }: { value: string | null; options: string[]; onSet: (v: string | null) => void }) {
+  const [draft, setDraft] = useState(value ?? '');
+  useEffect(() => { setDraft(value ?? ''); }, [value]);
+  const commit = () => { const v = draft.trim(); if (v !== (value ?? '')) onSet(v || null); };
+  return (
+    <div className="flex items-center gap-2 rounded-lg bg-[#1e2d1f]/[0.03] px-2.5 py-1.5">
+      <span className="text-[11px] font-medium text-[#1e2d1f]/55 flex-shrink-0">От лица</span>
+      <input
+        list="pov-options" value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+        placeholder="третье лицо"
+        className="flex-1 min-w-0 bg-transparent outline-none text-[12px] text-[#1e2d1f] placeholder:text-[#1e2d1f]/30"
+      />
+      <datalist id="pov-options">{options.map(o => <option key={o} value={o} />)}</datalist>
+      {value && (
+        <button onClick={() => { setDraft(''); onSet(null); }} title="Убрать (третье лицо)" aria-label="Убрать POV"
+          className="flex-shrink-0 p-0.5 rounded text-[#1e2d1f]/35 hover:bg-[#1e2d1f]/8 transition-colors">
+          <X size={12} />
+        </button>
+      )}
+    </div>
+  );
+}
+
 /**
  * Правый спутник «Перо» — внешняя память + советчик рядом с письмом. Две вкладки:
  * «Сцена» (кто/что в этой главе, находки и нестыковки здесь — чтобы не держать в голове)
@@ -78,7 +111,8 @@ function EntityRow({ e, hasConflict, onOpen, dim }: {
 export function WorldCompanion({
   collapsed, onToggleCollapse,
   freshness, isExtracting, onRead,
-  sceneEntities, inSceneIds, findingsHere, onApproveFinding, onRejectFinding, contradictionIds,
+  sceneEntities, inSceneIds, povCharacter, povOptions, onSetPov,
+  findingsHere, onApproveFinding, onRejectFinding, contradictionIds,
   onOpenEntity, onOpenWorld, mode, onModeChange, chat,
 }: Props) {
   const sceneConflicts = sceneEntities.filter(e => contradictionIds.has(e.id));
@@ -135,6 +169,9 @@ export function WorldCompanion({
               </>
             )}
           </div>
+
+          {/* POV главы — правится вручную (исправить мис-детект, проставить где пусто) */}
+          <PovEditor value={povCharacter} options={povOptions} onSet={onSetPov} />
 
           {/* Находки здесь */}
           {findingsHere.length > 0 && (

@@ -97,7 +97,7 @@ router.put('/:id', authenticateToken, async (req: any, res) => {
 router.patch('/:id', authenticateToken, async (req: any, res) => {
   try {
     const { id } = req.params;
-    const { title, status, order } = req.body;
+    const { title, status, order, povCharacter } = req.body;
 
     const row = await getChapterForUser(id, req.user.userId);
     if (!row) {
@@ -108,6 +108,7 @@ router.patch('/:id', authenticateToken, async (req: any, res) => {
       title?: string;
       status?: string;
       order?: number;
+      povCharacter?: string | null;
       updatedAt: Date;
     } = { updatedAt: new Date() };
 
@@ -117,6 +118,12 @@ router.patch('/:id', authenticateToken, async (req: any, res) => {
     }
     if (status !== undefined) patch.status = status;
     if (order !== undefined) patch.order = order;
+    // POV-рассказчик: строка-имя или null (третье лицо/убрать). Авторская правка — авторитет.
+    if (povCharacter !== undefined) {
+      patch.povCharacter = typeof povCharacter === 'string' && povCharacter.trim()
+        ? povCharacter.trim().slice(0, 80)
+        : null;
+    }
 
     if (Object.keys(patch).length === 1) {
       return res.status(400).json({ error: 'No valid fields to update' });

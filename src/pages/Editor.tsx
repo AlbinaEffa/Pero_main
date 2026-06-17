@@ -1895,6 +1895,15 @@ export default function Editor() {
             onRead={currentChapterFreshness === 'stale' ? handleRecheckChapter : handleExtract}
             sceneEntities={[...chapterLinkedEntities, ...chapterMentionedEntities]}
             inSceneIds={inSceneIds}
+            povCharacter={chapters.find(c => c.id === chapterId)?.povCharacter ?? null}
+            povOptions={[...new Set(allApprovedEntities.filter(e => e.type === 'character').map(e => e.name.trim()))].sort((a, b) => a.localeCompare(b, 'ru'))}
+            onSetPov={async (value) => {
+              if (!chapterId) return;
+              try {
+                await api.patch(`/chapters/${chapterId}`, { povCharacter: value });
+                setChapters(prev => prev.map(c => c.id === chapterId ? { ...c, povCharacter: value } : c));
+              } catch { /* тихо */ }
+            }}
             findingsHere={suggestions.filter(s => s.chapterId === chapterId)}
             onApproveFinding={approveSuggestion}
             onRejectFinding={rejectSuggestion}

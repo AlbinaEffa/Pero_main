@@ -64,6 +64,8 @@ interface Props {
   onClose: () => void;
   /** Слить вероятные дубли-варианты одного героя в одну запись по ids; survivorId — какое имя оставить каноном. */
   onMergeDuplicates?: (ids: string[], survivorId?: string) => void;
+  /** Слить все показанные группы разом (авто-выбор выжившего) — один рефетч в конце. */
+  onMergeAll?: (groups: string[][]) => void;
 }
 
 function entityTypeLabel(type: string) {
@@ -242,7 +244,7 @@ export function StoryBiblePanel({
   onApproveSuggestion, onRejectSuggestion,
   onAcceptUpdate, onRejectUpdate, onDismissUpdate,
   onBulkDismissChapter, onBulkRejectChapter,
-  onOpenInEditor, contradictions, currentChapterId, isExpanded, onClose, onMergeDuplicates,
+  onOpenInEditor, contradictions, currentChapterId, isExpanded, onClose, onMergeDuplicates, onMergeAll,
 }: Props) {
   const [lensMode, setLensMode] = useState<LensMode>('catalog');
   const [scope, setScope] = useState<'project' | 'chapter'>('project');
@@ -594,6 +596,15 @@ export function StoryBiblePanel({
                 <div className="rounded-xl bg-[#71597F]/[0.07] p-3">
                   <div className="flex items-center gap-1.5 mb-2 text-[#71597F] font-semibold text-[10.5px] uppercase tracking-wider">
                     <Sparkles size={12} /> Возможно, это один объект
+                    {onMergeAll && shownDups.length >= 2 && (
+                      <button
+                        onClick={() => onMergeAll(shownDups.map(g => g.map(e => e.id)))}
+                        title="Объединить все показанные группы (Перо выберет каноном самое полное имя)"
+                        className="ml-auto normal-case tracking-normal text-[11px] font-medium text-[#71597F] hover:bg-[#71597F]/12 rounded-md px-2 py-0.5 transition-colors"
+                      >
+                        Объединить всё · {shownDups.length}
+                      </button>
+                    )}
                   </div>
                   <div className="flex flex-col gap-1.5">
                     {shownDups.map(g => (

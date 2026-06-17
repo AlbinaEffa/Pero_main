@@ -1706,6 +1706,18 @@ export default function Editor() {
                   setEntityEvents(data.events ?? []);
                 } catch { /* ошибка слияния — тихо */ }
               }}
+              onMergeAll={async (groups) => {
+                if (!projectId) return;
+                try {
+                  for (const ids of groups) {
+                    if (ids.length >= 2) await api.post(`/bible/${projectId}/merge`, { ids });
+                  }
+                  const data = await api.get<{ entities: Entity[]; links?: EntityLink[]; events?: EntityEvent[] }>(`/bible/${projectId}`);
+                  setBibleEntities((data.entities ?? []).filter(e => e.status === 'approved'));
+                  setEntityLinks(data.links ?? []);
+                  setEntityEvents(data.events ?? []);
+                } catch { /* ошибка слияния — тихо */ }
+              }}
               onOpenInEditor={handleOpenInEditor}
               contradictions={contradictions}
               currentChapterId={chapterId}

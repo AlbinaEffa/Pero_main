@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, Fragment } from 'react';
 import { AlertTriangle, MoonStar, ChevronDown, ChevronRight, Eye } from 'lucide-react';
 import { Entity, EntityLink, EntityEvent } from './types';
 import { MargConstellation } from './Marginalia';
@@ -30,6 +30,14 @@ const TYPE_PIGMENT: Record<string, string> = {
 };
 
 const SIGNIFICANCE_RANK: Record<string, number> = { major: 0, moderate: 1, minor: 2 };
+
+/** Русское склонение по числу: 1 смена, 2–4 смены, 5+ смен. */
+function pluralRu(n: number, one: string, few: string, many: string): string {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
+  return many;
+}
 
 const TYPE_CHIPS: { key: string; label: string }[] = [
   { key: 'all',       label: 'Все' },
@@ -159,6 +167,7 @@ export function PresenceLens({ entities, events, links, chapters, contradictions
     });
     return runs;
   }, [sortedChapters]);
+  const povHandoffs = povRuns.reduce((n, r, i) => n + (i > 0 && povRuns[i - 1].name !== r.name ? 1 : 0), 0);
 
   if (sortedChapters.length === 0 || allRows.length === 0) {
     return (
@@ -180,20 +189,36 @@ export function PresenceLens({ entities, events, links, chapters, contradictions
         <div className="mb-3">
           <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#1e2d1f]/45 mb-1.5">
             <Eye size={12} /> Кто рассказывает
+            {povHandoffs > 0 && (
+              <span className="normal-case tracking-normal text-[10px] font-medium text-[#71597F]" title="Сколько раз сменился рассказчик">
+                · {povHandoffs} {pluralRu(povHandoffs, 'смена', 'смены', 'смен')} POV
+              </span>
+            )}
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {povRuns.map((run, i) => (
-              <button
-                key={i}
-                onClick={() => onJumpToChapter(sortedChapters[run.fromIdx].id, run.name)}
-                title={`${run.name} — рассказчик ${run.fromIdx === run.toIdx ? `гл. ${run.fromIdx + 1}` : `гл. ${run.fromIdx + 1}–${run.toIdx + 1}`}. Перейти.`}
-                className="flex items-center gap-1.5 rounded-lg bg-[#A14F44]/[0.08] hover:bg-[#A14F44]/[0.14] px-2 py-1 text-[11px] text-[#1e2d1f] transition-colors"
-              >
-                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#A14F44' }} />
-                <span className="font-medium">{run.name}</span>
-                <span className="text-[#1e2d1f]/45">{run.fromIdx === run.toIdx ? `гл. ${run.fromIdx + 1}` : `гл. ${run.fromIdx + 1}–${run.toIdx + 1}`}</span>
-              </button>
-            ))}
+          {/* Цепочка передач: стрелка там, где рассказчик сменился (подсветка POV-смен) */}
+          <div className="flex flex-wrap items-center gap-1">
+            {povRuns.map((run, i) => {
+              const changed = i > 0 && povRuns[i - 1].name !== run.name;
+              const range = run.fromIdx === run.toIdx ? `гл. ${run.fromIdx + 1}` : `гл. ${run.fromIdx + 1}–${run.toIdx + 1}`;
+              return (
+                <Fragment key={i}>
+                  {i > 0 && (
+                    <span className={`text-[11px] ${changed ? 'text-[#71597F]/70' : 'text-[#1e2d1f]/20'}`}>
+                      {changed ? '→' : '·'}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => onJumpToChapter(sortedChapters[run.fromIdx].id, run.name)}
+                    title={`${run.name} — рассказчик ${range}. Перейти.`}
+                    className="flex items-center gap-1.5 rounded-lg bg-[#A14F44]/[0.08] hover:bg-[#A14F44]/[0.14] px-2 py-1 text-[11px] text-[#1e2d1f] transition-colors"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#A14F44' }} />
+                    <span className="font-medium">{run.name}</span>
+                    <span className="text-[#1e2d1f]/45">{range}</span>
+                  </button>
+                </Fragment>
+              );
+            })}
           </div>
         </div>
       )}

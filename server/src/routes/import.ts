@@ -66,10 +66,14 @@ async function extractEpub(buffer: Buffer): Promise<string> {
   const opfContent = (await zip.file(opfPath)?.async('text')) ?? '';
   const opfDir = opfPath.includes('/') ? opfPath.slice(0, opfPath.lastIndexOf('/') + 1) : '';
 
-  // Build id → href map from manifest items
+  // Build id → href map from manifest items. Атрибуты разбираем по отдельности —
+  // порядок id/href в <item> не фиксирован (Calibre, например, пишет href первым).
   const itemMap: Record<string, string> = {};
-  for (const m of opfContent.matchAll(/<item[^>]+id="([^"]+)"[^>]+href="([^"]+)"[^>]*>/gi)) {
-    itemMap[m[1]] = m[2];
+  for (const m of opfContent.matchAll(/<item\b[^>]*>/gi)) {
+    const tag = m[0];
+    const id = tag.match(/\bid="([^"]+)"/i)?.[1];
+    const href = tag.match(/\bhref="([^"]+)"/i)?.[1];
+    if (id && href) itemMap[id] = href;
   }
 
   // Walk spine in order

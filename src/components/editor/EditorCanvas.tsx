@@ -1263,10 +1263,15 @@ export function EditorCanvas({
                 Форматирование выделенного — в верхнем тулбаре. */}
             <EditorFirstRunHints />
             <EditorContent editor={editor} />
-            {(isDictating || interimTranscript) && (
-              <div className={`${editorFontClass} text-[#1e2d1f]/50 italic text-lg leading-[1.8] mt-2 border-l-2 border-[#1e2d1f]/20 pl-4 py-1`}>
-                {interimTranscript || 'Слушаю вас...'}{' '}
-                <span className="animate-pulse inline-block w-1.5 h-4 bg-[#1e2d1f]/50 ml-1 translate-y-[2px]" />
+            {/* Живые слова диктовки появляются призраком у курсора (DictationGhostExtension).
+                Здесь — только тихий статус «слушаю / обрабатываю». */}
+            {interimTranscript && (
+              <div className="mt-3 inline-flex items-center gap-2 text-[13px] text-[#1e2d1f]/45 select-none">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#A14F44]/40" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#A14F44]/70" />
+                </span>
+                {interimTranscript}
               </div>
             )}
           </div>

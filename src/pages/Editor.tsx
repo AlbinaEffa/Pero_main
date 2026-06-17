@@ -34,6 +34,7 @@ import { FindReplacePopup } from '../components/FindReplacePopup';
 import { SearchPanel } from '../components/editor/SearchPanel';
 import { SearchHighlightExtension, searchHighlightKey } from '../components/editor/searchHighlightExtension';
 import { ContradictionHighlightExtension, contradictionHighlightKey } from '../components/editor/contradictionHighlightExtension';
+import { DictationGhostExtension, dictationGhostKey } from '../components/editor/DictationGhostExtension';
 import { ToolbarSelectionExtension } from '../components/editor/toolbarSelectionExtension';
 import { TextAlignExtension } from '../components/editor/TextAlignExtension';
 import { SuperscriptExtension } from '../components/editor/SuperscriptExtension';
@@ -292,16 +293,31 @@ export default function Editor() {
     }
   }, [insertDictationText, normalizeDictationChunk]);
 
+  // Призрак диктовки в позиции курсора: показывает interim-текст там, где пишешь.
+  const setDictationGhost = useCallback((text: string) => {
+    const ed = editorRef.current;
+    if (!ed || ed.isDestroyed) return;
+    ed.view.dispatch(ed.view.state.tr.setMeta(dictationGhostKey, { text }));
+  }, []);
+
   const { isListening, isSupported, interimTranscript, toggleListening } = useDictation({
     language: 'ru-RU',
     onResult: (text: string, isFinal: boolean) => {
       if (isFinal) {
+        setDictationGhost('');               // финал уходит в очередь — призрак гаснет
         dictationQueueRef.current.push(text);
         void processDictationQueue();
+      } else {
+        setDictationGhost(text);             // живые слова — прямо у курсора
       }
     },
   });
   const isDictating = isListening;
+
+  // Когда диктовка выключена — гарантированно гасим призрак.
+  useEffect(() => {
+    if (!isListening) setDictationGhost('');
+  }, [isListening, setDictationGhost]);
 
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [isLoadingChapters, setIsLoadingChapters] = useState(false);
@@ -367,6 +383,10 @@ export default function Editor() {
   const [selectedText, setSelectedText] = useState('');
   const currentChapterRef = useRef<Chapter | null>(null);
   currentChapterRef.current = chapters.find(ch => ch.id === chapterId) ?? null;
+  // Живой ref на текущую главу — нужен в замыканиях редактора (onSelectionUpdate),
+  // которые создаются один раз и не видят обновлённый chapterId из пропсов.
+  const chapterIdRef = useRef<string | undefined>(chapterId);
+  chapterIdRef.current = chapterId;
   const chapterTitleSaveTimerRef = useRef<number | null>(null);
 
   const writingStats = useWritingStats(projectId);
@@ -426,6 +446,7 @@ export default function Editor() {
       }),
       SearchHighlightExtension,
       ContradictionHighlightExtension,
+      DictationGhostExtension,
       ToolbarSelectionExtension,
     ],
     content: '',
@@ -438,6 +459,11 @@ export default function Editor() {
     onSelectionUpdate: ({ editor: ed }) => {
       const { from, to } = ed.state.selection;
       setSelectedText(from === to ? '' : ed.state.doc.textBetween(from, to, ' '));
+      // Запоминаем позицию курсора, чтобы вернуть автора туда же при следующем входе.
+      const cid = chapterIdRef.current;
+      if (cid && !ed.isDestroyed) {
+        try { localStorage.setItem(`pero_cursor_${cid}`, String(from)); } catch { /* quota */ }
+      }
     },
   });
 
@@ -616,7 +642,10 @@ export default function Editor() {
         if (loaded.length > 0) {
           const validIds = loaded.map(c => c.id);
           if (!chapterId || !validIds.includes(chapterId)) {
-            navigate(`/editor/${projectId}/${loaded[0].id}${location.search}`, { replace: true });
+            // «Открыть там, где бросил»: последняя открытая глава проекта, если она жива.
+            const lastId = localStorage.getItem(`pero_last_chapter_${projectId}`);
+            const target = (lastId && validIds.includes(lastId)) ? lastId : loaded[0].id;
+            navigate(`/editor/${projectId}/${target}${location.search}`, { replace: true });
           }
         }
       })
@@ -678,6 +707,8 @@ export default function Editor() {
     if (!editor.isDestroyed) clearSearchHighlight(editor);
 
     track('chapter_opened', { projectId, chapterId });
+    // Запоминаем, на какой главе автор работает — чтобы вернуть его сюда при входе в проект.
+    try { localStorage.setItem(`pero_last_chapter_${projectId}`, chapterId); } catch { /* quota */ }
     isLoadingContentRef.current = true; // synchronous gate for same-chapter jump effect
     setIsLoadingContent(true);
     api.get<{ chapter: Chapter }>(`/chapters/${chapterId}`)
@@ -726,6 +757,20 @@ export default function Editor() {
               });
             }
           });
+        } else {
+          // «Вернись туда, где бросил»: восстанавливаем позицию курсора этой главы.
+          const savedPos = Number(localStorage.getItem(`pero_cursor_${chapterId}`));
+          if (savedPos > 0) {
+            requestAnimationFrame(() => {
+              if (editor.isDestroyed) return;
+              const max = editor.state.doc.content.size;
+              const pos = Math.min(savedPos, Math.max(1, max - 1));
+              try {
+                editor.commands.setTextSelection(pos);
+                editor.commands.scrollIntoView();
+              } catch { /* позиция устарела — игнорируем */ }
+            });
+          }
         }
       })
       .catch(e => console.error('Failed to fetch chapter:', e))
@@ -1255,6 +1300,27 @@ export default function Editor() {
           text-decoration-skip-ink: none;
           text-underline-offset: 3px;
         }
+        /* Живая диктовка — призрачный текст прямо у курсора (DictationGhostExtension).
+           Наследует шрифт/размер абзаца, поэтому льётся в строку как настоящий текст. */
+        .dictation-ghost {
+          color: rgba(161, 79, 68, 0.6);
+          font-style: italic;
+          pointer-events: none;
+          white-space: pre-wrap;
+        }
+        .dictation-ghost-caret {
+          display: inline-block;
+          width: 2px;
+          height: 1em;
+          margin-left: 1px;
+          vertical-align: text-bottom;
+          background: rgba(161, 79, 68, 0.75);
+          border-radius: 1px;
+          animation: dictation-caret-blink 1s step-end infinite;
+        }
+        @keyframes dictation-caret-blink {
+          50% { opacity: 0; }
+        }
       `}</style>
 
       <div className="relative flex h-screen w-full bg-[#f5f0e8] overflow-hidden font-sans text-[#1e2d1f]">
@@ -1370,7 +1436,10 @@ export default function Editor() {
             onEditorFontChange={handleEditorFontChange}
             isFocusMode={isFocusMode}
             isDictating={isDictating || isDictationProcessing}
-            interimTranscript={interimTranscript || (isDictationProcessing ? 'Обрабатываю диктовку…' : '')}
+            interimTranscript={
+              isDictationProcessing ? 'Обрабатываю диктовку…'
+              : (isDictating && !interimTranscript ? 'Слушаю…' : '')
+            }
             onOpenSettings={() => setIsSettingsOpen(true)}
             onOpenSearch={() => setIsSearchOpen(true)}
             onOpenExport={() => setIsExportOpen(true)}

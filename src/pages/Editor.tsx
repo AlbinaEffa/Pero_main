@@ -1696,6 +1696,16 @@ export default function Editor() {
               onDismissUpdate={dismissUpdate}
               onBulkDismissChapter={bulkDismissChapter}
               onBulkRejectChapter={bulkRejectChapter}
+              onMergeDuplicates={async (ids) => {
+                if (!projectId || ids.length < 2) return;
+                try {
+                  await api.post(`/bible/${projectId}/merge`, { ids });
+                  const data = await api.get<{ entities: Entity[]; links?: EntityLink[]; events?: EntityEvent[] }>(`/bible/${projectId}`);
+                  setBibleEntities((data.entities ?? []).filter(e => e.status === 'approved'));
+                  setEntityLinks(data.links ?? []);
+                  setEntityEvents(data.events ?? []);
+                } catch { /* ошибка слияния — тихо */ }
+              }}
               onOpenInEditor={handleOpenInEditor}
               contradictions={contradictions}
               currentChapterId={chapterId}

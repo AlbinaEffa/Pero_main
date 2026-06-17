@@ -1001,31 +1001,63 @@ router.patch('/:entityId', authenticateToken, async (req: any, res) => {
 
 // ── POST /api/bible/:projectId/merge — слить дубли одного имени в одну сущность ──
 // Лечит корень нестыковок: один герой записан несколько раз с разными описаниями.
+const SIG_RANK_MERGE: Record<string, number> = { major: 0, moderate: 1, minor: 2 };
+
 router.post('/:projectId/merge', authenticateToken, async (req: any, res) => {
   try {
     const { projectId } = req.params;
-    const { name } = req.body ?? {};
+    const { name, ids } = req.body ?? {};
     if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
-    if (typeof name !== 'string' || !name.trim()) return res.status(400).json({ error: 'name is required' });
 
     const isOwner = await assertProjectOwnership(projectId, req.user.userId);
     if (!isOwner) return res.status(403).json({ error: 'Access denied to this project' });
 
     const ents = await db.select().from(schema.storyEntities)
       .where(and(eq(schema.storyEntities.projectId, projectId), eq(schema.storyEntities.status, 'approved')));
-    const group = ents.filter(e => e.name.trim().toLowerCase() === name.trim().toLowerCase());
+
+    // Два режима: по имени (дубли одного имени) и по ids (варианты разных имён — Риз/Ризанд).
+    let group: typeof ents;
+    if (Array.isArray(ids) && ids.length >= 2) {
+      const idSet = new Set(ids.filter((x: unknown) => typeof x === 'string'));
+      group = ents.filter(e => idSet.has(e.id));
+    } else if (typeof name === 'string' && name.trim()) {
+      group = ents.filter(e => e.name.trim().toLowerCase() === name.trim().toLowerCase());
+    } else {
+      return res.status(400).json({ error: 'name or ids[] is required' });
+    }
     if (group.length < 2) return res.json({ merged: 0 });
 
-    // Выживший — с самым длинным описанием (больше всего фактов).
-    const survivor = group.reduce((a, b) => ((b.description?.length ?? 0) > (a.description?.length ?? 0) ? b : a));
-    const otherIds = group.filter(e => e.id !== survivor.id).map(e => e.id);
+    // Выживший — самый «канонический»: по значимости, затем по длине описания.
+    const survivor = group.reduce((a, b) => {
+      const ra = SIG_RANK_MERGE[a.significance ?? 'minor'] ?? 2;
+      const rb = SIG_RANK_MERGE[b.significance ?? 'minor'] ?? 2;
+      if (rb !== ra) return rb < ra ? b : a;
+      return (b.description?.length ?? 0) > (a.description?.length ?? 0) ? b : a;
+    });
+    const others = group.filter(e => e.id !== survivor.id);
+    const otherIds = others.map(e => e.id);
+
+    // Имена слитых вариантов + их алиасы → в aliases выжившего (чтобы извлечение
+    // дальше узнавало «Ризанд» как «Риз», а не плодило дубль заново).
+    const attrs = (survivor.attributes ?? {}) as Record<string, unknown>;
+    const aliasSet = new Set<string>(Array.isArray(attrs.aliases) ? (attrs.aliases as string[]) : []);
+    for (const o of others) {
+      if (o.name && o.name.trim().toLowerCase() !== survivor.name.trim().toLowerCase()) aliasSet.add(o.name.trim());
+      const oa = (o.attributes ?? {}) as Record<string, unknown>;
+      if (Array.isArray(oa.aliases)) for (const al of oa.aliases as string[]) if (al?.trim()) aliasSet.add(al.trim());
+    }
+    const survivorName = survivor.name.trim().toLowerCase();
+    const aliases = [...aliasSet].filter(a => a.toLowerCase() !== survivorName);
 
     await db.update(schema.entityLinks).set({ sourceEntityId: survivor.id }).where(inArray(schema.entityLinks.sourceEntityId, otherIds));
     await db.update(schema.entityLinks).set({ targetEntityId: survivor.id }).where(inArray(schema.entityLinks.targetEntityId, otherIds));
     await db.update(schema.entityEvents).set({ entityId: survivor.id }).where(inArray(schema.entityEvents.entityId, otherIds));
+    await db.update(schema.storyEntities)
+      .set({ attributes: { ...attrs, aliases } })
+      .where(eq(schema.storyEntities.id, survivor.id));
     await db.delete(schema.storyEntities).where(inArray(schema.storyEntities.id, otherIds));
 
-    res.json({ merged: otherIds.length, survivorId: survivor.id });
+    res.json({ merged: otherIds.length, survivorId: survivor.id, aliases });
   } catch (error) {
     console.error('Error merging entities:', error);
     res.status(500).json({ error: 'Internal server error' });

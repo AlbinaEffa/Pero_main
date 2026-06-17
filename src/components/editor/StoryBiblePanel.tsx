@@ -62,6 +62,8 @@ interface Props {
   /** Inspector expanded to foreground — lenses render their rich layout. */
   isExpanded?: boolean;
   onClose: () => void;
+  /** Слить вероятные дубли-варианты одного героя (Риз/Ризанд) в одну запись по ids. */
+  onMergeDuplicates?: (ids: string[]) => void;
 }
 
 function entityTypeLabel(type: string) {
@@ -87,6 +89,48 @@ const TYPE_META: Record<string, { Icon: typeof Users; pigment: string; label: st
 };
 
 const SIG_RANK: Record<string, number> = { major: 0, moderate: 1, minor: 2 };
+
+/** Алиасы сущности (для детектора дублей и слияния). */
+function entityAliases(e: Entity): string[] {
+  const a = e.attributes as Record<string, unknown> | null | undefined;
+  return Array.isArray(a?.aliases) ? (a!.aliases as string[]).filter(x => typeof x === 'string') : [];
+}
+
+/**
+ * Похоже ли, что два имени — один герой: алиас, имя-префикс («Риз»⊂«Ризанд») или
+ * общий корень-склонение («Фейра»/«Фейре»). Консервативно — это лишь ПОДСКАЗКА к слиянию.
+ */
+function namesLikelySame(a: string, b: string, aliasA: string[], aliasB: string[]): boolean {
+  const x = a.trim().toLowerCase(), y = b.trim().toLowerCase();
+  if (!x || !y || x === y) return false;
+  if (aliasA.some(al => al.trim().toLowerCase() === y) || aliasB.some(al => al.trim().toLowerCase() === x)) return true;
+  if (x.includes(' ') || y.includes(' ')) return false;        // многословные имена не схлопываем
+  const [s, l] = x.length <= y.length ? [x, y] : [y, x];
+  if (s.length >= 3 && l.startsWith(s) && l.length - s.length <= 4) return true; // префикс-вариант
+  let i = 0; while (i < s.length && s[i] === l[i]) i++;                          // общий корень
+  return i >= 4 && i >= s.length * 0.7;
+}
+
+/** Группы вероятных дублей (один тип) методом объединения-поиска. Возвращает только группы ≥2. */
+function findDuplicateGroups(entities: Entity[]): Entity[][] {
+  const parent = new Map<string, string>();
+  const find = (x: string): string => { while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x)!)!); x = parent.get(x)!; } return x; };
+  entities.forEach(e => parent.set(e.id, e.id));
+  for (let i = 0; i < entities.length; i++) {
+    for (let j = i + 1; j < entities.length; j++) {
+      const a = entities[i], b = entities[j];
+      if (a.type !== b.type) continue;
+      if (namesLikelySame(a.name, b.name, entityAliases(a), entityAliases(b))) {
+        parent.set(find(a.id), find(b.id));
+      }
+    }
+  }
+  const groups = new Map<string, Entity[]>();
+  entities.forEach(e => { const r = find(e.id); (groups.get(r) ?? groups.set(r, []).get(r)!).push(e); });
+  return [...groups.values()]
+    .filter(g => g.length >= 2)
+    .sort((a, b) => (SIG_RANK[a[0].significance ?? 'minor'] ?? 2) - (SIG_RANK[b[0].significance ?? 'minor'] ?? 2));
+}
 
 function entityFact(e: Entity): string {
   const a = e.attributes as Record<string, string> | null | undefined;
@@ -198,7 +242,7 @@ export function StoryBiblePanel({
   onApproveSuggestion, onRejectSuggestion,
   onAcceptUpdate, onRejectUpdate, onDismissUpdate,
   onBulkDismissChapter, onBulkRejectChapter,
-  onOpenInEditor, contradictions, currentChapterId, isExpanded, onClose,
+  onOpenInEditor, contradictions, currentChapterId, isExpanded, onClose, onMergeDuplicates,
 }: Props) {
   const [lensMode, setLensMode] = useState<LensMode>('catalog');
   const [scope, setScope] = useState<'project' | 'chapter'>('project');
@@ -232,6 +276,11 @@ export function StoryBiblePanel({
     () => (scope === 'project' ? approvedEntities : approvedEntities.filter(e => chapterEntityIds.has(e.id))),
     [scope, approvedEntities, chapterEntityIds],
   );
+
+  // Вероятные дубли-варианты одного героя (Риз/Ризанд) — подсказка к слиянию (по всему миру).
+  const dupGroups = useMemo(() => findDuplicateGroups(approvedEntities), [approvedEntities]);
+  const [dismissedDups, setDismissedDups] = useState<Set<string>>(new Set());
+  const dupKey = (g: Entity[]) => g.map(e => e.id).sort().join('|');
 
   // Сводка мира — «что это и сколько всего» при открытии.
   const worldStats = useMemo(() => {
@@ -537,8 +586,40 @@ export function StoryBiblePanel({
             { type: 'item',      label: 'Предметы' },
             { type: 'rule',      label: 'Правила мира' },
           ] as const;
+          const shownDups = dupGroups.filter(g => !dismissedDups.has(dupKey(g)));
           return (
             <div className="flex flex-col gap-7">
+              {/* Возможные дубли-варианты — подсказка к слиянию (Риз/Ризанд) */}
+              {onMergeDuplicates && shownDups.length > 0 && (
+                <div className="rounded-xl bg-[#71597F]/[0.07] p-3">
+                  <div className="flex items-center gap-1.5 mb-2 text-[#71597F] font-semibold text-[10.5px] uppercase tracking-wider">
+                    <Sparkles size={12} /> Возможно, это один объект
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    {shownDups.map(g => (
+                      <div key={dupKey(g)} className="flex items-center gap-2 bg-white rounded-lg px-2.5 py-1.5">
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: TYPE_META[g[0].type]?.pigment ?? '#54627F' }} />
+                        <span className="min-w-0 flex-1 text-[12px] text-[#1e2d1f] truncate">
+                          {g.map(e => e.name).join(' · ')}
+                        </span>
+                        <button
+                          onClick={() => onMergeDuplicates(g.map(e => e.id))}
+                          className="flex-shrink-0 text-[11px] font-medium text-[#71597F] hover:bg-[#71597F]/10 rounded-md px-2 py-0.5 transition-colors"
+                        >
+                          Объединить
+                        </button>
+                        <button
+                          onClick={() => setDismissedDups(prev => new Set(prev).add(dupKey(g)))}
+                          title="Это разные объекты" aria-label="Это разные объекты"
+                          className="flex-shrink-0 p-1 rounded-md text-[#1e2d1f]/35 hover:bg-[#1e2d1f]/5 transition-colors"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               {SECTIONS.map(s => {
                 const list = visibleEntities.filter(e => e.type === s.type);
                 if (list.length === 0) return null;

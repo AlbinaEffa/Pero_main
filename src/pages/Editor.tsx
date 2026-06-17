@@ -391,6 +391,8 @@ export default function Editor() {
   });
   const [companionMode, setCompanionMode] = useState<'scene' | 'chat'>('scene');
   const [contradictionPopover, setContradictionPopover] = useState<{ name: string; x: number; y: number; issue?: string; issueChapterId?: string | null } | null>(null);
+  // Превью нестыковки по наведению (как у проверки орфографии): peek без клика.
+  const [contradictionHover, setContradictionHover] = useState<{ issue?: string; name: string; x: number; y: number } | null>(null);
   const [totalProjectWords, setTotalProjectWords] = useState(0);
   const [isRecheckingAll, setIsRecheckingAll] = useState(false);
   const [isReading, setIsReading] = useState(false);
@@ -1438,6 +1440,7 @@ export default function Editor() {
               const r = mark.getBoundingClientRect();
               const text = (mark.textContent || '').trim();
               const hit = contradictionIssues.find(i => i.quote && i.quote.trim().toLowerCase() === text.toLowerCase());
+              setContradictionHover(null);
               setContradictionPopover({
                 name: hit?.entityName || text,
                 x: r.left, y: r.bottom,
@@ -1445,6 +1448,19 @@ export default function Editor() {
                 issueChapterId: hit?.chapterId ?? null,
               });
             }
+          }}
+          onMouseOver={(e) => {
+            const mark = (e.target as HTMLElement).closest('.contradiction-mark');
+            if (!mark || contradictionPopover) return;
+            const r = mark.getBoundingClientRect();
+            const text = (mark.textContent || '').trim();
+            const hit = contradictionIssues.find(i => i.quote && i.quote.trim().toLowerCase() === text.toLowerCase());
+            setContradictionHover({ issue: hit?.issue, name: hit?.entityName || text, x: r.left + r.width / 2, y: r.top });
+          }}
+          onMouseOut={(e) => {
+            const mark = (e.target as HTMLElement).closest('.contradiction-mark');
+            const to = (e.relatedTarget as HTMLElement | null)?.closest?.('.contradiction-mark');
+            if (mark && !to) setContradictionHover(null);
           }}
         >
           {/* №3 — навигация по главам: пред/след без захода в список */}
@@ -1922,6 +1938,25 @@ export default function Editor() {
           handleTrace(entity.name);
         }}
       />
+
+      {/* Превью нестыковки по наведению — peek без клика (как тултип проверки орфографии).
+          Не перехватывает мышь; клик по подчёркиванию открывает полный поповер с действиями. */}
+      {contradictionHover && !contradictionPopover && (
+        <div
+          className="fixed z-[120] -translate-x-1/2 -translate-y-full pointer-events-none"
+          style={{ left: contradictionHover.x, top: contradictionHover.y - 8 }}
+        >
+          <div className="max-w-[280px] rounded-xl bg-[#1e2d1f] text-[#f5f0e8] shadow-xl px-3 py-2">
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#e0a89e] mb-1">
+              <AlertTriangle size={11} /> Возможная нестыковка
+            </div>
+            <div className="text-[12px] leading-snug">
+              {contradictionHover.issue || `«${contradictionHover.name}» — Перо нашло расхождение.`}
+            </div>
+            <div className="text-[10.5px] text-[#f5f0e8]/55 mt-1.5">Нажмите, чтобы разрешить →</div>
+          </div>
+        </div>
+      )}
 
       {contradictionPopover && (
         <ContradictionPopover

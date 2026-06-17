@@ -87,7 +87,7 @@ export function CommandPalette({ open, onClose, commands }: Props) {
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Что сделать? — связи, прочитать, нестыковки…"
-            className="flex-1 bg-transparent outline-none text-[15px] text-[#1e2d1f] placeholder:text-[#1e2d1f]/35"
+            className="flex-1 bg-transparent outline-none text-[16px] text-[#1e2d1f] placeholder:text-[#1e2d1f]/35"
           />
           <kbd className="text-[10px] font-mono text-[#1e2d1f]/35 border border-[#1e2d1f]/10 rounded px-1.5 py-0.5">esc</kbd>
         </div>

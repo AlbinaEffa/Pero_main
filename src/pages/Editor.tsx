@@ -159,7 +159,7 @@ function EntityCard({ entity, hasConflict }: { entity: Entity; hasConflict: bool
         : 'bg-white/60 border-[#1e2d1f]/5 hover:bg-white'
     }`}>
       <div className="flex items-start justify-between gap-2">
-        <h4 className="font-bold text-[15px] text-[#1e2d1f] truncate leading-snug">{entity.name}</h4>
+        <h4 className="font-bold text-[16px] text-[#1e2d1f] truncate leading-snug">{entity.name}</h4>
         {hasConflict && (
           <span title="Возможное противоречие с другой версией этого объекта">
             <AlertTriangle size={13} className="text-[#91682E] flex-shrink-0 mt-0.5" />

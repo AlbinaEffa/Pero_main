@@ -222,7 +222,7 @@ export default function Settings({
                   <Crown size={20} />
                 </div>
                 <div>
-                  <h4 className="text-[15px] font-semibold text-[#1E2D1F] mb-1">
+                  <h4 className="text-[16px] font-semibold text-[#1E2D1F] mb-1">
                     {billing?.plan === 'pro' ? 'Pro' : 'Бесплатный'}
                   </h4>
                   <p className="text-sm text-[#6b7280] leading-relaxed">
@@ -266,7 +266,7 @@ export default function Settings({
                       <Moon size={20} />
                     </div>
                     <div>
-                      <h4 className="text-[15px] font-medium text-[#1E2D1F]">Темная тема</h4>
+                      <h4 className="text-[16px] font-medium text-[#1E2D1F]">Темная тема</h4>
                       <p className="text-sm text-[#9ca3af]">В разработке</p>
                     </div>
                   </div>
@@ -282,7 +282,7 @@ export default function Settings({
                       <Volume2 size={20} />
                     </div>
                     <div>
-                      <h4 className="text-[15px] font-medium text-[#1E2D1F]">Фоновые звуки</h4>
+                      <h4 className="text-[16px] font-medium text-[#1E2D1F]">Фоновые звуки</h4>
                       <p className="text-sm text-[#9ca3af]">В разработке</p>
                     </div>
                   </div>
@@ -298,7 +298,7 @@ export default function Settings({
                       <Sparkles size={20} />
                     </div>
                     <div>
-                      <h4 className="text-[15px] font-medium text-[#1E2D1F]">Умные подсказки</h4>
+                      <h4 className="text-[16px] font-medium text-[#1E2D1F]">Умные подсказки</h4>
                       <p className="text-sm text-[#9ca3af]">В разработке</p>
                     </div>
                   </div>
@@ -314,7 +314,7 @@ export default function Settings({
                       <Type size={20} />
                     </div>
                     <div>
-                      <h4 className="text-[15px] font-medium text-[#1E2D1F]">Показывать количество слов</h4>
+                      <h4 className="text-[16px] font-medium text-[#1E2D1F]">Показывать количество слов</h4>
                       <p className="text-sm text-[#9ca3af]">Отображать счетчик слов в редакторе</p>
                     </div>
                   </div>
@@ -333,7 +333,7 @@ export default function Settings({
                       <AlignLeft size={20} />
                     </div>
                     <div>
-                      <h4 className="text-[15px] font-medium text-[#1E2D1F]">Отступ абзацев</h4>
+                      <h4 className="text-[16px] font-medium text-[#1E2D1F]">Отступ абзацев</h4>
                       <p className="text-sm text-[#9ca3af]">Добавлять красную строку для новых абзацев</p>
                     </div>
                   </div>
@@ -357,7 +357,7 @@ export default function Settings({
                     <div className="w-10 h-10 rounded-xl border border-white/80 shadow-sm bg-white/50 flex items-center justify-center text-[#1e2d1f]/80 group-hover:bg-white/80 transition-colors">
                       <Lock size={18} />
                     </div>
-                    <span className="text-[15px] font-medium text-[#1E2D1F]">Смена пароля</span>
+                    <span className="text-[16px] font-medium text-[#1E2D1F]">Смена пароля</span>
                   </div>
                   <ChevronRight size={18} className="text-ink/55" />
                 </button>
@@ -367,7 +367,7 @@ export default function Settings({
                     <div className="w-10 h-10 rounded-xl border border-white/80 shadow-sm bg-white/50 flex items-center justify-center text-[#1e2d1f]/80 group-hover:bg-white/80 transition-colors">
                       <Shield size={18} />
                     </div>
-                    <span className="text-[15px] font-medium text-[#1E2D1F]">Двухфакторная аутентификация</span>
+                    <span className="text-[16px] font-medium text-[#1E2D1F]">Двухфакторная аутентификация</span>
                   </div>
                   <ChevronRight size={18} className="text-ink/55" />
                 </button>
@@ -385,7 +385,7 @@ export default function Settings({
                 <Shield size={20} />
               </div>
               <div>
-                <h4 className="text-[15px] font-semibold text-[#1E2D1F] mb-1">Безопасное хранение</h4>
+                <h4 className="text-[16px] font-semibold text-[#1E2D1F] mb-1">Безопасное хранение</h4>
                 <p className="text-sm text-[#6b7280] leading-relaxed">
                   Все ваши тексты хранятся в защищённой базе данных. Вы можете в любой момент скачать полную копию своих произведений — в Markdown, Word или в виде архива со всеми данными.
                 </p>

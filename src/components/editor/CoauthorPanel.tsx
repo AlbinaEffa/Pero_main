@@ -252,7 +252,7 @@ export function CoauthorPanel({
                 }
                 <span className="truncate">{isBibleLoading ? 'Извлекаю...' : action.label}</span>
                 {willUseSelection && !isBibleAction && (
-                  <span className="ml-auto text-[8px] text-purple-400 flex-shrink-0">↑</span>
+                  <span className="ml-auto text-[9px] text-purple-400 flex-shrink-0">↑</span>
                 )}
               </button>
             );

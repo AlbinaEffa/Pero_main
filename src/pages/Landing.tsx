@@ -155,8 +155,8 @@ export default function Landing() {
                   <span className="font-serif text-4xl font-semibold text-[var(--color-accent)]">{s.n}</span>
                   <s.icon size={18} className="text-ink/55" />
                 </div>
-                <h3 className="font-semibold text-[15px] mb-1.5">{s.t}</h3>
-                <p className="text-[13.5px] text-ink/55 leading-relaxed">{s.d}</p>
+                <h3 className="font-semibold text-[16px] mb-1.5">{s.t}</h3>
+                <p className="text-[14px] text-ink/55 leading-relaxed">{s.d}</p>
               </li>
             ))}
           </ol>
@@ -320,7 +320,7 @@ export default function Landing() {
             <ShieldCheck size={36} className="text-[#9DB5A1] shrink-0" />
             <div>
               <h3 className="font-serif text-2xl font-semibold mb-1.5">Ваши тексты — ваши</h3>
-              <p className="text-[#f5f0e8]/70 leading-relaxed text-[15px]">
+              <p className="text-[#f5f0e8]/70 leading-relaxed text-[16px]">
                 Рукописи не используются для обучения моделей. Все права остаются у автора.
                 Удалили проект — он удалён безвозвратно.{' '}
                 <Link to="/privacy" className="underline underline-offset-2 text-[#f5f0e8]/90 hover:text-white transition-colors">

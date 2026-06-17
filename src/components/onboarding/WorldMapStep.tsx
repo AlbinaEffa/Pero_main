@@ -100,7 +100,7 @@ export function WorldMapStep({ projectId, projectTitle, firstChapterId, world }:
           <div className="absolute -top-3 left-7 bg-[#E7EAE3] text-[#4A5D4E] text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md">
             Письмо от Пера
           </div>
-          <p className="font-serif text-[17px] leading-relaxed text-[#1e2d1f]/85 whitespace-pre-line">{letter}</p>
+          <p className="font-serif text-[16px] leading-relaxed text-[#1e2d1f]/85 whitespace-pre-line">{letter}</p>
         </div>
       )}
 

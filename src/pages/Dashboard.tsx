@@ -6,6 +6,7 @@ import {
   FileText, Upload, X, BookOpen, TrendingUp,
   Trash2, Edit3, Eye, Archive, ArchiveRestore, Download, MoreVertical, Copy
 } from 'lucide-react';
+import { MargOpenBook } from '../components/editor/Marginalia';
 import ImportModal from '../components/ImportModal';
 import { ProcessingStatusPanel } from '../components/ProcessingStatusPanel';
 import { OnboardingWizard, ONBOARDING_KEY } from '../components/OnboardingWizard';
@@ -434,12 +435,8 @@ function EmptyState({ onNew }: { onNew: () => void }) {
       alignItems: 'center', justifyContent: 'center',
       padding: '60px 20px', textAlign: 'center',
     }}>
-      <div style={{
-        width: '80px', height: '80px', borderRadius: '20px',
-        background: 'rgba(30,45,31,0.04)', display: 'flex',
-        alignItems: 'center', justifyContent: 'center', marginBottom: '24px',
-      }}>
-        <BookOpen size={36} style={{ color: 'rgba(30,45,31,0.2)' }} />
+      <div style={{ color: 'rgba(30,45,31,0.3)', marginBottom: '20px' }}>
+        <MargOpenBook size={72} />
       </div>
       <h2 style={{
         fontFamily: '"Cormorant Garamond", serif',
@@ -448,7 +445,7 @@ function EmptyState({ onNew }: { onNew: () => void }) {
       }}>
         Ваша полка пуста
       </h2>
-      <p style={{ color: 'rgba(30,45,31,0.6)', fontSize: '15px', maxWidth: '320px', lineHeight: 1.6, marginBottom: '28px' }}>
+      <p style={{ color: 'rgba(30,45,31,0.6)', fontSize: '16px', maxWidth: '320px', lineHeight: 1.6, marginBottom: '28px' }}>
         Каждая великая история начинается с первого слова. Создайте свой первый проект.
       </p>
       <button

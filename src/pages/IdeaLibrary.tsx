@@ -63,7 +63,7 @@ export default function IdeaLibrary() {
               <h1 className="font-serif text-4xl md:text-5xl font-bold text-[#1E2D1F] mb-2 leading-tight">
                 Библиотека Идей
               </h1>
-              <p className="text-[15px] text-ink/60 m-0">
+              <p className="text-[16px] text-ink/60 m-0">
                 Цифровой сад для ваших идей и исследований.
               </p>
             </header>
@@ -76,7 +76,7 @@ export default function IdeaLibrary() {
               <h2 className="font-serif text-3xl font-semibold text-[#1E2D1F] mb-3">
                 Скоро здесь появятся идеи
               </h2>
-              <p className="text-[15px] text-ink/60 max-w-sm leading-relaxed mb-8">
+              <p className="text-[16px] text-ink/60 max-w-sm leading-relaxed mb-8">
                 Библиотека идей — место для набросков, вдохновения и исследований. Функция в разработке.
               </p>
               <button

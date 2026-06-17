@@ -179,7 +179,7 @@ export function EditorFirstRunHints({ isNewChapter }: Props) {
               <span className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
                 <hint.icon size={15} className="text-[#9DB5A1]" />
               </span>
-              <h3 className="font-bold text-[15px] text-white leading-tight">{hint.title}</h3>
+              <h3 className="font-bold text-[16px] text-white leading-tight">{hint.title}</h3>
             </div>
             <button
               onClick={dismiss}

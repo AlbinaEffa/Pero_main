@@ -156,7 +156,7 @@ export function WritingStatsPanel({
 
             {/* Info */}
             <div className="flex-1 min-w-0">
-              <div className="text-[22px] font-bold text-[#1e2d1f] leading-none">
+              <div className="text-[20px] font-bold text-[#1e2d1f] leading-none">
                 {formatNumber(totalProjectWords)}
               </div>
               <div className="text-[11px] text-[#1e2d1f]/55 mt-0.5">

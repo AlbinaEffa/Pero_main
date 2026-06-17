@@ -159,7 +159,7 @@ export function ReadingStep({ world, quotes, onComplete }: Props) {
                 >
                   {n}
                 </span>
-                <span className="text-[9.5px] uppercase tracking-wider text-[#1e2d1f]/45 mt-1">{label}</span>
+                <span className="text-[10px] uppercase tracking-wider text-[#1e2d1f]/45 mt-1">{label}</span>
               </div>
             );
           })}

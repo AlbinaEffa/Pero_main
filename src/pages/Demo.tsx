@@ -147,7 +147,7 @@ export default function Demo() {
             >
               <input ref={inputRef} type="file" accept={ACCEPTED_EXTS.join(',')} className="hidden" onChange={onInput} />
               <Upload size={36} className={`mx-auto mb-4 ${isDragging ? 'text-[var(--color-accent)]' : 'text-ink/30'}`} />
-              <p className="text-[15px] font-semibold text-ink/70 mb-1">Перетащите рукопись сюда</p>
+              <p className="text-[16px] font-semibold text-ink/70 mb-1">Перетащите рукопись сюда</p>
               <p className="text-[13px] text-ink/55">или нажмите, чтобы выбрать файл</p>
             </div>
             <p className="text-[12px] text-ink/55 mt-4">
@@ -278,7 +278,7 @@ function DemoResultView({ result, onRegister, onReset }: { result: DemoResult; o
         </p>
         <button
           onClick={onRegister}
-          className="inline-flex items-center gap-2.5 bg-[#f5f0e8] text-ink px-7 py-3.5 rounded-xl text-[15px] font-semibold hover:bg-white transition-colors"
+          className="inline-flex items-center gap-2.5 bg-[#f5f0e8] text-ink px-7 py-3.5 rounded-xl text-[16px] font-semibold hover:bg-white transition-colors"
         >
           Создать аккаунт и дочитать
           <ArrowRight size={18} />

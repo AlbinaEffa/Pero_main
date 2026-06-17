@@ -977,7 +977,7 @@ export function EditorCanvas({
                       }
                     }}
                     placeholder="Вставьте ссылку..."
-                    className="flex-1 bg-transparent outline-none text-[15px] text-[#1e2d1f] placeholder:text-[#1e2d1f]/55 px-2"
+                    className="flex-1 bg-transparent outline-none text-[16px] text-[#1e2d1f] placeholder:text-[#1e2d1f]/55 px-2"
                   />
                   <div className="w-px self-stretch bg-[#1e2d1f]/10" />
                   <button
@@ -1090,7 +1090,7 @@ export function EditorCanvas({
                 } ${editorFontClass}`}
                 title="Шрифт рукописи"
               >
-                <span className="text-[15px] leading-none tracking-tight">{currentFontLabel}</span>
+                <span className="text-[16px] leading-none tracking-tight">{currentFontLabel}</span>
                 <ChevronDown size={14} className="opacity-55" />
               </button>
               {isFontMenuOpen && (
@@ -1116,7 +1116,7 @@ export function EditorCanvas({
                           : 'text-[#1e2d1f]/75 hover:bg-[#1e2d1f]/6'
                       }`}
                     >
-                      <div className={`text-[15px] leading-none ${font.key === 'cormorant' ? 'font-serif' : font.key === 'literata' ? 'editor-font-literata' : 'editor-font-source-serif'}`}>
+                      <div className={`text-[16px] leading-none ${font.key === 'cormorant' ? 'font-serif' : font.key === 'literata' ? 'editor-font-literata' : 'editor-font-source-serif'}`}>
                         {font.label}
                       </div>
                     </button>

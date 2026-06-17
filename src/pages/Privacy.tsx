@@ -27,14 +27,14 @@ export default function Privacy() {
         {/* Главное — коротко */}
         <div className="bg-white rounded-2xl border border-ink/8 shadow-sm p-7 mb-12">
           <p className="text-[10px] font-bold uppercase tracking-widest text-ink/55 mb-4">Главное — в трёх строчках</p>
-          <ul className="space-y-3 text-[15px] leading-relaxed">
+          <ul className="space-y-3 text-[16px] leading-relaxed">
             <li className="flex gap-3"><span className="text-[var(--color-accent)] font-bold">1.</span><span>Ваши тексты <b>не используются для обучения</b> моделей искусственного интеллекта.</span></li>
             <li className="flex gap-3"><span className="text-[var(--color-accent)] font-bold">2.</span><span>Все права на рукописи и построенный Мир <b>остаются у вас</b>. Перо не претендует ни на что из написанного.</span></li>
             <li className="flex gap-3"><span className="text-[var(--color-accent)] font-bold">3.</span><span>Удалили проект — он <b>удалён безвозвратно</b>, вместе с Миром и историей работы над ним.</span></li>
           </ul>
         </div>
 
-        <section className="space-y-10 text-[15px] leading-relaxed text-ink/75">
+        <section className="space-y-10 text-[16px] leading-relaxed text-ink/75">
           <div>
             <h2 className="font-serif text-2xl font-semibold text-ink mb-3">Что мы храним</h2>
             <p>

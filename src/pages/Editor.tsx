@@ -67,6 +67,48 @@ function russianStemMatch(entityName: string, text: string): boolean {
   return words.some(w => w.startsWith(stem));
 }
 
+/**
+ * Упоминание сущности в тексте с учётом многословных имён («Ашер Волков», «Тётя Вера»):
+ * совпадение по любому значимому токену имени (≥ 3 букв, по стемме). Старый
+ * russianStemMatch брал имя целиком и потому не ловил персонажей из двух слов.
+ */
+function entityMentionedInText(entityName: string, text: string): boolean {
+  const tokens = entityName.toLowerCase().split(/[^а-яёa-z0-9'-]+/i).filter(t => t.length >= 3);
+  if (tokens.length === 0) return russianStemMatch(entityName, text);
+  const words = text.toLowerCase().split(/[^а-яёa-z0-9'-]+/i).filter(Boolean);
+  return tokens.some(tok => {
+    const stem = tok.length <= 4 ? tok : tok.slice(0, tok.length - 1);
+    return words.some(w => w.startsWith(stem));
+  });
+}
+
+/**
+ * «Кадр» — текущая сцена вокруг курсора: окно из соседних абзацев, не пересекающее
+ * разделители сцены (***). Нужен для памяти сцены в спутнике «Перо»: показать, кто
+ * сейчас в кадре, а не во всей главе. Возвращает диапазон позиций ProseMirror.
+ */
+function computeSceneRange(editor: TiptapEditor, pos: number): { from: number; to: number } {
+  const doc = editor.state.doc;
+  const blocks: { start: number; end: number; isBreak: boolean }[] = [];
+  doc.forEach((node, offset) => {
+    blocks.push({ start: offset, end: offset + node.nodeSize, isBreak: node.type.name === 'sceneBreak' });
+  });
+  if (blocks.length === 0) return { from: 0, to: doc.content.size };
+  let idx = blocks.findIndex(b => pos >= b.start && pos < b.end);
+  if (idx === -1) idx = blocks.length - 1;
+  const WINDOW = 4; // ± абзацев вокруг курсора
+  let lo = idx, hi = idx;
+  for (let i = idx - 1, c = 0; i >= 0 && c < WINDOW; i--, c++) {
+    if (blocks[i].isBreak) break;
+    lo = i;
+  }
+  for (let i = idx + 1, c = 0; i < blocks.length && c < WINDOW; i++, c++) {
+    if (blocks[i].isBreak) break;
+    hi = i;
+  }
+  return { from: blocks[lo].start, to: blocks[hi].end };
+}
+
 function splitChapterTitle(title: string, fallbackOrder?: number): { prefix: string; suffix: string } {
   const trimmed = title.trim();
   const match = trimmed.match(/^(Глава\s+\d+)(?:[\s.:—-]+(.+))?$/i);
@@ -381,6 +423,9 @@ export default function Editor() {
   const [isLoadingContent, setIsLoadingContent] = useState(false);
   const { scheduleEmbed } = useEmbedding(projectId, chapterId);
   const [selectedText, setSelectedText] = useState('');
+  // «Кадр» вокруг курсора — диапазон текущей сцены (память сцены в спутнике «Перо»).
+  const [sceneRange, setSceneRange] = useState<{ from: number; to: number } | null>(null);
+  const sceneRangeRef = useRef<{ from: number; to: number } | null>(null);
   const currentChapterRef = useRef<Chapter | null>(null);
   currentChapterRef.current = chapters.find(ch => ch.id === chapterId) ?? null;
   // Живой ref на текущую главу — нужен в замыканиях редактора (onSelectionUpdate),
@@ -463,6 +508,16 @@ export default function Editor() {
       const cid = chapterIdRef.current;
       if (cid && !ed.isDestroyed) {
         try { localStorage.setItem(`pero_cursor_${cid}`, String(from)); } catch { /* quota */ }
+      }
+      // Обновляем «кадр» (сцену вокруг курсора), но только когда он реально сменился —
+      // чтобы не пересчитывать память сцены на каждое движение каретки внутри сцены.
+      if (!ed.isDestroyed) {
+        const next = computeSceneRange(ed, from);
+        const prev = sceneRangeRef.current;
+        if (!prev || prev.from !== next.from || prev.to !== next.to) {
+          sceneRangeRef.current = next;
+          setSceneRange(next);
+        }
       }
     },
   });
@@ -963,8 +1018,20 @@ export default function Editor() {
   const chapterMentionedEntities = useMemo(() => {
     const linkedIds = new Set(chapterLinkedEntities.map(e => e.id));
     const text = editor?.getText() ?? '';
-    return allApprovedEntities.filter(e => !linkedIds.has(e.id) && russianStemMatch(e.name, text));
+    return allApprovedEntities.filter(e => !linkedIds.has(e.id) && entityMentionedInText(e.name, text));
   }, [allApprovedEntities, chapterLinkedEntities, editor]);
+
+  // «В кадре»: сущности, упомянутые в текущей сцене вокруг курсора (память сцены).
+  // Пересчитывается только при смене кадра — sceneRange меняется лишь между сценами.
+  const inSceneIds = useMemo(() => {
+    if (!editor || !sceneRange) return new Set<string>();
+    const text = editor.state.doc.textBetween(sceneRange.from, sceneRange.to, ' ');
+    const ids = new Set<string>();
+    for (const e of allApprovedEntities) {
+      if (entityMentionedInText(e.name, text)) ids.add(e.id);
+    }
+    return ids;
+  }, [editor, sceneRange, allApprovedEntities]);
 
   // Contradiction detection: same name (case-insensitive) with differing descriptions
   // Нестыковки, помеченные автором как «не нестыковка» — больше не флагаем (B1).
@@ -1801,6 +1868,7 @@ export default function Editor() {
             isExtracting={isExtracting}
             onRead={currentChapterFreshness === 'stale' ? handleRecheckChapter : handleExtract}
             sceneEntities={[...chapterLinkedEntities, ...chapterMentionedEntities]}
+            inSceneIds={inSceneIds}
             findingsHere={suggestions.filter(s => s.chapterId === chapterId)}
             onApproveFinding={approveSuggestion}
             onRejectFinding={rejectSuggestion}

@@ -22,6 +22,8 @@ interface Props {
 
   /** Сущности, встречающиеся в текущей главе (память сцены). */
   sceneEntities: Entity[];
+  /** Ids тех, кто прямо сейчас «в кадре» — в сцене вокруг курсора. */
+  inSceneIds: Set<string>;
   /** Находки Пера в этой главе, ждущие одобрения. */
   findingsHere: Entity[];
   onApproveFinding: (id: string) => void;
@@ -46,6 +48,28 @@ function shortFact(e: Entity): string {
   return text.length > 52 ? text.slice(0, 51) + '…' : text;
 }
 
+/** Строка сущности в памяти сцены. `dim` — приглушённая (для «ещё в главе»). */
+function EntityRow({ e, hasConflict, onOpen, dim }: {
+  e: Entity; hasConflict: boolean; onOpen: (e: Entity) => void; dim?: boolean;
+}) {
+  return (
+    <button onClick={() => onOpen(e)}
+      className={`flex items-start gap-2.5 text-left rounded-xl border border-transparent hover:border-[#1e2d1f]/10 transition-all p-2.5 ${
+        dim ? 'bg-white/40 hover:bg-white/70 opacity-80' : 'bg-white/70 hover:bg-white'
+      }`}>
+      <span className="w-6 h-6 rounded-full flex-shrink-0 mt-0.5" style={{ background: (TYPE_PIGMENT[e.type] ?? '#54627F') + '22' }} />
+      <span className="min-w-0">
+        <span className="flex items-center gap-1.5">
+          <span className="text-[12.5px] font-medium text-[#1e2d1f] truncate">{e.name}</span>
+          {hasConflict && <AlertTriangle size={11} className="text-[#A14F44] flex-shrink-0" />}
+        </span>
+        <span className="block text-[10.5px] uppercase tracking-wide" style={{ color: TYPE_PIGMENT[e.type] ?? '#54627F' }}>{TYPE_LABEL[e.type] ?? 'мир'}</span>
+        {shortFact(e) && <span className="block text-[11px] text-[#1e2d1f]/55 leading-snug mt-0.5">{shortFact(e)}</span>}
+      </span>
+    </button>
+  );
+}
+
 /**
  * Правый спутник «Перо» — внешняя память + советчик рядом с письмом. Две вкладки:
  * «Сцена» (кто/что в этой главе, находки и нестыковки здесь — чтобы не держать в голове)
@@ -54,10 +78,13 @@ function shortFact(e: Entity): string {
 export function WorldCompanion({
   collapsed, onToggleCollapse,
   freshness, isExtracting, onRead,
-  sceneEntities, findingsHere, onApproveFinding, onRejectFinding, contradictionIds,
+  sceneEntities, inSceneIds, findingsHere, onApproveFinding, onRejectFinding, contradictionIds,
   onOpenEntity, onOpenWorld, mode, onModeChange, chat,
 }: Props) {
   const sceneConflicts = sceneEntities.filter(e => contradictionIds.has(e.id));
+  // Память сцены: кто прямо сейчас в кадре vs. остальные по главе.
+  const inFrame = sceneEntities.filter(e => inSceneIds.has(e.id));
+  const restOfChapter = sceneEntities.filter(e => !inSceneIds.has(e.id));
 
   // Закрыт — справа НИЧЕГО (никакого рельса). Вызов из нижней панели кнопкой «Перо».
   if (collapsed) return null;
@@ -136,30 +163,40 @@ export function WorldCompanion({
             </div>
           )}
 
-          {/* В сцене */}
-          <div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-[#1e2d1f]/45 mb-2">В этой главе{sceneEntities.length > 0 ? ` · ${sceneEntities.length}` : ''}</div>
-            {sceneEntities.length === 0 ? (
+          {/* Память сцены: «В кадре» (вокруг курсора) + «Ещё в главе» */}
+          {sceneEntities.length === 0 ? (
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-[#1e2d1f]/45 mb-2">В этой главе</div>
               <p className="text-[11.5px] text-[#1e2d1f]/45 leading-relaxed">Здесь пока никого. Нажмите «Прочитать» — Перо найдёт, кто и что в этой главе.</p>
-            ) : (
-              <div className="flex flex-col gap-1.5">
-                {sceneEntities.map(e => (
-                  <button key={e.id} onClick={() => onOpenEntity(e)}
-                    className="flex items-start gap-2.5 text-left rounded-xl bg-white/70 hover:bg-white border border-transparent hover:border-[#1e2d1f]/10 transition-all p-2.5">
-                    <span className="w-6 h-6 rounded-full flex-shrink-0 mt-0.5" style={{ background: (TYPE_PIGMENT[e.type] ?? '#54627F') + '22' }} />
-                    <span className="min-w-0">
-                      <span className="flex items-center gap-1.5">
-                        <span className="text-[12.5px] font-medium text-[#1e2d1f] truncate">{e.name}</span>
-                        {contradictionIds.has(e.id) && <AlertTriangle size={11} className="text-[#A14F44] flex-shrink-0" />}
-                      </span>
-                      <span className="block text-[10.5px] uppercase tracking-wide" style={{ color: TYPE_PIGMENT[e.type] ?? '#54627F' }}>{TYPE_LABEL[e.type] ?? 'мир'}</span>
-                      {shortFact(e) && <span className="block text-[11px] text-[#1e2d1f]/55 leading-snug mt-0.5">{shortFact(e)}</span>}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <>
+              {inFrame.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#A14F44] mb-2">
+                    <Eye size={12} /> В кадре · {inFrame.length}
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    {inFrame.map(e => (
+                      <EntityRow key={e.id} e={e} hasConflict={contradictionIds.has(e.id)} onOpen={onOpenEntity} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {restOfChapter.length > 0 && (
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-[#1e2d1f]/40 mb-2">
+                    {inFrame.length > 0 ? 'Ещё в главе' : 'В этой главе'} · {restOfChapter.length}
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    {restOfChapter.map(e => (
+                      <EntityRow key={e.id} e={e} hasConflict={contradictionIds.has(e.id)} onOpen={onOpenEntity} dim />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
 
           <button onClick={onOpenWorld} className="mt-1 flex items-center justify-center gap-1.5 text-[12px] font-medium text-[#1e2d1f]/70 hover:text-[#1e2d1f] border border-[#1e2d1f]/10 hover:border-[#1e2d1f]/20 rounded-xl py-2 transition-colors">
             <BookOpen size={14} /> Весь Мир <ArrowRight size={13} />

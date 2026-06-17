@@ -705,7 +705,7 @@ export function EditorCanvas({
             </button>
           </div>
 
-          <div className="w-px h-6 bg-[#1e2d1f]/10" />
+          <div className="w-px h-6 bg-[#1e2d1f]/10 max-md:hidden" />
 
           <div ref={menuRef} className="flex items-center gap-3 relative max-md:flex-wrap max-md:justify-center max-md:gap-y-1">
             <div className="relative">
@@ -813,13 +813,13 @@ export function EditorCanvas({
               )}
             </div>
 
-            <div className="w-px h-6 bg-[#1e2d1f]/10" />
+            <div className="w-px h-6 bg-[#1e2d1f]/10 max-md:hidden" />
 
             <button
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => editor?.chain().focus().toggleBlockquote().run()}
               title="Цитата"
-              className={`p-1 rounded-md transition-colors ${
+              className={`max-md:hidden p-1 rounded-md transition-colors ${
                 editor?.isActive('blockquote')
                   ? 'text-[#1e2d1f] bg-[#1e2d1f]/6'
                   : 'text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'
@@ -833,7 +833,7 @@ export function EditorCanvas({
               onClick={() => editor?.chain().focus().insertSceneBreak().run()}
               title="Разделитель сцены"
               aria-label="Разделитель сцены"
-              className="px-1.5 py-1 rounded-md transition-colors text-[16px] leading-none tracking-[0.12em] font-semibold text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4"
+              className="max-md:hidden px-1.5 py-1 rounded-md transition-colors text-[16px] leading-none tracking-[0.12em] font-semibold text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4"
             >
               ***
             </button>
@@ -858,7 +858,7 @@ export function EditorCanvas({
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => applyInlineMark(editor, 'strike')}
               title="Зачёркнутый"
-              className={`p-1 rounded-md transition-colors ${editor?.isActive('strike') ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'}`}
+              className={`max-md:hidden p-1 rounded-md transition-colors ${editor?.isActive('strike') ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'}`}
             >
               <Strikethrough size={20} strokeWidth={2.5} />
             </button>
@@ -866,7 +866,7 @@ export function EditorCanvas({
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => applyInlineMark(editor, 'code')}
               title="Код (Cmd+E)"
-              className={`p-1 rounded-md transition-colors ${editor?.isActive('code') ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'}`}
+              className={`max-md:hidden p-1 rounded-md transition-colors ${editor?.isActive('code') ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'}`}
             >
               <Code size={19} strokeWidth={2.3} />
             </button>
@@ -874,11 +874,11 @@ export function EditorCanvas({
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => applyInlineMark(editor, 'underline')}
               title="Подчёркнутый (Cmd+U)"
-              className={`p-1 rounded-md transition-colors ${editor?.isActive('underline') ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'}`}
+              className={`max-md:hidden p-1 rounded-md transition-colors ${editor?.isActive('underline') ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'}`}
             >
               <Underline size={20} strokeWidth={2.5} />
             </button>
-            <div className="relative">
+            <div className="relative max-md:hidden">
               <button
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
@@ -1008,13 +1008,13 @@ export function EditorCanvas({
               )}
             </div>
 
-            <div className="w-px h-6 bg-[#1e2d1f]/10" />
+            <div className="w-px h-6 bg-[#1e2d1f]/10 max-md:hidden" />
 
             <button
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => applyScriptMark(editor, 'superscript')}
               title="Верхний индекс"
-              className={`px-1 py-1 rounded-md transition-colors text-[20px] leading-none ${
+              className={`max-md:hidden px-1 py-1 rounded-md transition-colors text-[20px] leading-none ${
                 editor?.isActive('superscript') ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'
               }`}
             >
@@ -1024,16 +1024,16 @@ export function EditorCanvas({
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => applyScriptMark(editor, 'subscript')}
               title="Нижний индекс"
-              className={`px-1 py-1 rounded-md transition-colors text-[20px] leading-none ${
+              className={`max-md:hidden px-1 py-1 rounded-md transition-colors text-[20px] leading-none ${
                 editor?.isActive('subscript') ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'
               }`}
             >
               x₂
             </button>
 
-            <div className="w-px h-6 bg-[#1e2d1f]/10" />
+            <div className="w-px h-6 bg-[#1e2d1f]/10 max-md:hidden" />
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 max-md:hidden">
               {([
                 { key: 'left', icon: AlignLeft, title: 'По левому краю' },
                 { key: 'center', icon: AlignCenter, title: 'По центру' },
@@ -1075,9 +1075,9 @@ export function EditorCanvas({
               <ListIndentIncrease size={20} strokeWidth={2.2} />
             </button>
 
-            <div className="w-px h-6 bg-[#1e2d1f]/10" />
+            <div className="w-px h-6 bg-[#1e2d1f]/10 max-md:hidden" />
 
-            <div className="relative">
+            <div className="relative max-md:hidden">
               <button
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
@@ -1130,7 +1130,7 @@ export function EditorCanvas({
 
         <div className="flex items-center gap-3">
           {/* Ширина колонки — выпадающее меню (нативный паттерн Tiptap, как заголовок/списки) */}
-          <div ref={columnMenuRef} className="relative">
+          <div ref={columnMenuRef} className="relative max-md:hidden">
             <button
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
@@ -1177,7 +1177,7 @@ export function EditorCanvas({
             )}
           </div>
 
-          <div className="w-px h-6 bg-[#1e2d1f]/10" />
+          <div className="w-px h-6 bg-[#1e2d1f]/10 max-md:hidden" />
 
           {onOpenSearch && (
             <button

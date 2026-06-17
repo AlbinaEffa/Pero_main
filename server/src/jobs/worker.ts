@@ -481,15 +481,33 @@ export function startWorker(connectionString: string): void {
   console.log('[worker] Started — polling every', POLL_INTERVAL_MS / 1000, 's');
 }
 
-/** Run jobs until the queue is empty, then return. */
+/**
+ * Сколько джоб обрабатываем параллельно. ВАЖНО: каждая джоба держит одно соединение
+ * пула на всё своё время (claim → AI-вызов → запись), а обработчик берёт ВТОРОЕ
+ * соединение для записи результатов. При max=20 в пуле безопасный потолок —
+ * существенно ниже 20/2: берём 4 (→ ≤8 соединений), оставляя запас API-запросам и
+ * поллингу прогресса. Раньше параллелизм был неограничен (setInterval плодил
+ * наслаивающиеся drainQueue), что исчерпывало пул и приводило к дедлоку на импорте.
+ */
+const MAX_CONCURRENT_JOBS = 4;
+let draining = false;
+
+/** Run jobs until the queue is empty, then return. Non-reentrant + bounded concurrency. */
 async function drainQueue(): Promise<void> {
+  if (draining) return; // не даём setInterval наслаивать параллельные проходы
+  draining = true;
   try {
-    // Process jobs one by one until none are available
-    let ran = true;
-    while (ran) {
-      ran = await pickAndRunJob();
+    let anyRan = true;
+    while (anyRan) {
+      // Берём пачку джоб параллельно; каждая claim'ит свою через SKIP LOCKED.
+      const results = await Promise.all(
+        Array.from({ length: MAX_CONCURRENT_JOBS }, () => pickAndRunJob()),
+      );
+      anyRan = results.some(Boolean);
     }
   } catch (e) {
     console.error('[worker] Unhandled error in drainQueue:', e);
+  } finally {
+    draining = false;
   }
 }

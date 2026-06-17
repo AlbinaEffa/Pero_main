@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Telescope, AlertTriangle, MoonStar } from 'lucide-react';
+import { Telescope, AlertTriangle, MoonStar, ChevronDown, ChevronRight } from 'lucide-react';
 import { Entity, EntityLink, EntityEvent } from './types';
 
 interface ChapterSummary {
@@ -57,6 +57,9 @@ interface RowMetrics {
  */
 export function PresenceLens({ entities, events, links, chapters, contradictions, onJumpToChapter }: Props) {
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  // Прогрессивное раскрытие: эпизодических (≤1 главы — на временной шкале это одна точка)
+  // прячем по умолчанию, чтобы линза читалась. Разворачивается одним кликом.
+  const [showEpisodic, setShowEpisodic] = useState(false);
 
   const sortedChapters = useMemo(
     () => [...chapters].sort((a, b) => a.order - b.order),
@@ -122,21 +125,25 @@ export function PresenceLens({ entities, events, links, chapters, contradictions
     [allRows, typeFilter],
   );
 
+  // Повторяющиеся (есть временная шкала) vs эпизодические (одна глава — одна точка).
+  const recurring = useMemo(() => rows.filter(r => r.cells.size >= 2), [rows]);
+  const episodicCount = rows.length - recurring.length;
+  const shownRows = showEpisodic ? rows : recurring;
+
   const chapterIndex = useMemo(
     () => new Map(sortedChapters.map((c, i) => [c.id, i + 1])),
     [sortedChapters],
   );
 
-  // Находки линзы: что Перо увидело в ритме присутствия (по текущему фильтру).
+  // Находки линзы считаем ТОЛЬКО по повторяющимся: «исчез» или «пропал» имеет смысл
+  // лишь для того, кто появлялся не раз. Иначе 160+ однократных упоминаний забивают
+  // находки шумом. Показываем верхушку, остальное — счётчиком «+N ещё».
+  const INSIGHT_CAP = 8;
   const insights = useMemo(() => {
-    const disappear = rows
-      .filter(r => r.disappearsEarly)
-      .map(r => ({ r, kind: 'disappear' as const }));
-    const gaps = rows
-      .filter(r => r.maxGap >= 3 && !r.disappearsEarly)
-      .map(r => ({ r, kind: 'gap' as const }));
+    const disappear = recurring.filter(r => r.disappearsEarly);
+    const gaps = recurring.filter(r => r.maxGap >= 3 && !r.disappearsEarly);
     return { disappear, gaps };
-  }, [rows]);
+  }, [recurring]);
 
   if (sortedChapters.length === 0 || allRows.length === 0) {
     return (
@@ -184,8 +191,8 @@ export function PresenceLens({ entities, events, links, chapters, contradictions
               <div className="flex items-center gap-1.5 mb-1.5 text-[#A14F44] font-semibold text-[10.5px] uppercase tracking-wider">
                 <MoonStar size={12} /> Исчезают и не возвращаются
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {insights.disappear.map(({ r }) => (
+              <div className="flex flex-wrap gap-1.5 items-center">
+                {insights.disappear.slice(0, INSIGHT_CAP).map(r => (
                   <button
                     key={r.e.id}
                     onClick={() => onJumpToChapter(sortedChapters[r.lastIdx].id, r.e.name)}
@@ -196,6 +203,9 @@ export function PresenceLens({ entities, events, links, chapters, contradictions
                     <span className="text-[#1e2d1f]/45">после гл. {r.lastIdx + 1}</span>
                   </button>
                 ))}
+                {insights.disappear.length > INSIGHT_CAP && (
+                  <span className="text-[11px] text-[#A14F44]/70">+{insights.disappear.length - INSIGHT_CAP} ещё</span>
+                )}
               </div>
             </div>
           )}
@@ -204,8 +214,8 @@ export function PresenceLens({ entities, events, links, chapters, contradictions
               <div className="flex items-center gap-1.5 mb-1.5 text-[#1e2d1f]/60 font-semibold text-[10.5px] uppercase tracking-wider">
                 <AlertTriangle size={12} /> Пропадают надолго
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {insights.gaps.map(({ r }) => (
+              <div className="flex flex-wrap gap-1.5 items-center">
+                {insights.gaps.slice(0, INSIGHT_CAP).map(r => (
                   <button
                     key={r.e.id}
                     onClick={() => onJumpToChapter(sortedChapters[Math.max(0, r.gapFromIdx - 1)].id, r.e.name)}
@@ -216,6 +226,9 @@ export function PresenceLens({ entities, events, links, chapters, contradictions
                     <span className="text-[#1e2d1f]/45">гл. {r.gapFromIdx + 1}–{r.gapToIdx + 1}</span>
                   </button>
                 ))}
+                {insights.gaps.length > INSIGHT_CAP && (
+                  <span className="text-[11px] text-[#1e2d1f]/45">+{insights.gaps.length - INSIGHT_CAP} ещё</span>
+                )}
               </div>
             </div>
           )}
@@ -228,9 +241,9 @@ export function PresenceLens({ entities, events, links, chapters, contradictions
 
       <div className="overflow-x-auto hide-scrollbar">
         <div className="inline-block min-w-full">
-          {/* Шапка: номера глав */}
-          <div className="flex items-end mb-1.5 sticky top-0">
-            <div className="w-[96px] flex-shrink-0" />
+          {/* Шапка: номера глав. Колонка имён липкая слева — имена видны при прокрутке. */}
+          <div className="flex items-end mb-1.5">
+            <div className="w-[150px] flex-shrink-0 sticky left-0 z-10 bg-[#f5f0e8]" />
             {sortedChapters.map(c => (
               <div
                 key={c.id}
@@ -243,14 +256,14 @@ export function PresenceLens({ entities, events, links, chapters, contradictions
           </div>
 
           {/* Строки сущностей */}
-          {rows.map(({ e, cells, firstIdx, lastIdx, maxGap }) => {
+          {shownRows.map(({ e, cells, firstIdx, lastIdx, maxGap }) => {
             const pigment = TYPE_PIGMENT[e.type] ?? '#54627F';
             const hasConflict = contradictions.has(e.id);
             const hasLongGap = maxGap >= 3;
             return (
-              <div key={e.id} className="flex items-center h-[22px] group rounded-md hover:bg-[#1e2d1f]/[0.03]">
+              <div key={e.id} className="flex items-center h-[22px] group">
                 <div
-                  className="w-[96px] flex-shrink-0 pr-2 truncate flex items-center gap-1"
+                  className="w-[150px] flex-shrink-0 pr-2 truncate flex items-center gap-1 sticky left-0 z-[1] bg-[#f5f0e8]"
                   title={e.name}
                 >
                   {hasConflict && (
@@ -298,8 +311,25 @@ export function PresenceLens({ entities, events, links, chapters, contradictions
               </div>
             );
           })}
+          {shownRows.length === 0 && (
+            <p className="text-[11px] text-[#1e2d1f]/45 py-4">
+              Здесь только эпизодические — раскройте их ниже.
+            </p>
+          )}
         </div>
       </div>
+
+      {/* Прогрессивное раскрытие эпизодических (по одной главе) */}
+      {episodicCount > 0 && (
+        <button
+          onClick={() => setShowEpisodic(v => !v)}
+          className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-[#1e2d1f]/55 hover:text-[#1e2d1f] transition-colors"
+        >
+          {showEpisodic ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+          {showEpisodic ? 'Скрыть эпизодических' : `Показать ещё ${episodicCount} эпизодических`}
+          <span className="text-[#1e2d1f]/35">· по одной главе</span>
+        </button>
+      )}
 
       {/* Легенда */}
       <div className="flex flex-wrap gap-x-3 gap-y-1 mt-4 pt-3 border-t border-[#1e2d1f]/5 text-[10px] text-[#1e2d1f]/50">

@@ -143,7 +143,7 @@ export default function Settings({
               <Save size={18} />
               {isSaving ? 'Сохраняем...' : 'Сохранить'}
             </button>
-            {saveError && <p className="text-xs text-red-500">{saveError}</p>}
+            {saveError && <p className="text-xs text-[#9E4338]">{saveError}</p>}
           </div>
         </header>
 
@@ -217,7 +217,7 @@ export default function Settings({
 
               <div className="flex items-start gap-4 mb-6">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                  billing?.plan === 'pro' ? 'bg-amber-50 text-amber-600' : 'bg-white/60 border border-white/80 text-[#1e2d1f]/60'
+                  billing?.plan === 'pro' ? 'bg-[#F2E9D8] text-[#91682E]' : 'bg-white/60 border border-white/80 text-[#1e2d1f]/60'
                 }`}>
                   <Crown size={20} />
                 </div>
@@ -248,7 +248,7 @@ export default function Settings({
                   ? `Продлить на ${billing?.periodDays ?? 30} дней — ${billing?.priceRub ?? 599} ₽`
                   : `Оформить Pro — ${billing?.priceRub ?? 599} ₽/мес`}
               </button>
-              {billingError && <p className="text-xs text-red-500 mt-2">{billingError}</p>}
+              {billingError && <p className="text-xs text-[#9E4338] mt-2">{billingError}</p>}
               <p className="text-[11px] text-[#9ca3af] mt-3">
                 Оплата через ЮKassa. Подписка без автопродления — продлевается вручную.
               </p>
@@ -381,7 +381,7 @@ export default function Settings({
           <h2 className="text-xl font-bold text-[#1E2D1F] mb-4">Ваши данные</h2>
           <div className="bg-white/40 backdrop-blur-xl rounded-3xl p-8 shadow-sm border border-white/60">
             <div className="flex items-start gap-4 mb-6">
-              <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+              <div className="w-10 h-10 rounded-full bg-[#E5EBE0] flex items-center justify-center text-[#4D6B4D] shrink-0">
                 <Shield size={20} />
               </div>
               <div>
@@ -439,7 +439,7 @@ export default function Settings({
             Выйти из аккаунта
           </button>
           
-          <button className="text-[#9ca3af] hover:text-red-500 text-sm font-medium transition-colors">
+          <button className="text-[#9ca3af] hover:text-[#9E4338] text-sm font-medium transition-colors">
             Удалить данные и аккаунт
           </button>
         </div>

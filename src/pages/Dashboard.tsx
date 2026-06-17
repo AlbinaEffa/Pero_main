@@ -183,7 +183,7 @@ function BookContextMenu({ project, position, onClose, onEdit, onOpen, onBible, 
 
         <div className="h-px bg-white/10 mx-3 my-1" />
         
-        <button onClick={onDelete} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors">
+        <button onClick={onDelete} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-[#9E4338] hover:bg-[#9E4338]/10 transition-colors">
           <Trash2 size={14} /> Удалить
         </button>
       </div>

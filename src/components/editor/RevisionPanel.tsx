@@ -82,7 +82,7 @@ export function RevisionPanel({
       {/* Header */}
       <div className="p-5 border-b border-[#1e2d1f]/5 flex justify-between items-center bg-white/40 flex-shrink-0">
         <div className="flex items-center gap-2">
-          <GitBranch size={18} className="text-emerald-600" />
+          <GitBranch size={18} className="text-[#4D6B4D]" />
           <h2 className="font-serif font-bold text-lg text-[#1e2d1f]">Ревизия</h2>
         </div>
         <button
@@ -107,7 +107,7 @@ export function RevisionPanel({
               onChange={e => onSearchQueryChange(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && onTrace()}
               placeholder="Имя персонажа / объекта…"
-              className="flex-1 text-sm px-3 py-2 rounded-lg border border-[#1e2d1f]/10 bg-white/70 text-[#1e2d1f] placeholder-[#1e2d1f]/30 focus:outline-none focus:border-emerald-400 transition-colors"
+              className="flex-1 text-sm px-3 py-2 rounded-lg border border-[#1e2d1f]/10 bg-white/70 text-[#1e2d1f] placeholder-[#1e2d1f]/30 focus:outline-none focus:border-[#4D6B4D] transition-colors"
             />
             <button
               onClick={onTrace}
@@ -157,7 +157,7 @@ export function RevisionPanel({
             onClick={onArc}
             disabled={!searchQuery.trim() || isTracing || isArcLoading}
             className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-[12px] font-medium
-              border border-[#1e2d1f]/10 text-[#1e2d1f]/60 hover:bg-white hover:border-emerald-300
+              border border-[#1e2d1f]/10 text-[#1e2d1f]/60 hover:bg-white hover:border-[#4D6B4D]
               hover:text-[#1e2d1f] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isArcLoading
@@ -167,8 +167,8 @@ export function RevisionPanel({
 
           {/* Arc result */}
           {arcText && (
-            <div className="mt-3 rounded-xl bg-emerald-50/60 border border-emerald-200/50 p-3">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700/60 mb-2">Арка</p>
+            <div className="mt-3 rounded-xl bg-[#E5EBE0]/60 border border-[#4D6B4D]/50 p-3">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[#4D6B4D]/60 mb-2">Арка</p>
               <div className="text-[12px] text-[#1e2d1f]/70 leading-relaxed prose prose-sm max-w-none">
                 <ReactMarkdown>{arcText}</ReactMarkdown>
               </div>
@@ -195,7 +195,7 @@ export function RevisionPanel({
           </button>
 
           {bibleDone && bibleSuggestions.length === 0 && (
-            <div className="flex items-center gap-2 text-emerald-600 text-[12px]">
+            <div className="flex items-center gap-2 text-[#4D6B4D] text-[12px]">
               <CheckCircle2 size={14} />
               <span>Мир актуален — изменений не требуется</span>
             </div>
@@ -208,18 +208,18 @@ export function RevisionPanel({
                   key={i}
                   className={`rounded-xl border p-3 ${
                     s.action === 'add'
-                      ? 'bg-blue-50/60 border-blue-200/50'
-                      : 'bg-amber-50/60 border-amber-200/50'
+                      ? 'bg-[#E6E8EC]/60 border-[#54627F]/50'
+                      : 'bg-[#F2E9D8]/60 border-[#91682E]/50'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-1.5">
                       {s.action === 'add'
-                        ? <PlusCircle size={12} className="text-blue-500" />
-                        : <RefreshCw size={12} className="text-amber-500" />}
+                        ? <PlusCircle size={12} className="text-[#54627F]" />
+                        : <RefreshCw size={12} className="text-[#91682E]" />}
                       <span className="text-[12px] font-semibold text-[#1e2d1f]">{s.entityName}</span>
                       <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-                        s.action === 'add' ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'
+                        s.action === 'add' ? 'bg-[#E6E8EC] text-[#54627F]' : 'bg-[#F2E9D8] text-[#91682E]'
                       }`}>
                         {s.action === 'add' ? 'добавить' : 'обновить'}
                       </span>

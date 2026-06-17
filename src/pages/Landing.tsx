@@ -31,7 +31,7 @@ const COMPARE_ROWS: { label: string; pero: Cell; mythril: Cell; novelcrafter: Ce
 ];
 
 function CellIcon({ v }: { v: Cell }) {
-  if (v === 'yes') return <Check size={16} className="text-emerald-600 mx-auto" strokeWidth={2.5} />;
+  if (v === 'yes') return <Check size={16} className="text-[#4D6B4D] mx-auto" strokeWidth={2.5} />;
   if (v === 'partial') return <span className="text-[11px] text-ink/60 font-medium">частично</span>;
   return <Minus size={14} className="text-ink/25 mx-auto" />;
 }
@@ -94,8 +94,8 @@ export default function Landing() {
           <div className="relative select-none" aria-hidden="true">
             <div className="bg-white rounded-3xl border border-ink/8 shadow-[0_20px_60px_rgba(30,45,31,0.10)] p-7 rotate-[1.2deg]">
               <div className="flex items-center gap-1.5 mb-4">
-                <span className="text-[9px] font-bold tracking-widest px-2 py-0.5 rounded-md bg-rose-100 text-rose-600">ПЕРСОНАЖ</span>
-                <span className="text-[9px] font-semibold px-2 py-0.5 rounded-md bg-violet-100 text-violet-700">Ключевой</span>
+                <span className="text-[9px] font-bold tracking-widest px-2 py-0.5 rounded-md bg-[#F1DFDA] text-[#9E4338]">ПЕРСОНАЖ</span>
+                <span className="text-[9px] font-semibold px-2 py-0.5 rounded-md bg-[#EBE4EE] text-[#71597F]">Ключевой</span>
               </div>
               <h3 className="font-serif text-3xl font-semibold mb-1">Весна</h3>
               <p className="text-[11px] text-ink/55 mb-4">Впервые: Глава 1 · Пыль дорог</p>
@@ -107,13 +107,13 @@ export default function Landing() {
               <div className="mt-5 pt-4 border-t border-ink/6">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-ink/55 mb-2.5">Таймлайн</p>
                 <div className="space-y-2 text-[12px] text-ink/70">
-                  <p><span className="inline-block w-2 h-2 rounded-full bg-emerald-300 mr-2" />Приезд всадника — гл. 2</p>
-                  <p><span className="inline-block w-2 h-2 rounded-full bg-amber-300 mr-2" />Степной суд — гл. 4</p>
+                  <p><span className="inline-block w-2 h-2 rounded-full bg-[#4D6B4D] mr-2" />Приезд всадника — гл. 2</p>
+                  <p><span className="inline-block w-2 h-2 rounded-full bg-[#91682E] mr-2" />Степной суд — гл. 4</p>
                 </div>
               </div>
             </div>
-            <div className="absolute -bottom-12 -left-4 lg:-left-10 bg-white rounded-2xl border border-red-200/70 shadow-lg px-5 py-3.5 -rotate-[1.5deg] max-w-[300px]">
-              <p className="text-[13px] leading-snug"><b className="text-red-500">Противоречие.</b> <span className="text-ink/65">В гл. 3 глаза Весны зелёные, в гл. 12 — серые.</span></p>
+            <div className="absolute -bottom-12 -left-4 lg:-left-10 bg-white rounded-2xl border border-[#9E4338]/70 shadow-lg px-5 py-3.5 -rotate-[1.5deg] max-w-[300px]">
+              <p className="text-[13px] leading-snug"><b className="text-[#9E4338]">Противоречие.</b> <span className="text-ink/65">В гл. 3 глаза Весны зелёные, в гл. 12 — серые.</span></p>
             </div>
           </div>
         </section>
@@ -255,7 +255,7 @@ export default function Landing() {
                 <p className="font-serif text-4xl font-semibold mb-6">0 ₽</p>
                 <ul className="space-y-2.5 text-[14px] text-ink/70 mb-8">
                   {['1 активный проект', 'Авто-Мир до 30 глав', '20 ИИ-действий в день', 'Импорт docx, fb2, epub, pdf, txt', 'Экспорт txt и markdown'].map(f => (
-                    <li key={f} className="flex gap-2.5"><Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />{f}</li>
+                    <li key={f} className="flex gap-2.5"><Check size={16} className="text-[#4D6B4D] shrink-0 mt-0.5" />{f}</li>
                   ))}
                 </ul>
                 <Link to={DEMO_TO} className="block text-center border border-ink/15 rounded-xl py-3 font-medium hover:bg-[#E8E2D5]/50 transition-colors">
@@ -267,7 +267,7 @@ export default function Landing() {
                 <p className="font-serif text-4xl font-semibold mb-6">599 ₽<span className="text-base font-normal opacity-60"> /мес</span></p>
                 <ul className="space-y-2.5 text-[14px] text-[#f5f0e8]/85 mb-3">
                   {['Проекты и главы без лимитов', '300 ИИ-действий в день', 'Отчёт противоречий по всей книге', 'Диктовка с ИИ-обработкой', 'Экспорт в docx и zip-бэкап'].map(f => (
-                    <li key={f} className="flex gap-2.5"><Check size={16} className="text-emerald-300 shrink-0 mt-0.5" />{f}</li>
+                    <li key={f} className="flex gap-2.5"><Check size={16} className="text-[#4D6B4D] shrink-0 mt-0.5" />{f}</li>
                   ))}
                   <li className="flex gap-2.5 text-[#f5f0e8]/55"><Clock size={16} className="shrink-0 mt-0.5 opacity-70" />Публичная страница Мира по ссылке — скоро</li>
                 </ul>

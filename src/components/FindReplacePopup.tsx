@@ -171,7 +171,7 @@ export function FindReplacePopup({ isOpen, onClose, editor }: FindReplacePopupPr
             onKeyDown={handleKeyDown}
             className="w-full bg-transparent text-[13px] outline-none placeholder:text-[#1e2d1f]/55 text-[#1e2d1f]"
           />
-          <span className={`text-[11px] font-medium px-2 flex-shrink-0 ${matchCount === 0 && findText ? 'text-red-400' : 'text-[#1e2d1f]/55'}`}>
+          <span className={`text-[11px] font-medium px-2 flex-shrink-0 ${matchCount === 0 && findText ? 'text-[#9E4338]' : 'text-[#1e2d1f]/55'}`}>
             {findText ? `${displayIndex}/${matchCount}` : ''}
           </span>
         </div>

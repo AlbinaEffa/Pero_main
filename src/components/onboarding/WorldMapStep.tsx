@@ -106,10 +106,10 @@ export function WorldMapStep({ projectId, projectTitle, firstChapterId, world }:
 
       {/* Счётчики */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full max-w-xl mb-4">
-        {stat(counts.characters, 'Персонажи', Users,  'bg-rose-100 text-rose-600')}
+        {stat(counts.characters, 'Персонажи', Users,  'bg-[#F1DFDA] text-[#9E4338]')}
         {stat(counts.locations,  'Локации',   MapPin, 'bg-[#E7EAE3] text-[#4A5D4E]')}
-        {stat(counts.items,      'Предметы',  Box,    'bg-amber-100 text-amber-600')}
-        {stat(counts.rules,      'Правила',   Globe,  'bg-blue-100 text-blue-600')}
+        {stat(counts.items,      'Предметы',  Box,    'bg-[#F2E9D8] text-[#91682E]')}
+        {stat(counts.rules,      'Правила',   Globe,  'bg-[#E6E8EC] text-[#54627F]')}
       </div>
 
       {(links.length > 0 || events.length > 0) && (
@@ -133,11 +133,11 @@ export function WorldMapStep({ projectId, projectTitle, firstChapterId, world }:
       {updatesCount > 0 && (
         <button
           onClick={() => navigate(`/editor/${projectId}?view=world`)}
-          className="w-full max-w-xl bg-violet-50 border border-violet-200 rounded-2xl px-6 py-4 mb-10 flex items-center gap-3 text-left hover:bg-violet-100/60 transition-colors"
+          className="w-full max-w-xl bg-[#EBE4EE] border border-[#71597F] rounded-2xl px-6 py-4 mb-10 flex items-center gap-3 text-left hover:bg-[#EBE4EE]/60 transition-colors"
         >
-          <Sparkles size={18} className="text-violet-600 flex-shrink-0" />
+          <Sparkles size={18} className="text-[#71597F] flex-shrink-0" />
           <span className="text-sm text-[#1e2d1f]/75">
-            Перо заметило <b className="text-violet-700">{updatesCount}</b> {pluralPlaces(updatesCount)}, где мир уточняется по ходу текста — взгляните.
+            Перо заметило <b className="text-[#71597F]">{updatesCount}</b> {pluralPlaces(updatesCount)}, где мир уточняется по ходу текста — взгляните.
           </span>
         </button>
       )}

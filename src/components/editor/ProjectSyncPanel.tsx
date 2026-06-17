@@ -15,8 +15,8 @@ function getChapterFreshness(chapter: Chapter): FreshnessStatus {
 }
 
 const FRESHNESS_META: Record<FreshnessStatus, { label: string; dot: string; textColor: string; bgColor: string; Icon: React.ElementType }> = {
-  fresh:   { label: 'Актуальна',    dot: 'bg-emerald-400', textColor: 'text-emerald-700', bgColor: 'bg-emerald-50',  Icon: CheckCircle2  },
-  stale:   { label: 'Устарела',     dot: 'bg-amber-400',   textColor: 'text-amber-700',   bgColor: 'bg-amber-50',    Icon: AlertTriangle },
+  fresh:   { label: 'Актуальна',    dot: 'bg-[#4D6B4D]', textColor: 'text-[#4D6B4D]', bgColor: 'bg-[#E5EBE0]',  Icon: CheckCircle2  },
+  stale:   { label: 'Устарела',     dot: 'bg-[#91682E]',   textColor: 'text-[#91682E]',   bgColor: 'bg-[#F2E9D8]',    Icon: AlertTriangle },
   unknown: { label: 'Не проверена', dot: 'bg-[#1e2d1f]/20', textColor: 'text-[#1e2d1f]/50', bgColor: 'bg-[#1e2d1f]/4', Icon: HelpCircle  },
 };
 
@@ -62,7 +62,7 @@ export function ProjectSyncPanel({
       {/* ── Header ── */}
       <div className="p-5 border-b border-[#1e2d1f]/5 flex justify-between items-center bg-white/40 flex-shrink-0">
         <div className="flex items-center gap-2">
-          <Activity size={18} className="text-blue-500" />
+          <Activity size={18} className="text-[#54627F]" />
           <h2 className="font-serif font-bold text-lg text-[#1e2d1f]">Синхронизация</h2>
         </div>
         <button
@@ -87,14 +87,14 @@ export function ProjectSyncPanel({
             <SummaryTile
               count={statusCounts.fresh}
               label="Актуальных"
-              colorClass="text-emerald-600"
-              bgClass="bg-emerald-50 border-emerald-100"
+              colorClass="text-[#4D6B4D]"
+              bgClass="bg-[#E5EBE0] border-[#4D6B4D]"
             />
             <SummaryTile
               count={statusCounts.stale}
               label="Устаревших"
-              colorClass="text-amber-600"
-              bgClass="bg-amber-50 border-amber-100"
+              colorClass="text-[#91682E]"
+              bgClass="bg-[#F2E9D8] border-[#91682E]"
             />
             <SummaryTile
               count={statusCounts.unknown}
@@ -129,16 +129,16 @@ export function ProjectSyncPanel({
           <button
             onClick={onRecheckAllStale}
             disabled={isRecheckingAll}
-            className="w-full flex items-center justify-between gap-2 px-4 py-3 bg-amber-50 border border-amber-200/80 rounded-xl text-sm font-medium text-amber-800 hover:bg-amber-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-between gap-2 px-4 py-3 bg-[#F2E9D8] border border-[#91682E]/80 rounded-xl text-sm font-medium text-[#91682E] hover:bg-[#F2E9D8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <div className="flex items-center gap-2">
               {isRecheckingAll
-                ? <div className="w-4 h-4 border-2 border-amber-400 border-t-amber-700 rounded-full animate-spin" />
+                ? <div className="w-4 h-4 border-2 border-[#91682E] border-t-amber-700 rounded-full animate-spin" />
                 : <RefreshCw size={15} />
               }
               <span>{isRecheckingAll ? 'Проверяю...' : `Проверить все устаревшие (${staleCount})`}</span>
             </div>
-            {!isRecheckingAll && <ArrowRight size={14} className="flex-shrink-0 text-amber-500" />}
+            {!isRecheckingAll && <ArrowRight size={14} className="flex-shrink-0 text-[#91682E]" />}
           </button>
         )}
 
@@ -208,8 +208,8 @@ export function ProjectSyncPanel({
         {/* ── Legend ── */}
         <div className="bg-white/60 border border-[#1e2d1f]/6 rounded-xl p-3 space-y-1.5">
           <p className="text-[9px] font-bold uppercase tracking-widest text-[#1e2d1f]/55 mb-2">Что означают статусы</p>
-          <LegendRow dot="bg-emerald-400" label="Актуальна" desc="Мир синхронизирован с текстом" />
-          <LegendRow dot="bg-amber-400"   label="Устарела"  desc="Текст изменился после последнего анализа" />
+          <LegendRow dot="bg-[#4D6B4D]" label="Актуальна" desc="Мир синхронизирован с текстом" />
+          <LegendRow dot="bg-[#91682E]"   label="Устарела"  desc="Текст изменился после последнего анализа" />
           <LegendRow dot="bg-[#1e2d1f]/20" label="Не проверена" desc="Глава ещё не анализировалась" />
         </div>
       </div>

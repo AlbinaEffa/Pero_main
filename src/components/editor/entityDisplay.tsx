@@ -11,8 +11,8 @@ export function significanceLabel(s: EntitySignificance | null | undefined): str
 }
 
 export function significanceColor(s: EntitySignificance | null | undefined): string {
-  if (s === 'major')    return 'bg-violet-100 text-violet-700';
-  if (s === 'moderate') return 'bg-sky-100 text-sky-700';
+  if (s === 'major')    return 'bg-[#EBE4EE] text-[#71597F]';
+  if (s === 'moderate') return 'bg-[#E6E8EC] text-[#54627F]';
   if (s === 'minor')    return 'bg-stone-100 text-stone-500';
   return '';
 }
@@ -174,7 +174,7 @@ export function EntityConnectionsBlock({ entity, links, entities, onSelectEntity
             {onDeleteLink && (
               <button
                 onClick={() => onDeleteLink(link.id)}
-                className="p-1 rounded text-ink/20 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                className="p-1 rounded text-ink/20 hover:text-[#9E4338] hover:bg-[#F1DFDA] transition-colors opacity-0 group-hover:opacity-100"
                 title="Удалить связь"
               >
                 <Trash2 size={12} />
@@ -190,10 +190,10 @@ export function EntityConnectionsBlock({ entity, links, entities, onSelectEntity
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
 const EVENT_TYPE_META: Record<string, { icon: typeof Zap; color: string; label: string }> = {
-  conflict:     { icon: Zap,    color: 'bg-amber-100 text-amber-600',     label: 'Конфликт' },
-  relationship: { icon: Heart,  color: 'bg-rose-100 text-rose-500',       label: 'Отношения' },
-  status:       { icon: Flag,   color: 'bg-emerald-100 text-emerald-600', label: 'Перемена' },
-  revelation:   { icon: Eye,    color: 'bg-violet-100 text-violet-600',   label: 'Открытие' },
+  conflict:     { icon: Zap,    color: 'bg-[#F2E9D8] text-[#91682E]',     label: 'Конфликт' },
+  relationship: { icon: Heart,  color: 'bg-[#F1DFDA] text-[#9E4338]',       label: 'Отношения' },
+  status:       { icon: Flag,   color: 'bg-[#E5EBE0] text-[#4D6B4D]', label: 'Перемена' },
+  revelation:   { icon: Eye,    color: 'bg-[#EBE4EE] text-[#71597F]',   label: 'Открытие' },
   other:        { icon: Circle, color: 'bg-stone-100 text-stone-500',     label: 'Событие' },
 };
 
@@ -242,7 +242,7 @@ export function EntityTimelineBlock({ entity, events, chapters, onDeleteEvent }:
                     {onDeleteEvent && (
                       <button
                         onClick={() => onDeleteEvent(ev.id)}
-                        className="p-0.5 rounded text-ink/20 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
+                        className="p-0.5 rounded text-ink/20 hover:text-[#9E4338] hover:bg-[#F1DFDA] transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
                         title="Удалить событие"
                       >
                         <Trash2 size={11} />

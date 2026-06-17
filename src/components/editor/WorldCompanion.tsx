@@ -123,7 +123,7 @@ export function WorldCompanion({
           {/* Статус чтения */}
           <div className="flex items-center gap-2">
             {isExtracting ? (
-              <span className="flex items-center gap-1.5 text-amber-700"><Loader2 size={14} className="animate-spin" /> Перо читает главу…</span>
+              <span className="flex items-center gap-1.5 text-[#91682E]"><Loader2 size={14} className="animate-spin" /> Перо читает главу…</span>
             ) : freshness === 'fresh' ? (
               <span className="flex items-center gap-1.5 text-[#4D6B4D]"><CheckCircle2 size={14} /> Перо прочитало главу</span>
             ) : (
@@ -145,7 +145,7 @@ export function WorldCompanion({
                   <div key={f.id} className="flex items-center gap-2 bg-white rounded-lg px-2.5 py-1.5">
                     <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: TYPE_PIGMENT[f.type] ?? '#54627F' }} />
                     <span className="min-w-0 flex-1 truncate text-[#1e2d1f]">{f.name}</span>
-                    <button onClick={() => onApproveFinding(f.id)} title="Добавить" className="p-1 rounded-md text-emerald-700 hover:bg-emerald-50"><Check size={14} /></button>
+                    <button onClick={() => onApproveFinding(f.id)} title="Добавить" className="p-1 rounded-md text-[#4D6B4D] hover:bg-[#E5EBE0]"><Check size={14} /></button>
                     <button onClick={() => onRejectFinding(f.id)} title="Скрыть" className="p-1 rounded-md text-[#1e2d1f]/40 hover:bg-[#1e2d1f]/5"><X size={13} /></button>
                   </div>
                 ))}

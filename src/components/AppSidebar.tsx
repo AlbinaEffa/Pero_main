@@ -167,7 +167,7 @@ export function SidebarChapterLinks({
             {/* Невидимая распорка под drag-ручку редактора (size 14, -ml-1): держит
                 иконку и название на той же позиции, что и в редакторе — сайдбар не «прыгает». */}
             <span className="flex-shrink-0 -ml-1 w-3.5" aria-hidden="true" />
-            <span className={`flex-shrink-0 flex items-center justify-center ${isDone ? 'text-green-400' : 'text-white/60'}`}>
+            <span className={`flex-shrink-0 flex items-center justify-center ${isDone ? 'text-[#8AAE86]' : 'text-white/60'}`}>
               {isDone ? <FileCheck size={16} strokeWidth={1.75} /> : <FileText size={16} strokeWidth={1.75} />}
             </span>
             <span className="flex-1 flex flex-col min-w-0 text-left">

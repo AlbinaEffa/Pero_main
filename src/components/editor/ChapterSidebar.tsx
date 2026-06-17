@@ -156,11 +156,11 @@ export function ChapterSidebar({
       {isSaving ? (
         <><span className="w-1.5 h-1.5 rounded-full bg-white/30 inline-block animate-pulse" /><span className="text-white/50">Сохранение…</span></>
       ) : saveError ? (
-        <span className="flex items-center gap-1.5 text-red-400/80" title="Нажмите Cmd+S / Ctrl+S чтобы повторить">
+        <span className="flex items-center gap-1.5 text-[#D98C82]/90" title="Нажмите Cmd+S / Ctrl+S чтобы повторить">
           <AlertCircle size={11} /> Не сохранено
         </span>
       ) : lastSavedAt ? (
-        <><span className="w-1.5 h-1.5 rounded-full bg-emerald-400/70 inline-block" /><span className="text-white/60">Сохранено</span></>
+        <><span className="w-1.5 h-1.5 rounded-full bg-[#8AAE86]/80 inline-block" /><span className="text-white/60">Сохранено</span></>
       ) : (
         <><span className="w-1.5 h-1.5 rounded-full bg-white/20 inline-block" /><span className="text-white/30">Ожидание…</span></>
       )}
@@ -267,7 +267,7 @@ export function ChapterSidebar({
                   ? 'Статус: Готово — нажмите, чтобы вернуть в черновик'
                   : 'Статус: Черновик — нажмите, чтобы отметить готовым'}
                 className={`flex-shrink-0 flex items-center justify-center transition-all hover:scale-105 active:scale-95 ${
-                  isDone ? 'text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.3)]' : 'text-white/60 hover:text-white/70'
+                  isDone ? 'text-[#8AAE86] drop-shadow-[0_0_8px_rgba(138,174,134,0.35)]' : 'text-white/60 hover:text-white/70'
                 }`}
               >
                 {isDone ? <FileCheck size={16} strokeWidth={1.75} /> : <FileText size={16} strokeWidth={1.75} />}
@@ -295,7 +295,7 @@ export function ChapterSidebar({
                 onClick={() => handleDelete(chapter.id)}
                 disabled={isDeleting}
                 title="Удалить раздел"
-                className="opacity-0 group-hover:opacity-100 flex-shrink-0 p-1 rounded text-white/30 hover:text-red-400 transition-all disabled:opacity-30"
+                className="opacity-0 group-hover:opacity-100 flex-shrink-0 p-1 rounded text-white/30 hover:text-[#9E4338] transition-all disabled:opacity-30"
               >
                 {isDeleting
                   ? <div className="w-3 h-3 border border-white/30 border-t-white/70 rounded-full animate-spin" />

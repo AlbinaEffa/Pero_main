@@ -70,10 +70,10 @@ function entityTypeLabel(type: string) {
 }
 
 function entityTypeColor(type: string) {
-  if (type === 'character') return 'bg-rose-100 text-rose-800';
+  if (type === 'character') return 'bg-[#F1DFDA] text-[#9E4338]';
   if (type === 'location')  return 'bg-[#e3e8e3] text-[#4a5d4e]';
-  if (type === 'item')      return 'bg-amber-100 text-amber-800';
-  return 'bg-blue-100 text-blue-800';
+  if (type === 'item')      return 'bg-[#F2E9D8] text-[#91682E]';
+  return 'bg-[#E6E8EC] text-[#54627F]';
 }
 
 /** Единый визуальный язык каталога: пигмент + иконка + ярлык — те же, что в линзах. */
@@ -608,7 +608,7 @@ function ChapterUpdateGroup({
             {onBulkReject && (
               <button
                 onClick={onBulkReject}
-                className="text-[10px] text-red-400/70 hover:text-red-600 font-medium px-2 py-0.5 rounded hover:bg-red-50 transition-colors"
+                className="text-[10px] text-[#9E4338]/70 hover:text-[#9E4338] font-medium px-2 py-0.5 rounded hover:bg-[#F1DFDA] transition-colors"
                 title="Отклонить все обновления по этой главе"
               >
                 Отклонить всё
@@ -678,21 +678,21 @@ function DiffView({ prev, next }: DiffViewProps) {
       if (/^\s+$/.test(tok.text)) return <span key={i}>{tok.text}</span>;
       if (tok.kind === 'equal') {
         return (
-          <span key={i} className={side === 'prev' ? 'text-red-800/70' : 'text-emerald-900/75'}>
+          <span key={i} className={side === 'prev' ? 'text-[#9E4338]/70' : 'text-[#4D6B4D]/75'}>
             {tok.text}
           </span>
         );
       }
       if (tok.kind === 'removed') {
         return (
-          <span key={i} className="bg-red-100 text-red-700 line-through rounded-sm px-0.5">
+          <span key={i} className="bg-[#F1DFDA] text-[#9E4338] line-through rounded-sm px-0.5">
             {tok.text}
           </span>
         );
       }
       // added
       return (
-        <span key={i} className="bg-emerald-100 text-emerald-800 rounded-sm px-0.5">
+        <span key={i} className="bg-[#E5EBE0] text-[#4D6B4D] rounded-sm px-0.5">
           {tok.text}
         </span>
       );
@@ -702,8 +702,8 @@ function DiffView({ prev, next }: DiffViewProps) {
   return (
     <div className="space-y-1.5 mt-2">
       {prev && (
-        <div className="bg-red-50/50 border border-red-100 rounded-lg p-2">
-          <p className="text-[9px] font-bold text-red-400 uppercase tracking-widest mb-1">Было</p>
+        <div className="bg-[#F1DFDA]/50 border border-[#9E4338] rounded-lg p-2">
+          <p className="text-[9px] font-bold text-[#9E4338] uppercase tracking-widest mb-1">Было</p>
           <p
             className="text-[11px] leading-relaxed break-words"
             style={!expanded && longContent ? { display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' } : undefined}
@@ -712,8 +712,8 @@ function DiffView({ prev, next }: DiffViewProps) {
           </p>
         </div>
       )}
-      <div className="bg-emerald-50/50 border border-emerald-100 rounded-lg p-2">
-        <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest mb-1">Стало</p>
+      <div className="bg-[#E5EBE0]/50 border border-[#4D6B4D] rounded-lg p-2">
+        <p className="text-[9px] font-bold text-[#4D6B4D] uppercase tracking-widest mb-1">Стало</p>
         <p
           className="text-[11px] leading-relaxed break-words"
           style={!expanded && longContent ? { display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' } : undefined}
@@ -791,7 +791,7 @@ function UpdateCard({ update, onAccept, onReject, onDismiss, onOpenInEditor }: U
         </button>
         <button
           onClick={onAccept}
-          className="flex-1 py-2 text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50/60 transition-colors flex items-center justify-center gap-1"
+          className="flex-1 py-2 text-[11px] font-semibold text-[#4D6B4D] hover:text-[#4D6B4D] hover:bg-[#E5EBE0]/60 transition-colors flex items-center justify-center gap-1"
           title="Обновить описание в Библии"
         >
           <Check size={10} />

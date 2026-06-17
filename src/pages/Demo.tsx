@@ -19,10 +19,10 @@ const API = getApiBaseUrl();
 const ACCEPTED_EXTS = ['.txt', '.docx', '.pdf', '.epub', '.fb2'];
 
 const TYPE_META: Record<string, { icon: typeof Users; label: string; plural: string; cls: string }> = {
-  character: { icon: Users,  label: 'персонаж', plural: 'Персонажи', cls: 'bg-rose-100 text-rose-600' },
-  location:  { icon: MapPin, label: 'локация',  plural: 'Локации',   cls: 'bg-emerald-100 text-emerald-700' },
-  item:      { icon: Box,    label: 'предмет',  plural: 'Предметы',  cls: 'bg-amber-100 text-amber-600' },
-  rule:      { icon: Globe,  label: 'правило',  plural: 'Правила',   cls: 'bg-blue-100 text-blue-600' },
+  character: { icon: Users,  label: 'персонаж', plural: 'Персонажи', cls: 'bg-[#F1DFDA] text-[#9E4338]' },
+  location:  { icon: MapPin, label: 'локация',  plural: 'Локации',   cls: 'bg-[#E5EBE0] text-[#4D6B4D]' },
+  item:      { icon: Box,    label: 'предмет',  plural: 'Предметы',  cls: 'bg-[#F2E9D8] text-[#91682E]' },
+  rule:      { icon: Globe,  label: 'правило',  plural: 'Правила',   cls: 'bg-[#E6E8EC] text-[#54627F]' },
 };
 
 interface DemoEntity {
@@ -169,8 +169,8 @@ export default function Demo() {
 
         {stage === 'error' && (
           <div className="w-full max-w-md text-center pt-24">
-            <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-5">
-              <AlertCircle size={26} className="text-red-600" />
+            <div className="w-14 h-14 rounded-full bg-[#F1DFDA] flex items-center justify-center mx-auto mb-5">
+              <AlertCircle size={26} className="text-[#9E4338]" />
             </div>
             <h1 className="font-serif text-2xl font-semibold mb-2">Не вышло прочитать</h1>
             <p className="text-ink/65 mb-7">{error}</p>

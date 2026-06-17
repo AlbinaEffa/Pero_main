@@ -126,7 +126,7 @@ export default function Login() {
         </div>
 
         {error && (
-          <div className="mb-6 p-3 bg-red-50 text-red-600 text-sm rounded-xl border border-red-100 text-center">
+          <div className="mb-6 p-3 bg-[#F1DFDA] text-[#9E4338] text-sm rounded-xl border border-[#9E4338] text-center">
             {error}
           </div>
         )}

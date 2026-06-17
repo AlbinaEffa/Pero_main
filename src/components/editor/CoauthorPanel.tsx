@@ -184,9 +184,9 @@ export function CoauthorPanel({
               <p
                 className={`text-[11px] leading-tight ${
                   quota.remaining === 0
-                    ? 'text-red-500'
+                    ? 'text-[#9E4338]'
                     : quota.remaining <= Math.ceil(quota.limit * 0.15)
-                      ? 'text-amber-600'
+                      ? 'text-[#91682E]'
                       : 'text-[#1e2d1f]/55'
                 }`}
                 title={`Тариф: ${quota.plan === 'pro' ? 'Pro' : 'Бесплатный'}. Лимит обновится в полночь по UTC.`}
@@ -240,14 +240,14 @@ export function CoauthorPanel({
                 className={`flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-[11px] font-medium text-left transition-all
                   disabled:opacity-40 disabled:cursor-not-allowed
                   ${isBibleAction
-                    ? 'bg-emerald-50 border border-emerald-100 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-200'
+                    ? 'bg-[#E5EBE0] border border-[#4D6B4D] text-[#4D6B4D] hover:bg-[#E5EBE0] hover:border-[#4D6B4D]'
                     : willUseSelection
                     ? 'bg-purple-50 border border-purple-100 text-purple-700 hover:bg-purple-100 hover:border-purple-200'
                     : 'bg-white/70 border border-[#1e2d1f]/8 text-[#1e2d1f]/70 hover:bg-white hover:border-[#1e2d1f]/20 hover:text-[#1e2d1f]'
                   }`}
               >
                 {isBibleLoading
-                  ? <div className="w-3 h-3 border border-emerald-400 border-t-emerald-700 rounded-full animate-spin flex-shrink-0" />
+                  ? <div className="w-3 h-3 border border-[#4D6B4D] border-t-emerald-700 rounded-full animate-spin flex-shrink-0" />
                   : <Icon size={12} className="flex-shrink-0" />
                 }
                 <span className="truncate">{isBibleLoading ? 'Извлекаю...' : action.label}</span>

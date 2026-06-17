@@ -241,7 +241,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({
                       </div>
                       <div className="text-sm text-[#1e2d1f]/60 leading-relaxed font-serif">
                         ...{match.before}
-                        <span className="bg-amber-200/60 text-[#1e2d1f] font-medium px-0.5 rounded">
+                        <span className="bg-[#F2E9D8]/60 text-[#1e2d1f] font-medium px-0.5 rounded">
                           {match.match}
                         </span>
                         {match.after}...
@@ -262,8 +262,8 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({
                       onClick={() => onNavigate('lore', '1')}
                       className="w-full text-left p-3 rounded-xl hover:bg-[#1e2d1f]/5 transition-colors flex items-start gap-3"
                     >
-                      <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center shrink-0 mt-0.5">
-                        <span className="text-rose-800 font-serif font-medium text-sm">В</span>
+                      <div className="w-8 h-8 rounded-full bg-[#F1DFDA] flex items-center justify-center shrink-0 mt-0.5">
+                        <span className="text-[#9E4338] font-serif font-medium text-sm">В</span>
                       </div>
                       <div>
                         <div className="text-sm font-medium text-[#1e2d1f] mb-0.5">Граф Воронцов</div>

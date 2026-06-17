@@ -155,14 +155,14 @@ function EntityCard({ entity, hasConflict }: { entity: Entity; hasConflict: bool
   return (
     <div className={`rounded-xl p-3 shadow-sm border transition-colors cursor-default ${
       hasConflict
-        ? 'bg-amber-50/80 border-amber-200/60 hover:bg-amber-50'
+        ? 'bg-[#F2E9D8]/80 border-[#91682E]/60 hover:bg-[#F2E9D8]'
         : 'bg-white/60 border-[#1e2d1f]/5 hover:bg-white'
     }`}>
       <div className="flex items-start justify-between gap-2">
         <h4 className="font-bold text-[15px] text-[#1e2d1f] truncate leading-snug">{entity.name}</h4>
         {hasConflict && (
           <span title="Возможное противоречие с другой версией этого объекта">
-            <AlertTriangle size={13} className="text-amber-500 flex-shrink-0 mt-0.5" />
+            <AlertTriangle size={13} className="text-[#91682E] flex-shrink-0 mt-0.5" />
           </span>
         )}
       </div>
@@ -1496,11 +1496,11 @@ export default function Editor() {
                   Перо проверяет книгу{scanState.total ? `… ${scanState.scanned}/${scanState.total}` : '…'}
                 </>
               ) : scanState.status === 'failed' ? (
-                <><AlertTriangle size={14} className="text-amber-300" /> Проверка прервалась — попробуйте ещё раз</>
+                <><AlertTriangle size={14} className="text-[#D8B27A]" /> Проверка прервалась — попробуйте ещё раз</>
               ) : scanState.found > 0 ? (
                 <><AlertTriangle size={14} className="text-[#e0a89e]" /> Перо нашло нестыковок: {scanState.found}</>
               ) : (
-                <><Eye size={14} className="text-emerald-300" /> Нестыковок не найдено</>
+                <><Eye size={14} className="text-[#8AAE86]" /> Нестыковок не найдено</>
               )}
             </div>
           )}
@@ -1839,9 +1839,9 @@ export default function Editor() {
                   ) : (
                     <>
                       {contradictions.size > 0 && (
-                        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200/80 rounded-xl px-3 py-2.5">
-                          <AlertTriangle size={14} className="text-amber-500 flex-shrink-0" />
-                          <p className="text-[12px] text-amber-700 leading-snug">
+                        <div className="flex items-center gap-2 bg-[#F2E9D8] border border-[#91682E]/80 rounded-xl px-3 py-2.5">
+                          <AlertTriangle size={14} className="text-[#91682E] flex-shrink-0" />
+                          <p className="text-[12px] text-[#91682E] leading-snug">
                             {contradictions.size === 1
                               ? '1 объект с возможным противоречием'
                               : `${contradictions.size} объекта с возможными противоречиями`}

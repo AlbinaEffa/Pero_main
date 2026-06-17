@@ -39,14 +39,14 @@ export function BottomToolbar({
             title={isDictating ? 'Остановить диктовку' : 'Начать диктовку'}
             className={`relative flex items-center justify-center h-[36px] whitespace-nowrap gap-2 px-3 sm:px-4 py-2 text-sm font-medium rounded-lg shrink-0 transition-all outline-none focus:outline-none focus:ring-0 ${
               isDictating
-                ? 'bg-red-500 text-white shadow-lg shadow-red-200'
+                ? 'bg-[#9E4338] text-white shadow-lg shadow-[#9E4338]/20'
                 : isDictationProcessing
-                ? 'bg-amber-50 text-amber-600 border border-amber-200'
+                ? 'bg-[#F2E9D8] text-[#91682E] border border-[#91682E]'
                 : 'bg-transparent text-[#6b7280] hover:bg-[#f5f0e8] hover:text-[#1e2d1f]'
             }`}
           >
             {isDictating && (
-              <span className="absolute inset-0 rounded-lg animate-ping bg-red-400 opacity-30 pointer-events-none" />
+              <span className="absolute inset-0 rounded-lg animate-ping bg-[#9E4338] opacity-30 pointer-events-none" />
             )}
             {isDictating
               ? <MicOff size={16} className="flex-shrink-0" />

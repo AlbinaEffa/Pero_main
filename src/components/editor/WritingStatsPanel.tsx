@@ -68,7 +68,7 @@ export function WritingStatsPanel({
       {/* Header */}
       <div className="p-5 border-b border-[#1e2d1f]/5 flex justify-between items-center bg-white/40 flex-shrink-0">
         <div className="flex items-center gap-2">
-          <TrendingUp size={18} className="text-emerald-600" />
+          <TrendingUp size={18} className="text-[#4D6B4D]" />
           <h2 className="font-serif font-bold text-lg text-[#1e2d1f]">Статистика</h2>
         </div>
         <button
@@ -93,15 +93,15 @@ export function WritingStatsPanel({
           {/* Streak */}
           <div className={`rounded-2xl p-4 border shadow-sm flex flex-col gap-1 ${
             streakActive
-              ? 'bg-amber-50 border-amber-200/60'
+              ? 'bg-[#F2E9D8] border-[#91682E]/60'
               : 'bg-white border-[#1e2d1f]/8'
           }`}>
             <span className="text-[10px] font-semibold uppercase tracking-widest text-[#1e2d1f]/55">Стрик</span>
             <div className="flex items-baseline gap-1.5">
-              <span className={`text-3xl font-bold leading-none ${streakActive ? 'text-amber-600' : 'text-[#1e2d1f]'}`}>
+              <span className={`text-3xl font-bold leading-none ${streakActive ? 'text-[#91682E]' : 'text-[#1e2d1f]'}`}>
                 {streak}
               </span>
-              {streakActive && <Flame size={18} className="text-amber-500 mb-0.5" />}
+              {streakActive && <Flame size={18} className="text-[#91682E] mb-0.5" />}
             </div>
             <span className="text-[11px] text-[#1e2d1f]/55">{streak === 1 ? 'день' : streak >= 2 && streak <= 4 ? 'дня' : 'дней'}</span>
           </div>
@@ -129,7 +129,7 @@ export function WritingStatsPanel({
         <div className="bg-white rounded-2xl p-4 border border-[#1e2d1f]/8 shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Target size={16} className="text-emerald-600 flex-shrink-0" />
+              <Target size={16} className="text-[#4D6B4D] flex-shrink-0" />
               <span className="text-sm font-semibold text-[#1e2d1f]">Цель проекта</span>
             </div>
             {!editingGoal && (
@@ -148,7 +148,7 @@ export function WritingStatsPanel({
             <div className="relative flex-shrink-0">
               <ProgressRing pct={pct} />
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className={`text-[13px] font-bold ${pct >= 100 ? 'text-green-600' : 'text-[#1e2d1f]'}`}>
+                <span className={`text-[13px] font-bold ${pct >= 100 ? 'text-[#4D6B4D]' : 'text-[#1e2d1f]'}`}>
                   {pct}%
                 </span>
               </div>
@@ -174,9 +174,9 @@ export function WritingStatsPanel({
                         if (e.key === 'Escape') { setEditingGoal(false); setGoalDraft(String(wordGoal)); }
                       }}
                       onBlur={commitGoal}
-                      className="w-20 border-b border-emerald-400 outline-none text-[11px] text-[#1e2d1f] bg-transparent font-semibold"
+                      className="w-20 border-b border-[#4D6B4D] outline-none text-[11px] text-[#1e2d1f] bg-transparent font-semibold"
                     />
-                    <button onClick={commitGoal} className="text-emerald-600 hover:text-emerald-700">
+                    <button onClick={commitGoal} className="text-[#4D6B4D] hover:text-[#4D6B4D]">
                       <Check size={11} />
                     </button>
                   </span>
@@ -193,13 +193,13 @@ export function WritingStatsPanel({
               {/* Linear progress bar */}
               <div className="mt-2 h-1.5 rounded-full bg-[#1e2d1f]/8 overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all duration-500 ${pct >= 100 ? 'bg-green-500' : 'bg-emerald-600'}`}
+                  className={`h-full rounded-full transition-all duration-500 ${pct >= 100 ? 'bg-[#4D6B4D]' : 'bg-[#4D6B4D]'}`}
                   style={{ width: `${Math.min(pct, 100)}%` }}
                 />
               </div>
 
               {pct >= 100 && (
-                <div className="mt-1.5 text-[10px] font-semibold text-green-600">
+                <div className="mt-1.5 text-[10px] font-semibold text-[#4D6B4D]">
                   Цель достигнута!
                 </div>
               )}

@@ -64,7 +64,7 @@ export function PulseRail({
       {/* 1. Статус чтения главы — сердце цикла */}
       {isExtracting ? (
         <div
-          className={`${cell} text-amber-600`}
+          className={`${cell} text-[#91682E]`}
           title="Перо читает главу…"
           aria-label="Перо читает главу"
         >
@@ -72,7 +72,7 @@ export function PulseRail({
         </div>
       ) : freshness === 'fresh' ? (
         <div
-          className={`${cell} text-emerald-600`}
+          className={`${cell} text-[#4D6B4D]`}
           title="Перо прочитало эту главу"
           aria-label="Перо прочитало эту главу"
         >
@@ -81,14 +81,14 @@ export function PulseRail({
       ) : (
         <button
           onClick={onRead}
-          className={`${cell} text-amber-600 hover:bg-amber-50`}
+          className={`${cell} text-[#91682E] hover:bg-[#F2E9D8]`}
           title={freshness === 'stale'
             ? 'Глава изменилась — Перо ещё не перечитало. Нажмите, чтобы прочитать'
             : 'Глава ещё не прочитана Пером. Нажмите, чтобы прочитать'}
           aria-label="Прочитать главу"
         >
           <Eye size={19} />
-          <span className="absolute inset-0 rounded-xl animate-ping bg-amber-300/25 pointer-events-none" />
+          <span className="absolute inset-0 rounded-xl animate-ping bg-[#91682E]/25 pointer-events-none" />
         </button>
       )}
 

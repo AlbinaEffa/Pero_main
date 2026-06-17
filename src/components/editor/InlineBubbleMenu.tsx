@@ -223,7 +223,7 @@ export function InlineBubbleMenu({ editor, projectId }: Props) {
 
       {/* ── Error ── */}
       {panel.phase === 'error' && (
-        <div className="flex items-center gap-2 bg-red-600 rounded-xl px-4 py-2.5 shadow-2xl animate-in fade-in duration-150">
+        <div className="flex items-center gap-2 bg-[#9E4338] rounded-xl px-4 py-2.5 shadow-2xl animate-in fade-in duration-150">
           <X size={13} className="text-white/80 flex-shrink-0" />
           <span className="text-[12px] text-white font-medium">{panel.message}</span>
         </div>

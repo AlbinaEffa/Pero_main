@@ -19,10 +19,10 @@ const TALLY: { type: string; label: string; icon: typeof Users; pigment: string 
  */
 
 const TYPE_META: Record<string, { icon: typeof Users; label: string; cls: string }> = {
-  character: { icon: Users,  label: 'персонаж', cls: 'bg-rose-100 text-rose-600' },
+  character: { icon: Users,  label: 'персонаж', cls: 'bg-[#F1DFDA] text-[#9E4338]' },
   location:  { icon: MapPin, label: 'локация',  cls: 'bg-[#E7EAE3] text-[#4A5D4E]' },
-  item:      { icon: Box,    label: 'предмет',  cls: 'bg-amber-100 text-amber-600' },
-  rule:      { icon: Globe,  label: 'правило',  cls: 'bg-blue-100 text-blue-600' },
+  item:      { icon: Box,    label: 'предмет',  cls: 'bg-[#F2E9D8] text-[#91682E]' },
+  rule:      { icon: Globe,  label: 'правило',  cls: 'bg-[#E6E8EC] text-[#54627F]' },
 };
 
 interface Props {
@@ -97,14 +97,14 @@ export function ReadingStep({ world, quotes, onComplete }: Props) {
 
       {/* PARTIAL: честная плашка вместо имитации успеха */}
       {isPartial && counts && (
-        <div className="w-full max-w-md bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-8 text-left">
+        <div className="w-full max-w-md bg-[#F2E9D8] border border-[#91682E] rounded-2xl p-4 mb-8 text-left">
           <div className="flex items-start gap-3">
-            <AlertTriangle size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
+            <AlertTriangle size={16} className="text-[#91682E] flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-sm font-semibold text-amber-800">
+              <p className="text-sm font-semibold text-[#91682E]">
                 Прочитано {counts.succeeded} из {counts.total} глав
               </p>
-              <p className="text-xs text-amber-700 mt-0.5">
+              <p className="text-xs text-[#91682E] mt-0.5">
                 {counts.failed} {counts.failed === 1 ? 'глава не прочиталась' : 'глав не прочитались'} — можно повторить сейчас или позже из панели обработки.
               </p>
             </div>
@@ -113,7 +113,7 @@ export function ReadingStep({ world, quotes, onComplete }: Props) {
             <button
               onClick={async () => { setRetrying(true); try { await retryFailed(); } finally { setRetrying(false); } }}
               disabled={retrying}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-semibold transition-colors disabled:opacity-50"
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-[#F2E9D8] hover:bg-[#F2E9D8] text-[#91682E] text-xs font-semibold transition-colors disabled:opacity-50"
             >
               <RefreshCw size={12} className={retrying ? 'animate-spin' : ''} />
               Повторить

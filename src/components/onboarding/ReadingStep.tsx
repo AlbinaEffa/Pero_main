@@ -1,8 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Users, MapPin, Box, Globe, AlertTriangle, RefreshCw, ArrowRight } from 'lucide-react';
 import { PeroMark } from '../Logo';
 import { Entity } from '../editor/types';
 import { WorldBuildState } from './useWorldBuild';
+
+/** Пигменты «Мира» (DESIGN.md) — те же, что в линзах и спутнике. */
+const TALLY: { type: string; label: string; icon: typeof Users; pigment: string }[] = [
+  { type: 'character', label: 'персонажи', icon: Users,  pigment: '#A14F44' },
+  { type: 'location',  label: 'локации',   icon: MapPin, pigment: '#4A5D4E' },
+  { type: 'item',      label: 'предметы',  icon: Box,    pigment: '#91682E' },
+  { type: 'rule',      label: 'правила',   icon: Globe,  pigment: '#54627F' },
+];
 
 /**
  * ReadingStep — «Перо читает вашу книгу».
@@ -47,6 +55,13 @@ export function ReadingStep({ world, quotes, onComplete }: Props) {
   const total = counts?.total ?? 0;
   const progress = total > 0 ? Math.round((doneChapters / total) * 100) : 0;
   const recent = entities.slice(-6).reverse();
+
+  // Живой счёт мира по типам — главный «вау»: мир набирается на глазах.
+  const byType = useMemo(() => {
+    const m: Record<string, number> = { character: 0, location: 0, item: 0, rule: 0 };
+    entities.forEach(e => { if (e.type in m) m[e.type] += 1; });
+    return m;
+  }, [entities]);
 
   return (
     <div className="flex flex-col items-center text-center px-6 pt-16 pb-10 min-h-screen">
@@ -123,6 +138,33 @@ export function ReadingStep({ world, quotes, onComplete }: Props) {
           «{quotes[quoteIdx]}»
           <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }`}</style>
         </blockquote>
+      )}
+
+      {/* Живой счёт мира — мир набирается на глазах */}
+      {entities.length > 0 && (
+        <div className="w-full max-w-md grid grid-cols-4 gap-2 mb-6">
+          {TALLY.map(({ type, label, icon: Icon, pigment }) => {
+            const n = byType[type] ?? 0;
+            return (
+              <div
+                key={type}
+                className="flex flex-col items-center rounded-2xl bg-white border border-[#1e2d1f]/5 shadow-sm py-3"
+                style={{ opacity: n === 0 ? 0.45 : 1 }}
+              >
+                <Icon size={15} style={{ color: pigment }} className="mb-1" />
+                <span
+                  key={n}
+                  className="font-serif text-2xl font-semibold leading-none animate-[tallyPop_0.4s_ease]"
+                  style={{ color: pigment }}
+                >
+                  {n}
+                </span>
+                <span className="text-[9.5px] uppercase tracking-wider text-[#1e2d1f]/45 mt-1">{label}</span>
+              </div>
+            );
+          })}
+          <style>{`@keyframes tallyPop { 0% { transform: scale(1.5); opacity: 0; } 60% { transform: scale(0.92); } 100% { transform: scale(1); opacity: 1; } }`}</style>
+        </div>
       )}
 
       {/* Лента находок */}

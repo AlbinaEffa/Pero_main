@@ -25,6 +25,11 @@ const SIG_RADIUS: Record<string, number> = { major: 25, moderate: 19, minor: 14 
  */
 export function ConnectionsLens({ entities, links, contradictions, expanded, onJumpToChapter }: Props) {
   const [showMinor, setShowMinor] = useState(false);
+  // Эго-вид (фокус на одном герое и его соседях) vs весь граф. По умолчанию ВСЕГДА
+  // эго — даже развёрнуто: 145 узлов кольцами это клубок, читать его нельзя.
+  const [graphMode, setGraphMode] = useState<'focus' | 'full'>('focus');
+  // Кого держим в центре эго-вида. null → самый связный. Клик по соседу «перешагивает» сюда.
+  const [focusOverride, setFocusOverride] = useState<string | null>(null);
 
   const byId = useMemo(() => new Map(entities.map(e => [e.id, e])), [entities]);
 
@@ -50,27 +55,35 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
     return d;
   }, [edges]);
 
-  // Эго-фокус для свёрнутого вида = самая связная сущность.
-  const focusId = useMemo(() => {
-    if (expanded || nodes0.length === 0) return null;
-    return [...nodes0].sort((a, b) => (degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0))[0]?.id ?? null;
-  }, [expanded, nodes0, degree]);
+  // Свёрнутый вид всегда эго; развёрнутый — по выбранному режиму.
+  const effectiveMode: 'focus' | 'full' = expanded ? graphMode : 'focus';
+
+  // Самая связная сущность — дефолтный центр эго-вида.
+  const mostConnected = useMemo(
+    () => (nodes0.length ? [...nodes0].sort((a, b) => (degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0))[0]?.id ?? null : null),
+    [nodes0, degree],
+  );
+  const focusId = effectiveMode === 'focus'
+    ? (focusOverride && nodeIdSet.has(focusOverride) ? focusOverride : mostConnected)
+    : null;
 
   const shownNodes = useMemo(() => {
-    if (expanded || !focusId) return nodes0;
+    if (!focusId) return nodes0;
     const keep = new Set([focusId]);
     edges.forEach(e => {
       if (e.sourceEntityId === focusId) keep.add(e.targetEntityId);
       if (e.targetEntityId === focusId) keep.add(e.sourceEntityId);
     });
     return nodes0.filter(n => keep.has(n.id));
-  }, [expanded, focusId, nodes0, edges]);
+  }, [focusId, nodes0, edges]);
 
   const shownIdSet = useMemo(() => new Set(shownNodes.map(n => n.id)), [shownNodes]);
-  const shownEdges = useMemo(
-    () => edges.filter(e => shownIdSet.has(e.sourceEntityId) && shownIdSet.has(e.targetEntityId)),
-    [edges, shownIdSet],
-  );
+  const shownEdges = useMemo(() => {
+    // Эго-вид = чистая «звезда»: только спицы фокус↔сосед. Связи между соседями
+    // не рисуем (это снова клубок) — до них дойдёшь, шагнув на соседа. Весь граф — все рёбра.
+    if (focusId) return edges.filter(e => e.sourceEntityId === focusId || e.targetEntityId === focusId);
+    return edges.filter(e => shownIdSet.has(e.sourceEntityId) && shownIdSet.has(e.targetEntityId));
+  }, [edges, shownIdSet, focusId]);
 
   // viewBox под режим: развёрнуто шире (полный граф), свёрнуто компактнее (эго).
   const W = expanded ? 680 : 360;
@@ -80,7 +93,7 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
     const p = new Map<string, { x: number; y: number }>();
     const cx = W / 2, cy = H / 2;
     const minDim = Math.min(W, H);
-    if (!expanded && focusId) {
+    if (focusId) {
       p.set(focusId, { x: cx, y: cy });
       const others = shownNodes.filter(n => n.id !== focusId);
       const R = minDim / 2 - 56;
@@ -151,19 +164,41 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
 
   return (
     <div className="text-[12px]">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-[11px] text-[#1e2d1f]/45 leading-snug">
-          {expanded ? 'Граф связей. Клик — в текст · колесо/перетаскивание — масштаб.' : `Связи «${byId.get(focusId ?? '')?.name ?? ''}». Разверни панель для полного графа.`}
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <p className="text-[11px] text-[#1e2d1f]/45 leading-snug min-w-0 truncate">
+          {focusId
+            ? <>Связи: <span className="font-medium text-[#1e2d1f]/70">«{byId.get(focusId)?.name ?? ''}»</span> · клик по соседу — шагнуть, по центру — в текст</>
+            : 'Весь граф связей. Клик — в текст · колесо/перетаскивание — масштаб.'}
         </p>
-        <button
-          onClick={() => setShowMinor(v => !v)}
-          className={`flex-shrink-0 text-[10.5px] px-2 py-0.5 rounded-md transition-colors ${
-            showMinor ? 'bg-[#1e2d1f] text-[#f5f0e8]' : 'text-[#1e2d1f]/50 hover:bg-[#1e2d1f]/[0.06]'
-          }`}
-          title="Показывать эпизодические сущности"
-        >
-          + эпизодические
-        </button>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {/* Эго/весь граф — только когда есть место (развёрнуто) */}
+          {expanded && (
+            <div className="flex rounded-md bg-[#1e2d1f]/[0.06] p-0.5">
+              {(['focus', 'full'] as const).map(m => (
+                <button key={m} onClick={() => setGraphMode(m)}
+                  className={`text-[10.5px] px-2 py-0.5 rounded transition-colors ${
+                    graphMode === m ? 'bg-[#1e2d1f] text-[#f5f0e8]' : 'text-[#1e2d1f]/55 hover:text-[#1e2d1f]'
+                  }`}>
+                  {m === 'focus' ? 'Эго-вид' : 'Весь граф'}
+                </button>
+              ))}
+            </div>
+          )}
+          {focusId && focusOverride && focusOverride !== mostConnected && (
+            <button onClick={() => setFocusOverride(null)}
+              className="text-[10.5px] px-2 py-0.5 rounded-md text-[#1e2d1f]/50 hover:bg-[#1e2d1f]/[0.06]"
+              title="Вернуться к самому связному">↺ центр</button>
+          )}
+          <button
+            onClick={() => setShowMinor(v => !v)}
+            className={`text-[10.5px] px-2 py-0.5 rounded-md transition-colors ${
+              showMinor ? 'bg-[#1e2d1f] text-[#f5f0e8]' : 'text-[#1e2d1f]/50 hover:bg-[#1e2d1f]/[0.06]'
+            }`}
+            title="Показывать эпизодические сущности"
+          >
+            + эпизодические
+          </button>
+        </div>
       </div>
 
       <div className="relative rounded-xl bg-white/40 border border-[#1e2d1f]/5 overflow-hidden">
@@ -218,9 +253,14 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
             const pigment = TYPE_PIGMENT[n.type] ?? '#54627F';
             const conflict = contradictions.has(n.id);
             const isFocus = n.id === focusId;
+            const canWalk = !!focusId && n.id !== focusId;
             return (
-              <g key={n.id} style={{ cursor: n.chapterId ? 'pointer' : 'default' }}
-                 onClick={() => { if (moved.current) return; if (n.chapterId) onJumpToChapter(n.chapterId, n.name); }}>
+              <g key={n.id} style={{ cursor: (canWalk || n.chapterId) ? 'pointer' : 'default' }}
+                 onClick={() => {
+                   if (moved.current) return;
+                   if (canWalk) { setFocusOverride(n.id); return; }   // шагнуть к соседу
+                   if (n.chapterId) onJumpToChapter(n.chapterId, n.name); // центр/полный граф → в текст
+                 }}>
                 {conflict && <circle cx={p.x} cy={p.y} r={r + 3} fill="none" stroke="#A14F44" strokeWidth={2} />}
                 <circle cx={p.x} cy={p.y} r={r} fill={pigment} stroke="#f5f0e8" strokeWidth={isFocus ? 3 : 1.5} />
                 <text x={p.x} y={p.y + r + 11} textAnchor="middle" fontSize={10.5} fill="#1e2d1f" fontFamily="Golos Text, system-ui"

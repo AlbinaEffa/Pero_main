@@ -294,6 +294,7 @@ export interface RawContradiction {
  */
 export function buildContradictionPrompt(storyBible: string, chapterTitle: string, plainText: string): string {
   return `Ты — редактор, проверяющий консистентность текста.
+ЯЗЫК: отвечай ИСКЛЮЧИТЕЛЬНО на русском языке (все строковые значения в JSON по-русски).
 
 ${storyBible}
 
@@ -328,6 +329,7 @@ ${plainText.trim()}
  * 4. Explicit exclusion list — background characters, unnamed groups, etc.
  */
 export const BASE_EXTRACTION_PROMPT = `Ты — литературный редактор, составляющий справочник к произведению.
+ЯЗЫК: ВСЕ строковые значения в JSON (имена, описания, pov, chapterSummary, synopsis, relation, события) — ИСКЛЮЧИТЕЛЬНО на русском языке, даже если в тексте встречаются иноязычные слова. Никогда не используй китайский или английский в значениях.
 
 Извлеки из текста главы ТОЛЬКО значимые именованные сущности четырёх категорий:
 

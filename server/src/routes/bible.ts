@@ -12,7 +12,7 @@ import { aiQuota } from '../lib/quota.js';
 import { enqueueJob } from '../jobs/queue.js';
 import {
   isValidUUID, cleanJsonResponse,
-  BASE_EXTRACTION_PROMPT, processExtractionResults, sanitizePov,
+  BASE_EXTRACTION_PROMPT, processExtractionResults, sanitizePov, sanitizeSynopsis, isLowInfoChapterTitle,
   type AiEntity, type AiRelation,
 } from '../lib/extraction.js';
 
@@ -302,7 +302,7 @@ router.post('/extract',
       );
 
       const raw = response.text || '{"entities":[]}';
-      let parsed: { entities: AiEntity[]; relations?: AiRelation[]; chapterSummary?: string; pov?: unknown };
+      let parsed: { entities: AiEntity[]; relations?: AiRelation[]; chapterSummary?: string; pov?: unknown; synopsis?: unknown };
       try {
         parsed = JSON.parse(cleanJsonResponse(raw));
       } catch {
@@ -330,11 +330,13 @@ router.post('/extract',
               lastExtractedAt: new Date(),
               lastExtractedContentHash: contentHash(plainText),
             };
-            if (parsed.chapterSummary && chapterTitle && /^Глава \d+$/.test(chapterTitle.trim())) {
+            if (parsed.chapterSummary && isLowInfoChapterTitle(chapterTitle)) {
               updatePayload.title = parsed.chapterSummary.substring(0, 100);
             }
             const pov = sanitizePov(parsed.pov);
             if (pov) updatePayload.povCharacter = pov;
+            const synopsis = sanitizeSynopsis(parsed.synopsis);
+            if (synopsis) updatePayload.summary = synopsis;
             await db.update(schema.chapters).set(updatePayload).where(eq(schema.chapters.id, chapterId));
           } catch (e) {
             console.warn('[bible:extract] Failed to update chapter metadata:', e);
@@ -446,7 +448,7 @@ router.post('/recheck/chapter/:chapterId',
       );
 
       const raw = response.text || '{"entities":[]}';
-      let parsed: { entities: AiEntity[]; relations?: AiRelation[]; chapterSummary?: string; pov?: unknown };
+      let parsed: { entities: AiEntity[]; relations?: AiRelation[]; chapterSummary?: string; pov?: unknown; synopsis?: unknown };
       try {
         parsed = JSON.parse(cleanJsonResponse(raw));
       } catch {
@@ -580,7 +582,7 @@ router.post('/recheck/batch',
         }
 
         const raw = batchResponse.text || '{"chapters":[]}';
-        let batchParsed: { chapters: { chapterId: string; entities: AiEntity[]; relations?: AiRelation[]; chapterSummary?: string | null; pov?: unknown }[] };
+        let batchParsed: { chapters: { chapterId: string; entities: AiEntity[]; relations?: AiRelation[]; chapterSummary?: string | null; pov?: unknown; synopsis?: unknown }[] };
         try {
           batchParsed = JSON.parse(cleanJsonResponse(raw));
         } catch {
@@ -611,11 +613,13 @@ router.post('/recheck/batch',
               lastExtractedAt: new Date(),
               lastExtractedContentHash: chMeta.hash,
             };
-            if (chResult.chapterSummary && chMeta.title && /^Глава \d+$/.test(chMeta.title.trim())) {
+            if (chResult.chapterSummary && isLowInfoChapterTitle(chMeta.title)) {
               updatePayload.title = chResult.chapterSummary.substring(0, 100);
             }
             const pov = sanitizePov(chResult.pov);
             if (pov) updatePayload.povCharacter = pov;
+            const synopsis = sanitizeSynopsis(chResult.synopsis);
+            if (synopsis) updatePayload.summary = synopsis;
             await db.update(schema.chapters).set(updatePayload).where(eq(schema.chapters.id, chResult.chapterId));
           } catch (e) {
             console.warn('[bible:recheck/batch] Failed to update chapter metadata:', e);

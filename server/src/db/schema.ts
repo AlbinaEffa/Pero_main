@@ -67,6 +67,8 @@ export const chapters = pgTable('chapters', {
    * относится к этому персонажу; местоимения сущностями НЕ становятся.
    */
   povCharacter: text('pov_character'),
+  /** Краткая аннотация главы (1–2 предложения «что произошло»), извлекается ИИ. */
+  summary: text('summary'),
 });
 
 // Permanent Memory Tables

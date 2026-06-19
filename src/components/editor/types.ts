@@ -14,6 +14,8 @@ export type Chapter = {
   lastExtractedAt?: string | null;
   /** Имя персонажа-рассказчика главы (POV). null/undefined — третье лицо или не определён. */
   povCharacter?: string | null;
+  /** Краткая аннотация главы (1–2 предложения «что произошло»), извлекается ИИ. */
+  summary?: string | null;
 };
 
 export type EntitySignificance = 'major' | 'moderate' | 'minor';

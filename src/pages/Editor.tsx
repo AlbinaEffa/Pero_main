@@ -1908,6 +1908,7 @@ export default function Editor() {
             sceneEntities={[...chapterLinkedEntities, ...chapterMentionedEntities]}
             inSceneIds={inSceneIds}
             povCharacter={chapters.find(c => c.id === chapterId)?.povCharacter ?? null}
+            chapterSynopsis={chapters.find(c => c.id === chapterId)?.summary ?? null}
             povOptions={[...new Set(allApprovedEntities.filter(e => e.type === 'character').map(e => e.name.trim()))].sort((a, b) => a.localeCompare(b, 'ru'))}
             onSetPov={async (value) => {
               if (!chapterId) return;

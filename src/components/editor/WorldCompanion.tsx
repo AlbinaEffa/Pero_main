@@ -30,6 +30,8 @@ interface Props {
   povOptions: string[];
   /** Сохранить POV главы (строка-имя или null — убрать). */
   onSetPov: (value: string | null) => void;
+  /** Краткая аннотация текущей главы (что произошло) — null, если ещё нет. */
+  chapterSynopsis: string | null;
   /** Находки Пера в этой главе, ждущие одобрения. */
   findingsHere: Entity[];
   onApproveFinding: (id: string) => void;
@@ -111,7 +113,7 @@ function PovEditor({ value, options, onSet }: { value: string | null; options: s
 export function WorldCompanion({
   collapsed, onToggleCollapse,
   freshness, isExtracting, onRead,
-  sceneEntities, inSceneIds, povCharacter, povOptions, onSetPov,
+  sceneEntities, inSceneIds, povCharacter, povOptions, onSetPov, chapterSynopsis,
   findingsHere, onApproveFinding, onRejectFinding, contradictionIds,
   onOpenEntity, onOpenWorld, mode, onModeChange, chat,
 }: Props) {
@@ -172,6 +174,14 @@ export function WorldCompanion({
 
           {/* POV главы — правится вручную (исправить мис-детект, проставить где пусто) */}
           <PovEditor value={povCharacter} options={povOptions} onSet={onSetPov} />
+
+          {/* Синопсис главы — «что произошло» (извлекается ИИ при чтении) */}
+          {chapterSynopsis && (
+            <div className="rounded-lg bg-[#1e2d1f]/[0.03] px-2.5 py-2">
+              <div className="text-[9.5px] font-semibold uppercase tracking-wider text-[#1e2d1f]/40 mb-1">Синопсис</div>
+              <p className="text-[11.5px] text-[#1e2d1f]/70 leading-snug">{chapterSynopsis}</p>
+            </div>
+          )}
 
           {/* Находки здесь */}
           {findingsHere.length > 0 && (

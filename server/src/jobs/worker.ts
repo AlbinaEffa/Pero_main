@@ -23,6 +23,7 @@ import { pool as sharedPool } from '../db/client.js';
 import { getAIProvider, getEmbeddingProvider, type AIProvider } from '../lib/aiProvider.js';
 import {
   BASE_EXTRACTION_PROMPT, cleanJsonResponse, processExtractionResults, sanitizePov,
+  sanitizeSynopsis, isLowInfoChapterTitle,
   buildStoryBibleContext, buildContradictionPrompt, type RawContradiction,
   type AiEntity, type AiRelation,
 } from '../lib/extraction.js';
@@ -124,16 +125,20 @@ async function handleExtractEntities(
   const raw = response.text ?? '{"entities":[]}';
   const cleaned = cleanJsonResponse(raw);
 
-  let parsed: { entities?: AiEntity[]; relations?: AiRelation[]; pov?: unknown };
+  let parsed: { entities?: AiEntity[]; relations?: AiRelation[]; pov?: unknown; synopsis?: unknown; chapterSummary?: unknown };
   let entities: AiEntity[] = [];
   let relations: AiRelation[] = [];
   let pov: string | null = null;
+  let synopsis: string | null = null;
+  let chapterSummary: string | null = null;
   try {
     parsed = JSON.parse(cleaned);
     // Handle both array format (legacy) and new object format
     entities = Array.isArray(parsed) ? parsed : (parsed.entities ?? []);
     relations = Array.isArray(parsed) ? [] : (parsed.relations ?? []);
     pov = Array.isArray(parsed) ? null : sanitizePov(parsed.pov);
+    synopsis = Array.isArray(parsed) ? null : sanitizeSynopsis(parsed.synopsis);
+    chapterSummary = Array.isArray(parsed) ? null : (typeof parsed.chapterSummary === 'string' ? parsed.chapterSummary.trim() : null);
   } catch {
     // Malformed JSON from model — permanent failure, retrying won't help
     throw new WorkerHandlerError(
@@ -159,9 +164,15 @@ async function handleExtractEntities(
     entities, relations, projectId, payload.chapterId, chapterTitle, plainText,
   );
 
-  // Отметить главу как проанализированную — freshness для редактора (+ POV-рассказчик)
+  // Отметить главу как проанализированную (+ POV, синопсис, и имя главы, если было «сырым»).
+  const chapterUpdate: Record<string, unknown> = { lastExtractedAt: new Date() };
+  if (pov) chapterUpdate.povCharacter = pov;
+  if (synopsis) chapterUpdate.summary = synopsis;
+  if (chapterSummary && isLowInfoChapterTitle(chapterTitle)) {
+    chapterUpdate.title = chapterSummary.slice(0, 100);
+  }
   await db.update(schema.chapters)
-    .set({ lastExtractedAt: new Date(), ...(pov ? { povCharacter: pov } : {}) })
+    .set(chapterUpdate)
     .where(eq(schema.chapters.id, payload.chapterId));
 }
 

@@ -1,5 +1,5 @@
 /**
- * Общий конвейер AI-извлечения сущностей Библии истории.
+ * Общий конвейер AI-извлечения сущностей Мира (в UI «Мир»; в индустрии — «библия истории»).
  *
  * Используется ДВУМЯ потребителями:
  *   - server/src/routes/bible.ts  — интерактивное извлечение/перепроверка из редактора
@@ -47,6 +47,72 @@ export function cleanJsonResponse(raw: string): string {
     .trim();
 }
 
+/**
+ * JSON Schema извлечения сущностей — для структурированного вывода ЛОКАЛЬНЫХ моделей
+ * (Ollama). Передаётся в generate({ responseSchema }); слабые модели без неё уходят в
+ * прозу/пустышку, а со схемой обязаны заполнить структуру. Облачные провайдеры (Kimi)
+ * схему игнорируют (см. OpenAICompatProvider.isLocal). Форма совпадает с BASE_EXTRACTION_PROMPT.
+ */
+export const EXTRACTION_SCHEMA: Record<string, unknown> = {
+  type: 'object',
+  properties: {
+    entities: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          type: { type: 'string', enum: ['character', 'location', 'item', 'rule'] },
+          name: { type: 'string', description: 'Имя/название ТОЛЬКО на русском языке кириллицей, как в тексте (например «Риз», а не «Riz»). Никакой латиницы и транслитерации.' },
+          description: { type: 'string', description: 'Описание на русском языке.' },
+          significance: { type: 'string', enum: ['major', 'moderate', 'minor'] },
+          attributes: {
+            type: 'object',
+            properties: {
+              aliases: { type: 'array', items: { type: 'string' } },
+              appearance: { type: 'string' }, personality: { type: 'string' },
+              role: { type: 'string' }, background: { type: 'string' },
+              motivations: { type: 'string' }, speech: { type: 'string' },
+              secrets: { type: 'string' }, plotRelevance: { type: 'string' },
+              region: { type: 'string' }, physicalDetails: { type: 'string' }, mood: { type: 'string' },
+              properties: { type: 'string' }, origin: { type: 'string' }, owner: { type: 'string' },
+              scope: { type: 'string' }, exceptions: { type: 'string' },
+            },
+          },
+          events: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                title: { type: 'string' },
+                description: { type: 'string' },
+                eventType: { type: 'string', enum: ['conflict', 'relationship', 'status', 'revelation', 'other'] },
+                timeLabel: { type: 'string' },
+                timeHint: { type: 'string', enum: ['present', 'flashback', 'past', 'future'] },
+              },
+              required: ['title', 'description', 'eventType'],
+            },
+          },
+        },
+        required: ['type', 'name', 'description'],
+      },
+    },
+    relations: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          from: { type: 'string' }, to: { type: 'string' }, relation: { type: 'string' },
+        },
+        required: ['from', 'to', 'relation'],
+      },
+    },
+    pov: { type: 'string' },
+    synopsis: { type: 'string' },
+    chapterSummary: { type: 'string' },
+  },
+  required: ['entities'],
+};
+
 // ── Meta-entity filter ─────────────────────────────────────────────────────────
 // Модель иногда возвращает не реальную сущность, а служебную/шаблонную строку:
 // эхо названий полей промпта («Каноническое имя», «Название», «Имя персонажа»)
@@ -63,6 +129,65 @@ function normalizeMeta(s: string | null | undefined): string {
     .trim();
 }
 
+/**
+ * Нормализация русского написания имени для авто-дедупа на входе: е/э/ё→е, и/й→и, ъ→ь.
+ * Консервативно (только варианты буквы, не склонения/опечатки) — потому что резолвер сливает
+ * ТИХО, без ревью автора. Склонения и edit-distance оставлены детектору в UI (с подтверждением).
+ */
+export function normalizeNameRu(s: string | null | undefined): string {
+  return (s ?? '').trim().toLowerCase()
+    .replace(/[ёэ]/g, 'е')
+    .replace(/й/g, 'и')
+    .replace(/ъ/g, 'ь')
+    .replace(/\s+/g, ' ');
+}
+
+/** Расстояние Левенштейна (для фаззи-детекта вариантов/опечаток имён). */
+function editDistanceRu(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  if (Math.abs(m - n) > 2) return 99;
+  const dp = Array.from({ length: m + 1 }, (_, i) => i);
+  for (let j = 1; j <= n; j++) {
+    let prev = dp[0]; dp[0] = j;
+    for (let i = 1; i <= m; i++) {
+      const tmp = dp[i];
+      dp[i] = a[i - 1] === b[j - 1] ? prev : 1 + Math.min(prev, dp[i], dp[i - 1]);
+      prev = tmp;
+    }
+  }
+  return dp[m];
+}
+
+/**
+ * Фаззи-поиск ОДНОЗНАЧНО похожего approved-имени (опечатка/склонение/вариант), которого
+ * авто-резолвер НЕ сливает молча (он берёт только точное норм-совпадение е/э). Здесь — мягче:
+ * нормализованный edit-distance ≤1 на достаточно длинных именах, тип совпадает, кандидат
+ * РОВНО один (иначе неоднозначно — не подсказываем). Возвращает {id,name} или null.
+ * Используется, чтобы пометить новую находку «похоже на „X“» для ревью автора (НЕ молчком).
+ */
+export function findLikelyDuplicate(
+  name: string,
+  type: string,
+  approved: { id: string; name: string; type: string; attributes: unknown }[],
+): { id: string; name: string } | null {
+  const nn = normalizeNameRu(name);
+  if (nn.length < 4) return null;
+  let match: { id: string; name: string } | null = null;
+  let count = 0;
+  for (const e of approved) {
+    if (e.type !== type) continue;
+    let hit = false;
+    for (const cand of [e.name, ...aliasesOf(e.attributes)]) {
+      const nc = normalizeNameRu(cand);
+      if (nc.length < 4) continue;
+      if (nc === nn) return null;                          // точное норм-совпадение — это уже авто-резолвер
+      if (Math.abs(nc.length - nn.length) <= 1 && editDistanceRu(nc, nn) <= 1) { hit = true; break; }
+    }
+    if (hit) { match = { id: e.id, name: e.name }; count++; }
+  }
+  return count === 1 ? match : null;                       // только однозначный кандидат
+}
+
 /** Имена, которые являются эхом названий полей промпта, а не настоящими именами. */
 const META_ENTITY_NAMES = new Set([
   'каноническое имя',
@@ -72,6 +197,7 @@ const META_ENTITY_NAMES = new Set([
   'имя из списка или новое',
   'имя сущности',
   'имя сущности из библии',
+  'имя сущности из мира',
   'имя',
   'название',
   'название локации',
@@ -297,7 +423,7 @@ export function buildStoryBibleContext(
   }
 
   return parts.length
-    ? `=== БИБЛИЯ ИСТОРИИ (установленные факты) ===\n${parts.join('\n\n')}`
+    ? `=== МИР (установленные факты — то, что Перо уже знает о книге) ===\n${parts.join('\n\n')}`
     : '';
 }
 
@@ -307,38 +433,290 @@ export interface RawContradiction {
   entity: string;
   issue: string;
   severity: string;
-  /** Точная фраза из текста главы, которая противоречит Библии (для подсветки в тексте). */
+  /** Точная фраза из текста главы, которая противоречит Миру (для подсветки в тексте). */
   quote?: string;
+  /** Конкретный установленный факт (из Мира/др. глав), которому фраза противоречит — двойная цитата. */
+  canon?: string;
 }
 
 /**
- * Промпт проверки одной главы на противоречия с библией.
+ * Промпт проверки одной главы на противоречия с Миром.
  * Тот же критерий, что и в интерактивной /ai/consistency — только факты,
  * не стиль и не сюжет. Используется фоновой джобой scan_contradictions.
  */
-export function buildContradictionPrompt(storyBible: string, chapterTitle: string, plainText: string): string {
+export function buildContradictionPrompt(storyBible: string, chapterTitle: string, plainText: string, relatedPassages: string[] = []): string {
+  const relatedBlock = relatedPassages.length
+    ? `\n=== РЕЛЕВАНТНЫЕ МЕСТА ИЗ ДРУГИХ ГЛАВ (семантически близкие — сверь факты по всей книге;
+фрагменты с пометкой «[Из книги «…»]» — канон ПРЕДЫДУЩИХ книг серии: новый текст не должен им противоречить) ===
+${relatedPassages.map((p, i) => `[${i + 1}] ${p}`).join('\n\n')}
+`
+    : '';
   return `Ты — редактор, проверяющий консистентность текста.
 ЯЗЫК: отвечай ИСКЛЮЧИТЕЛЬНО на русском языке (все строковые значения в JSON по-русски).
 
 ${storyBible}
-
+${relatedBlock}
 === ТЕКСТ ГЛАВЫ: «${chapterTitle}» ===
 <chapter_content>
 ${plainText.trim()}
 </chapter_content>
 
-=== ЗАДАЧА ===
-Найди ТОЛЬКО фактические противоречия между текстом главы и Библией истории.
-Ищи: несоответствия в описании персонажей, локаций, предметов; нарушение правил мира;
-конфликты с уже установленными фактами и связями.
-НЕ комментируй стиль, орфографию, сюжетные решения или то, чего нет в Библии.
-Если противоречий нет — верни пустой массив.
+=== ЧТО СЧИТАЕТСЯ НЕСТЫКОВКОЙ ===
+Нестыковка — когда текст ЭТОЙ главы ПРЯМО противоречит ТВЁРДО УСТАНОВЛЕННОМУ факту (из Мира выше
+ИЛИ из приведённых мест других глав/книг). Твёрдый факт — то, что НЕ меняется по сюжету:
+• неизменные приметы (цвет глаз/волос, рост, шрамы, раса/вид);
+• родство и установленные связи (мать/брат/…);
+• статус жив/мёртв — ТОЛЬКО если в тексте НЕТ причины смены (воскрешение, инсценировка и т.п.);
+• правила мира; имена.
+Нестыковка существует, ТОЛЬКО если можешь назвать ОБА: фразу этой главы И КОНКРЕТНЫЙ
+противоречащий установленный факт. Не можешь указать конкретный факт — это НЕ нестыковка.
+
+=== ЧТО НЕ НЕСТЫКОВКА (НЕ сообщай!) ===
+• «В Мире не упоминается / нет X» — это ДОПОЛНЕНИЕ, а не конфликт. Новые детали о герое — норма.
+• Развитие и РАСКРЫТИЕ: герой сменил роль/сторону/мораль; «казался врагом — оказался союзником»
+  (двойной агент); перемена характера, рост. Это сюжет, НЕ ошибка.
+• Перемещения: герой в разных местах в РАЗНОЕ время — норма, он передвигается.
+• Нереальные рамки: сон, видение, ложь, гипотеза, флешбэк, мысли, метафора, ненадёжный рассказчик —
+  сказанное ВНУТРИ них НЕ становится фактом. «Приснилось, что он умер» → он НЕ мёртв.
+• Догадки и интерпретации («может подразумевать», «вероятно», «возможно») — не сообщай.
+Точность важнее полноты: если сомневаешься — НЕ сообщай. Пустой массив [] — нормальный, частый ответ.
+В тексте называй хранилище фактов только «Мир», НЕ «библия истории».
 
 Верни ТОЛЬКО валидный JSON-массив без markdown-обёртки:
 [
-  { "entity": "Имя сущности из Библии", "issue": "Краткое описание противоречия", "severity": "low|medium|high",
-    "quote": "точная фраза из текста главы (дословно, как в тексте), которая противоречит Библии — для подсветки" }
+  { "entity": "Имя сущности из Мира", "issue": "В чём именно конфликт (кратко)", "severity": "low|medium|high",
+    "quote": "точная фраза ИЗ ЭТОЙ ГЛАВЫ (дословно) — для подсветки",
+    "canon": "конкретный установленный факт (из Мира/других глав), которому фраза противоречит" }
 ]`;
+}
+
+/**
+ * Промпт извлечения сюжетных линий (столб «Сюжет» → «Линии»).
+ * Работает по СИНОПСИСАМ глав (не по полному тексту) — линии это макро-уровень,
+ * этого достаточно и дёшево. Возвращает линии с номерами глав (1-based по порядку).
+ */
+export function buildThreadsPrompt(chapterDigest: string): string {
+  return `Ты — редактор по структуре. Перед тобой синопсисы глав книги по порядку.
+ЯЗЫК: отвечай ИСКЛЮЧИТЕЛЬНО на русском (все строки в JSON по-русски).
+
+=== СИНОПСИСЫ ГЛАВ (по порядку) ===
+${chapterDigest}
+
+=== ЗАДАЧА ===
+Выдели СКВОЗНЫЕ сюжетные линии книги — то, что тянется через несколько глав.
+Дай НЕ БОЛЬШЕ 12 линий, по убыванию важности. КЛЕЙ родственные эпизоды в ОДНУ линию
+(одна цель/конфликт/тайна = одна линия, а не отдельная линия на каждую главу).
+Бери только линии на уровне ≥3 глав. Исключение — явное «обещание»/«ружьё Чехова»,
+введённое в одной главе, но требующее развязки. Разовые эпизоды игнорируй.
+
+ВИД линии (kind) выбирай строго по смыслу:
+- "main" — ТОЛЬКО 1–2 ЦЕНТРАЛЬНЫЕ линии всей книги (главный сквозной конфликт/квест, который
+  движет сюжетом от начала до конца). Если сомневаешься — это НЕ main.
+- "relationship" — романтическая или ключевая межличностная линия (влюблённость, вражда, союз).
+- "mystery" — тайна/загадка, которую предстоит разгадать.
+- "promise" — обещание читателю / незакрытое «ружьё Чехова» (намёк, который должен выстрелить).
+- "subplot" — всё остальное: второстепенные линии, цели второстепенных героев.
+По умолчанию ставь "subplot". "main" — большая редкость (максимум 2 на всю книгу).
+
+Для каждой линии: где ВВЕДЕНА, в каких главах развивается, РАЗРЕШЕНА ли к концу доступных глав
+(выстрелило ли «ружьё»). Незакрытая линия — норма, если книга не дописана, но отметь её.
+
+Верни ТОЛЬКО валидный JSON-массив без markdown, по убыванию важности:
+[
+  {
+    "title": "Краткое имя линии",
+    "summary": "1–2 предложения: в чём линия",
+    "kind": "main|subplot|mystery|promise|relationship",
+    "resolved": true|false,
+    "introChapter": <номер главы, где введена>,
+    "lastChapter": <номер последней главы, где упоминается>,
+    "chapters": [<номера глав, где фигурирует>],
+    "characters": [<имена ключевых героев этой линии>]
+  }
+]
+
+ВСЕ строковые значения (title, summary) — строго на русском языке. Без китайских иероглифов, корейского хангыля и латиницы.`;
+}
+
+// ── Бит-шаблоны (линза «Канва») ─────────────────────────────────────────────
+// pct = целевая позиция бита в книге (% объёма). Russian labels.
+export type BeatDef = { key: string; label: string; pct: number };
+export const BEAT_TEMPLATES: Record<string, { name: string; beats: BeatDef[] }> = {
+  romancing_the_beat: {
+    name: 'Романс-бит',
+    beats: [
+      { key: 'meet',         label: 'Встреча',                  pct: 5 },
+      { key: 'no_way',       label: '«Ни за что»',              pct: 12 },
+      { key: 'adhesion',     label: 'Сцепление (близость)',     pct: 20 },
+      { key: 'maybe',        label: '«А вдруг получится»',      pct: 35 },
+      { key: 'midpoint',     label: 'Пик влюблённости',         pct: 50 },
+      { key: 'doubt',        label: 'Сомнение · щиты вверх',    pct: 62 },
+      { key: 'breakup',      label: 'Разрыв',                   pct: 75 },
+      { key: 'dark_night',   label: 'Тёмная ночь души',         pct: 82 },
+      { key: 'grand_gesture',label: 'Большой жест',             pct: 92 },
+      { key: 'hea',          label: 'Счастливый финал (HEA)',   pct: 99 },
+    ],
+  },
+  save_the_cat: {
+    name: 'Save the Cat',
+    beats: [
+      { key: 'opening',     label: 'Открывающий образ',     pct: 1 },
+      { key: 'theme',       label: 'Заявка темы',           pct: 5 },
+      { key: 'setup',       label: 'Завязка',               pct: 10 },
+      { key: 'catalyst',    label: 'Катализатор',           pct: 12 },
+      { key: 'debate',      label: 'Спор',                  pct: 18 },
+      { key: 'break_two',   label: 'Переход во 2 акт',      pct: 20 },
+      { key: 'b_story',     label: 'Линия B',               pct: 22 },
+      { key: 'fun_games',   label: 'Игры и забавы',         pct: 35 },
+      { key: 'midpoint',    label: 'Мидпоинт',              pct: 50 },
+      { key: 'bad_close',   label: 'Враги наступают',       pct: 62 },
+      { key: 'all_lost',    label: 'Всё пропало',           pct: 75 },
+      { key: 'dark_night',  label: 'Тёмная ночь души',      pct: 78 },
+      { key: 'break_three', label: 'Переход в 3 акт',       pct: 80 },
+      { key: 'finale',      label: 'Финал',                 pct: 90 },
+      { key: 'final_image', label: 'Финальный образ',       pct: 99 },
+    ],
+  },
+  three_act: {
+    name: 'Три акта',
+    beats: [
+      { key: 'opening',   label: 'Открытие',             pct: 1 },
+      { key: 'plot1',     label: 'Завязка (конец 1 акта)', pct: 25 },
+      { key: 'midpoint',  label: 'Мидпоинт',             pct: 50 },
+      { key: 'plot2',     label: 'Кризис (конец 2 акта)', pct: 75 },
+      { key: 'climax',    label: 'Кульминация',          pct: 90 },
+      { key: 'ending',    label: 'Развязка',             pct: 99 },
+    ],
+  },
+};
+
+/**
+ * Промпт реверс-детекта битов: по синопсисам глав ИИ сопоставляет каждый бит
+ * шаблона с номером главы, которая его отыгрывает (или null, если ещё не написан).
+ */
+export function buildBeatmapPrompt(beats: BeatDef[], chapterDigest: string): string {
+  const list = beats.map(b => `- ${b.key}: «${b.label}» (≈${b.pct}% книги)`).join('\n');
+  return `Ты — редактор по структуре. По синопсисам глав определи, какая глава отыгрывает каждый
+структурный бит из шаблона. ЯЗЫК: русский (все строки в JSON по-русски).
+
+=== БИТЫ ШАБЛОНА ===
+${list}
+
+=== СИНОПСИСЫ ГЛАВ (по порядку) ===
+${chapterDigest}
+
+=== ЗАДАЧА ===
+Для КАЖДОГО бита укажи номер главы, которая лучше всего его отыгрывает по СМЫСЛУ события.
+Правила:
+- Биты идут по порядку структуры. Номера глав должны в целом ВОЗРАСТАТЬ вниз по списку:
+  бит, который по структуре позже, НЕ может лежать в главе раньше предыдущего бита.
+- Одна глава отыгрывает максимум ОДИН бит (не вешай несколько битов на одну главу).
+- Лучше chapter: null, чем натянутая привязка. Если события бита в книге ещё нет — null.
+- note: коротко (до 8 слов), какое именно событие отыгрывает бит.
+Не выдумывай — опирайся только на синопсисы.
+
+Верни ТОЛЬКО валидный JSON-массив без markdown, в порядке битов шаблона:
+[ { "key": "<ключ бита>", "chapter": <номер главы или null>, "note": "коротко, почему" } ]
+
+Все строки note — строго на русском языке. Без китайских иероглифов, корейского хангыля и латиницы.`;
+}
+
+/**
+ * Промпт извлечения арок персонажей (линза «Арки»): Want/Need/Ghost/Lie/Truth.
+ * По именам+описаниям главных героев и синопсисам глав ИИ выводит внутреннюю арку.
+ */
+export function buildArcsPrompt(characters: string, chapterDigest: string): string {
+  return `Ты — редактор по аркам персонажей. Выведи внутреннюю арку для каждого героя.
+ЯЗЫК: русский (все строки в JSON по-русски).
+
+=== ГЛАВНЫЕ ГЕРОИ ===
+${characters}
+
+=== СИНОПСИСЫ ГЛАВ (по порядку) ===
+${chapterDigest}
+
+=== ЗАДАЧА ===
+Для каждого героя определи классические грани арки:
+- want: внешняя ЦЕЛЬ (чего герой осознанно добивается).
+- need: внутренняя ПОТРЕБНОСТЬ (что ему на самом деле нужно для роста).
+- ghost: ТРАВМА прошлого, которая его сформировала.
+- lie: ЛОЖНОЕ убеждение о себе/мире, в которое он верит.
+- truth: ИСТИНА, которую он принимает к кульминации (если ещё не принял — null).
+Правила:
+- КОНКРЕТНО по событиям из синопсисов, с именами и деталями этого героя — НЕ общими словами
+  («найти своё место», «принять себя» без привязки — плохо; «простить сестру за предательство» — хорошо).
+- Если грань не выводится из синопсисов — ставь null, НЕ выдумывай.
+- want и need должны РАЗЛИЧАТЬСЯ (внешнее vs внутреннее). Кратко, 1 фразой на грань.
+
+Верни ТОЛЬКО валидный JSON-массив без markdown:
+[ { "name": "<имя героя как в списке>", "want": "…", "need": "…", "ghost": "…", "lie": "…", "truth": "…|null" } ]
+
+ВСЕ строковые значения — строго на русском языке. Без китайских иероглифов, корейского хангыля и латиницы.`;
+}
+
+/**
+ * «Доставил задуманное?» (P2) — сверка АВТОРСКОГО плана с тем, что реально в прозе.
+ * Каждый план-элемент (нить/арка/бит) судится по синопсисам: отыгран / частично / провисает.
+ * Дёшево — 1 ИИ-вызов по синопсисам, не по полному тексту.
+ */
+export function buildDeliveryPrompt(planItems: string, chapterDigest: string): string {
+  return `Ты — редактор-аналитик. Автор заранее ЗАПЛАНИРОВАЛ элементы истории (сюжетные линии, арки героев, биты).
+Твоя задача — по СИНОПСИСАМ глав честно оценить, отыгран ли каждый замысел в УЖЕ НАПИСАННОМ тексте.
+ЯЗЫК: русский (все строки в JSON по-русски).
+
+=== ЗАПЛАНИРОВАННЫЕ ЭЛЕМЕНТЫ (каждый со своим ref) ===
+${planItems}
+
+=== СИНОПСИСЫ НАПИСАННЫХ ГЛАВ (по порядку) ===
+${chapterDigest}
+
+=== ЗАДАЧА ===
+Для КАЖДОГО элемента по его ref определи статус доставки в прозе:
+- "delivered" — замысел явно отыгран в синопсисах (есть события/сцены, реализующие его).
+- "partial" — намечен, но не доведён (есть начало/упоминание, но не раскрыт/не закрыт).
+- "missing" — в написанных главах не видно (ещё не отыгран или забыт).
+Правила:
+- Суди ТОЛЬКО по синопсисам. Чего нет в синопсисах — того в прозе нет (статус "partial"/"missing").
+- reason — 1 короткая фраза с КОНКРЕТИКОЙ (что именно отыграно/чего не хватает), со ссылкой на события.
+- chapter — номер главы (из списка синопсисов), где элемент сильнее всего проявлен; если нет — null.
+- НЕ выдумывай отыгрыш, которого нет в синопсисах. Сомневаешься между delivered/partial — ставь "partial".
+
+Верни ТОЛЬКО валидный JSON-массив без markdown:
+[ { "ref": "<ref как в списке>", "status": "delivered|partial|missing", "reason": "…", "chapter": <номер|null> } ]
+
+ВСЕ строковые значения — строго на русском языке. Без китайских иероглифов, корейского хангыля и латиницы.`;
+}
+
+/**
+ * Рентген нитей франшизы (P1, серия) — статус каждой сквозной нити по НАПИСАННЫМ книгам.
+ * Перо читает синопсисы книг серии и судит: провисает / в работе / отыграна. 1 ИИ-вызов.
+ */
+export function buildFranchiseXrayPrompt(threadList: string, booksDigest: string): string {
+  return `Ты — редактор серии книг. Автор задумал сквозные нити франшизы (линии, тянущиеся через книги).
+Твоя задача — по СИНОПСИСАМ написанных книг честно оценить статус каждой нити в реальном тексте.
+ЯЗЫК: русский (все строки в JSON по-русски).
+
+=== НИТИ ФРАНШИЗЫ (каждая со своим ref; «откр.» — книга-завязка, «закр.» — книга-развязка по плану) ===
+${threadList}
+
+=== СИНОПСИСЫ НАПИСАННЫХ КНИГ СЕРИИ (по порядку) ===
+${booksDigest}
+
+=== ЗАДАЧА ===
+Для КАЖДОЙ нити по её ref определи статус по написанному:
+- "resolved" — нить заведена И разрешена в книгах (особенно если книга-развязка достигнута и линия закрыта).
+- "active" — нить заведена и развивается, но ещё не закрыта (в работе).
+- "dangling" — нить запланирована, но в синопсисах книг следа нет (провисает / забыта / ещё не введена).
+Правила:
+- Суди ТОЛЬКО по синопсисам книг. Чего нет в синопсисах — того в прозе нет ("dangling").
+- note — 1 короткая фраза с КОНКРЕТИКОЙ (где заведена/как развивается/чего не хватает для развязки).
+- lastBook — номер книги, где нить проявлена сильнее всего; если следа нет — null.
+- Сомневаешься между resolved/active — ставь "active". Не выдумывай отыгрыш, которого нет в синопсисах.
+
+Верни ТОЛЬКО валидный JSON-массив без markdown:
+[ { "ref": "<ref как в списке>", "status": "resolved|active|dangling", "note": "…", "lastBook": <номер|null> } ]
+
+ВСЕ строковые значения — строго на русском языке. Без китайских иероглифов, корейского хангыля и латиницы.`;
 }
 
 // ── AI prompt ─────────────────────────────────────────────────────────────────
@@ -557,6 +935,7 @@ export async function processExtractionResults(
     .select({
       id:           schema.storyEntities.id,
       name:         schema.storyEntities.name,
+      type:         schema.storyEntities.type,
       status:       schema.storyEntities.status,
       description:  schema.storyEntities.description,
       significance: schema.storyEntities.significance,
@@ -586,6 +965,20 @@ export async function processExtractionResults(
       if (e.status === 'approved' && !approvedMap.has(k)) approvedMap.set(k, e);
     }
   }
+  // Нормализованная карта (по типу) для авто-дедупа вариантов написания: «Ласэн» → «Ласен».
+  // Ключ `${type}|${normalizeNameRu}`. Только approved + их алиасы.
+  const approvedNorm = new Map<string, typeof existingEntities[number]>();
+  for (const e of existingEntities) {
+    if (e.status !== 'approved') continue;
+    for (const nm of [e.name, ...aliasesOf(e.attributes)]) {
+      const nk = `${e.type}|${normalizeNameRu(nm)}`;
+      if (normalizeNameRu(nm) && !approvedNorm.has(nk)) approvedNorm.set(nk, e);
+    }
+  }
+  // Список approved для фаззи-подсказки «похоже на X» (опечатки/склонения, что резолвер не слил).
+  const approvedList = existingEntities.filter(e => e.status === 'approved')
+    .map(e => ({ id: e.id, name: e.name, type: e.type, attributes: e.attributes }));
+
   const newSuggestions: (typeof schema.storyEntities.$inferSelect)[] = [];
   const updateSuggestions: (typeof schema.bibleUpdateSuggestions.$inferSelect)[] = [];
   const safeChapterId = (chapterId && isValidUUID(chapterId)) ? chapterId : null;
@@ -593,13 +986,36 @@ export async function processExtractionResults(
   for (const entity of entities) {
     if (!entity.name?.trim()) continue;
     const key = entity.name.trim().toLowerCase();
-    const existing = approvedMap.get(key);
+    let existing = approvedMap.get(key);
+
+    // Авто-дедуп вариантов написания (Ласэн→Ласен): если точного совпадения нет, но есть
+    // approved-сущность с тем же нормализованным именем — это она. Записываем вариант алиасом.
+    if (!existing) {
+      const fuzzy = approvedNorm.get(`${entity.type || 'character'}|${normalizeNameRu(entity.name)}`);
+      if (fuzzy && fuzzy.name.trim().toLowerCase() !== key) {
+        existing = fuzzy;
+        nameToId.set(key, fuzzy.id);                     // резолвить связи/события на выжившего
+        const aliases = aliasesOf(fuzzy.attributes);
+        if (!aliases.some(a => a.trim().toLowerCase() === key)) {
+          const attrs = { ...((fuzzy.attributes as Record<string, unknown>) ?? {}), aliases: [...aliases, entity.name.trim()] };
+          await db.update(schema.storyEntities).set({ attributes: attrs }).where(eq(schema.storyEntities.id, fuzzy.id));
+          (fuzzy as { attributes: unknown }).attributes = attrs; // освежить in-memory для пути обогащения
+        }
+      }
+    }
 
     if (!existing) {
       if (nameToId.has(key)) continue; // already pending from an earlier extraction — don't duplicate
       const validSignificance = ['major', 'moderate', 'minor'].includes(entity.significance ?? '')
         ? entity.significance!
         : null;
+      // Похоже на существующего (опечатка/склонение)? Помечаем находку, чтобы автор в инбоксе
+      // мог объединить одним кликом, а не плодить дубль. Молча НЕ сливаем — это неточный матч.
+      const dupHint = findLikelyDuplicate(entity.name, entity.type || 'character', approvedList);
+      const baseAttrs = (entity.attributes ?? null) as Record<string, unknown> | null;
+      const attrsWithHint = dupHint
+        ? { ...(baseAttrs ?? {}), _dupHint: { id: dupHint.id, name: dupHint.name } }
+        : baseAttrs;
       const [inserted] = await db.insert(schema.storyEntities).values({
         projectId,
         chapterId: safeChapterId,
@@ -608,7 +1024,7 @@ export async function processExtractionResults(
         description: entity.description || '',
         status: 'pending',
         significance: validSignificance,
-        attributes: entity.attributes ?? null,
+        attributes: attrsWithHint,
       }).returning();
       newSuggestions.push(inserted);
       nameToId.set(key, inserted.id);

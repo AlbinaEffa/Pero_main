@@ -4,6 +4,7 @@ import * as schema from '../db/schema.js';
 import { db } from '../db/client.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { stripHtml, wordCount } from '../lib/html.js';
+import { scheduleChapterEmbed } from '../jobs/queue.js';
 
 const router = express.Router();
 
@@ -85,6 +86,15 @@ router.put('/:id', authenticateToken, async (req: any, res) => {
       .where(eq(schema.chapters.id, id))
       .returning();
 
+    // Изменился текст → планируем переэмбеддинг (дедуп + задержка). Durable-гарантия:
+    // вектор обновится даже если вкладку закрыть до срабатывания фронт-таймера.
+    // Fire-and-forget — не задерживаем ответ автосейва и не валим его при сбое очереди.
+    if (contentChanged) {
+      scheduleChapterEmbed(id, row.chapter.projectId, req.user.userId).catch(e =>
+        console.warn('scheduleChapterEmbed failed:', e?.message ?? e),
+      );
+    }
+
     res.json({ chapter: updated[0] });
   } catch (error) {
     console.error('Error saving chapter:', error);
@@ -97,7 +107,7 @@ router.put('/:id', authenticateToken, async (req: any, res) => {
 router.patch('/:id', authenticateToken, async (req: any, res) => {
   try {
     const { id } = req.params;
-    const { title, status, order, povCharacter } = req.body;
+    const { title, status, order, povCharacter, chapterType, plan } = req.body;
 
     const row = await getChapterForUser(id, req.user.userId);
     if (!row) {
@@ -109,6 +119,8 @@ router.patch('/:id', authenticateToken, async (req: any, res) => {
       status?: string;
       order?: number;
       povCharacter?: string | null;
+      chapterType?: string;
+      plan?: string | null;
       updatedAt: Date;
     } = { updatedAt: new Date() };
 
@@ -124,6 +136,12 @@ router.patch('/:id', authenticateToken, async (req: any, res) => {
         ? povCharacter.trim().slice(0, 80)
         : null;
     }
+    // Тип главы — авторская правка (например, пометить эпилогом).
+    if (chapterType !== undefined && ['chapter', 'prologue', 'epilogue', 'part', 'interlude', 'acknowledgments', 'dedication', 'foreword', 'afterword'].includes(chapterType)) {
+      patch.chapterType = chapterType;
+    }
+    // Авторский план главы (режим архитектора): строка или null.
+    if (plan !== undefined) patch.plan = typeof plan === 'string' && plan.trim() ? plan.trim().slice(0, 2000) : null;
 
     if (Object.keys(patch).length === 1) {
       return res.status(400).json({ error: 'No valid fields to update' });

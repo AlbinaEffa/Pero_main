@@ -171,11 +171,13 @@ router.patch('/:id', authenticateToken, async (req: any, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    const { title, genre, color, status } = req.body;
+    const { title, genre, color, status, logline, premise } = req.body;
 
     const patch: {
       title?: string;
       genre?: string | null;
+      logline?: string | null;
+      premise?: string | null;
       color?: string;
       status?: string;
       updatedAt: Date;
@@ -186,6 +188,8 @@ router.patch('/:id', authenticateToken, async (req: any, res) => {
       patch.title = title.trim();
     }
     if (genre !== undefined) patch.genre = genre || null;
+    if (logline !== undefined) patch.logline = (logline ?? '').trim() || null;
+    if (premise !== undefined) patch.premise = (premise ?? '').trim() || null;
     if (color !== undefined) patch.color = color;
     if (status !== undefined) patch.status = status;
 
@@ -255,12 +259,15 @@ router.get('/:id/chapters', authenticateToken, async (req: any, res) => {
 router.post('/:id/chapters', authenticateToken, async (req: any, res) => {
   try {
     const { id } = req.params;
-    const { title } = req.body;
+    const { title, chapterType } = req.body;
 
     const owned = await assertOwnership(id, req.user.userId);
     if (!owned) {
       return res.status(403).json({ error: 'Access denied' });
     }
+
+    const ALLOWED_TYPES = ['chapter', 'prologue', 'epilogue', 'part', 'interlude', 'acknowledgments', 'dedication', 'foreword', 'afterword'];
+    const type = ALLOWED_TYPES.includes(chapterType) ? chapterType : 'chapter';
 
     // Set order = current chapter count so the new chapter goes to end
     const [{ count }] = await db
@@ -275,6 +282,7 @@ router.post('/:id/chapters', authenticateToken, async (req: any, res) => {
         title: title || 'Новая глава',
         content: '',
         order: count,
+        chapterType: type,
       })
       .returning();
 

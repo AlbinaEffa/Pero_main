@@ -1,6 +1,8 @@
 // auth.ts is imported first — its dotenv.config() runs before other routes create their Pool instances
 import authRoutes from './routes/auth.js';
 import projectsRoutes from './routes/projects.js';
+import shareRoutes from './routes/share.js';
+import seriesRoutes from './routes/series.js';
 import chaptersRoutes from './routes/chapters.js';
 import aiRoutes from './routes/ai.js';
 import bibleRoutes from './routes/bible.js';
@@ -9,6 +11,9 @@ import embedRoutes from './routes/embed.js';
 import revisionRoutes from './routes/revision.js';
 import jobsRoutes from './routes/jobs.js';
 import feedbackRoutes from './routes/feedback.js';
+import notesRoutes from './routes/notes.js';
+import commentsRoutes from './routes/comments.js';
+import plotRoutes from './routes/plot.js';
 import adminRoutes from './routes/admin.js';
 import demoRoutes from './routes/demo.js';
 import exportRoutes from './routes/export.js';
@@ -90,6 +95,8 @@ export function authRateLimit(req: Request, res: Response, next: NextFunction) {
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use('/api/auth',     authRoutes);
 app.use('/api/projects', projectsRoutes);
+app.use('/api/share',    shareRoutes);
+app.use('/api/series',   seriesRoutes);
 app.use('/api/chapters', chaptersRoutes);
 app.use('/api/ai',       aiRoutes);
 app.use('/api/bible',    bibleRoutes);
@@ -98,6 +105,9 @@ app.use('/api/embed',    embedRoutes);
 app.use('/api/revision', revisionRoutes);
 app.use('/api/jobs',     jobsRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/notes',    notesRoutes);
+app.use('/api/comments', commentsRoutes);
+app.use('/api/plot',     plotRoutes);
 app.use('/api/admin',    adminRoutes);
 app.use('/api/demo',     demoRoutes);
 app.use('/api/export',   exportRoutes);

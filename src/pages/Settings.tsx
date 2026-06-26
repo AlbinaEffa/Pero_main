@@ -1,30 +1,90 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Save, Pencil, Moon, Volume2, Sparkles, Lock, Shield, LogOut, ChevronRight, ChevronLeft, Type, AlignLeft, Download, Loader2, Crown } from 'lucide-react';
+import { ChevronLeft, Save, Download, Loader2, Crown, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getApiBaseUrl, api } from '../services/api';
 
 const API = getApiBaseUrl();
 
-interface BillingStatus {
-  plan: 'free' | 'pro';
-  planExpiresAt: string | null;
-  priceRub: number;
-  periodDays: number;
+type EditorFontName = 'cormorant' | 'literata' | 'source-serif';
+type TextWidth = 'narrow' | 'medium' | 'wide';
+
+interface BillingStatus { plan: 'free' | 'pro'; planExpiresAt: string | null; priceRub: number; periodDays: number; }
+interface QuotaStatus { plan: 'free' | 'pro'; used: number; limit: number; remaining: number; resetsAt: string; }
+
+const FONT_OPTIONS: { id: EditorFontName; label: string; family: string }[] = [
+  { id: 'literata',     label: 'Литерата',    family: "'Literata', Georgia, serif" },
+  { id: 'cormorant',    label: 'Cormorant',   family: "'Cormorant Garamond', Georgia, serif" },
+  { id: 'source-serif', label: 'Source Serif',family: "'Source Serif 4', Georgia, serif" },
+];
+const WIDTH_OPTIONS: { id: TextWidth; label: string }[] = [
+  { id: 'narrow', label: 'Узкая' },
+  { id: 'medium', label: 'Средняя' },
+  { id: 'wide',   label: 'Широкая' },
+];
+
+// ── Кирпичики дизайн-системы (пергамент + чернила, без гласса/теней/кружков) ──
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="mb-8">
+      <h2 className="text-[11px] font-bold uppercase tracking-widest text-[#1e2d1f]/45 mb-3 ml-1">{title}</h2>
+      <div className="bg-white rounded-2xl border border-[#1e2d1f]/8 divide-y divide-[#1e2d1f]/[0.06]">{children}</div>
+    </section>
+  );
+}
+function Row({ title, desc, control }: { title: string; desc?: string; control: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-4 px-5 py-4">
+      <div className="min-w-0">
+        <div className="text-[14px] font-medium text-[#1e2d1f]">{title}</div>
+        {desc && <div className="text-[12.5px] text-[#1e2d1f]/60 mt-0.5 leading-snug">{desc}</div>}
+      </div>
+      <div className="shrink-0">{control}</div>
+    </div>
+  );
+}
+function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button onClick={() => onChange(!on)}
+      className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${on ? 'bg-[#1E2D1F]' : 'bg-[#E8E2D5]'}`}>
+      <span className={`w-5 h-5 rounded-full bg-white absolute top-0.5 transition-all ${on ? 'left-[22px]' : 'left-0.5'}`} />
+    </button>
+  );
+}
+function Segmented<T extends string>({ value, options, onChange, optionStyle }: {
+  value: T; options: { id: T; label: string; family?: string }[]; onChange: (v: T) => void; optionStyle?: boolean;
+}) {
+  return (
+    <div className="inline-flex rounded-lg bg-[#1e2d1f]/[0.05] p-0.5">
+      {options.map(o => (
+        <button key={o.id} onClick={() => onChange(o.id)}
+          style={optionStyle && o.family ? { fontFamily: o.family } : undefined}
+          className={`px-3 py-1.5 rounded-md text-[13px] transition-colors ${
+            value === o.id ? 'bg-white text-[#1e2d1f] font-semibold shadow-[0_1px_2px_rgba(30,45,31,0.08)]' : 'text-[#1e2d1f]/55 hover:text-[#1e2d1f]'
+          }`}>
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
 }
 
-export default function Settings({ 
+export default function Settings({
   onClose,
   showWordCount: externalShowWordCount,
   setShowWordCount: externalSetShowWordCount,
   indentParagraphs: externalIndentParagraphs,
-  setIndentParagraphs: externalSetIndentParagraphs
-}: { 
+  setIndentParagraphs: externalSetIndentParagraphs,
+  editorFont: externalEditorFont,
+  setEditorFont: externalSetEditorFont,
+}: {
   onClose?: () => void;
   showWordCount?: boolean;
   setShowWordCount?: (val: boolean) => void;
   indentParagraphs?: boolean;
   setIndentParagraphs?: (val: boolean) => void;
+  editorFont?: EditorFontName;
+  setEditorFont?: (val: EditorFontName) => void;
 }) {
   const { user, logout, updateUser } = useAuth();
   const navigate = useNavigate();
@@ -32,47 +92,50 @@ export default function Settings({
   const [name, setName] = useState(user?.displayName || '');
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [savedOk, setSavedOk] = useState(false);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
 
-  const [localShowWordCount, setLocalShowWordCount] = useState<boolean>(() => {
-    const stored = localStorage.getItem('pero_showWordCount');
-    return stored !== null ? stored === 'true' : true;
-  });
-  const [localIndentParagraphs, setLocalIndentParagraphs] = useState<boolean>(() => {
-    const stored = localStorage.getItem('pero_indentParagraphs');
-    return stored !== null ? stored === 'true' : false;
-  });
+  // Редактор-настройки: проп (живьём в модалке) ИЛИ localStorage (отдельная страница).
+  const [localShowWordCount, setLocalShowWordCount] = useState(() => localStorage.getItem('pero_showWordCount') !== 'false');
+  const [localIndent, setLocalIndent] = useState(() => localStorage.getItem('pero_indentParagraphs') === 'true');
+  const [localFont, setLocalFont] = useState<EditorFontName>(() => (localStorage.getItem('pero_editorFont') as EditorFontName) || 'literata');
+  const [textWidth, setTextWidthState] = useState<TextWidth>(() => (localStorage.getItem('pero_textWidth') as TextWidth) || 'medium');
 
-  // ── Тариф / биллинг ──────────────────────────────────────────────────────────
+  const showWordCount = externalShowWordCount ?? localShowWordCount;
+  const setShowWordCount = (v: boolean) => { localStorage.setItem('pero_showWordCount', String(v)); externalSetShowWordCount ? externalSetShowWordCount(v) : setLocalShowWordCount(v); };
+  const indentParagraphs = externalIndentParagraphs ?? localIndent;
+  const setIndentParagraphs = (v: boolean) => { localStorage.setItem('pero_indentParagraphs', String(v)); externalSetIndentParagraphs ? externalSetIndentParagraphs(v) : setLocalIndent(v); };
+  const editorFont = externalEditorFont ?? localFont;
+  const setEditorFont = (f: EditorFontName) => { localStorage.setItem('pero_editorFont', f); externalSetEditorFont ? externalSetEditorFont(f) : setLocalFont(f); };
+  const setTextWidth = (w: TextWidth) => { localStorage.setItem('pero_textWidth', w); setTextWidthState(w); window.dispatchEvent(new Event('pero:textwidth')); };
+
+  // ── Тариф + квота ──
   const [billing, setBilling] = useState<BillingStatus | null>(null);
+  const [quota, setQuota] = useState<QuotaStatus | null>(null);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [billingError, setBillingError] = useState('');
   const pollCount = useRef(0);
 
+  useEffect(() => { api.get<QuotaStatus>('/ai/quota').then(setQuota).catch(() => {}); }, []);
+
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
-
     const fetchStatus = () => {
-      api.get<BillingStatus>('/billing/status')
-        .then(status => {
-          setBilling(status);
-          // Вернулись с оплаты (?payment=pending) — опрашиваем, пока вебхук не подтвердит
-          const cameFromPayment = new URLSearchParams(window.location.search).get('payment') === 'pending';
-          if (cameFromPayment && status.plan !== 'pro' && pollCount.current < 10) {
-            pollCount.current += 1;
-            timer = setTimeout(fetchStatus, 3000);
-          }
-        })
-        .catch(() => { /* биллинг не настроен — карточка покажет только инфо */ });
+      api.get<BillingStatus>('/billing/status').then(status => {
+        setBilling(status);
+        const cameFromPayment = new URLSearchParams(window.location.search).get('payment') === 'pending';
+        if (cameFromPayment && status.plan !== 'pro' && pollCount.current < 10) {
+          pollCount.current += 1;
+          timer = setTimeout(fetchStatus, 3000);
+        }
+      }).catch(() => {});
     };
-
     fetchStatus();
     return () => { if (timer) clearTimeout(timer); };
   }, []);
 
   const handleCheckout = async () => {
-    setIsCheckingOut(true);
-    setBillingError('');
+    setIsCheckingOut(true); setBillingError('');
     try {
       const { confirmationUrl } = await api.post<{ confirmationUrl: string }>('/billing/checkout', {});
       window.location.href = confirmationUrl;
@@ -82,25 +145,10 @@ export default function Settings({
     }
   };
 
-  const showWordCount = externalShowWordCount !== undefined ? externalShowWordCount : localShowWordCount;
-  const setShowWordCount = (val: boolean) => {
-    localStorage.setItem('pero_showWordCount', String(val));
-    if (externalSetShowWordCount) externalSetShowWordCount(val);
-    else setLocalShowWordCount(val);
-  };
-
-  const indentParagraphs = externalIndentParagraphs !== undefined ? externalIndentParagraphs : localIndentParagraphs;
-  const setIndentParagraphs = (val: boolean) => {
-    localStorage.setItem('pero_indentParagraphs', String(val));
-    if (externalSetIndentParagraphs) externalSetIndentParagraphs(val);
-    else setLocalIndentParagraphs(val);
-  };
-
   const handleSave = async () => {
     const token = localStorage.getItem('pero_token');
     if (!token) return;
-    setIsSaving(true);
-    setSaveError('');
+    setIsSaving(true); setSaveError(''); setSavedOk(false);
     try {
       const res = await fetch(`${API}/auth/me`, {
         method: 'PATCH',
@@ -110,6 +158,8 @@ export default function Settings({
       if (!res.ok) throw new Error('Ошибка сохранения');
       const data = await res.json();
       updateUser({ displayName: data.user.displayName });
+      setSavedOk(true);
+      setTimeout(() => setSavedOk(false), 2000);
     } catch {
       setSaveError('Не удалось сохранить. Попробуйте ещё раз.');
     } finally {
@@ -117,332 +167,159 @@ export default function Settings({
     }
   };
 
+  const handleDownloadAll = async () => {
+    const token = localStorage.getItem('pero_token');
+    if (!token) return;
+    setIsDownloadingAll(true);
+    try {
+      const res = await fetch(`${API}/export/all`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Ошибка загрузки');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pero-backup-${new Date().toISOString().slice(0, 10)}.zip`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch { /* тихо */ } finally { setIsDownloadingAll(false); }
+  };
+
+  const initial = (user?.displayName || user?.email || '?').trim().charAt(0).toUpperCase();
+  const nameChanged = name.trim() !== (user?.displayName || '');
+
   return (
     <div className="flex-1 flex flex-col h-full bg-[#f5f0e8] p-8 md:p-12 overflow-y-auto w-full text-left">
-      <div className="max-w-5xl mx-auto w-full">
-        {/* Navigation back */}
+      <div className="max-w-2xl mx-auto w-full">
         <button
           onClick={() => onClose ? onClose() : navigate('/dashboard')}
-          className="flex items-center gap-1.5 text-[13px] font-medium text-[#6b7280] hover:text-[#1E2D1F] transition-colors mb-8"
+          className="flex items-center gap-1.5 text-[13px] font-medium text-[#1e2d1f]/55 hover:text-[#1E2D1F] transition-colors mb-7"
         >
           <ChevronLeft size={16} /> {onClose ? 'Назад к редактору' : 'Назад к проектам'}
         </button>
 
-        {/* Header */}
-        <header className="flex justify-between items-start mb-12">
-          <div>
-            <h1 className="text-3xl font-bold text-[#1E2D1F] mb-2">Настройки профиля</h1>
-            <p className="text-[#6b7280] text-sm">Управляйте своим творческим пространством</p>
-          </div>
-          <div className="flex flex-col items-end gap-1">
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="flex items-center gap-2 bg-[#1E2D1F] hover:bg-[#16221A] disabled:opacity-50 text-white px-5 py-2.5 rounded-xl font-medium transition-colors"
-            >
-              <Save size={18} />
-              {isSaving ? 'Сохраняем...' : 'Сохранить'}
-            </button>
-            {saveError && <p className="text-xs text-[#9E4338]">{saveError}</p>}
-          </div>
-        </header>
+        <h1 className="font-serif text-[32px] leading-tight text-[#1e2d1f] mb-1">Настройки</h1>
+        <p className="text-[14px] text-[#1e2d1f]/60 mb-10">Профиль, редактор и ваш тариф.</p>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 mb-16">
-          {/* Left Column - Profile Info */}
-          <div className="space-y-8">
-            {/* Profile Photo */}
-            <div className="flex items-center gap-6">
-              <div className="relative">
-                <div className="w-24 h-24 rounded-full overflow-hidden bg-[#E8E2D5] border-4 border-white">
-                  <img 
-                    src={user?.photoURL || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80"} 
-                    alt="Profile" 
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                </div>
-                <button className="absolute bottom-0 right-0 bg-white p-2 rounded-full border border-ink/10 text-ink/60 hover:text-ink transition-colors">
-                  <Pencil size={14} />
-                </button>
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-[#1E2D1F] mb-1">Фото профиля</h3>
-                <p className="text-sm text-[#9ca3af]">PNG или JPG до 5MB</p>
-              </div>
+        {/* Профиль */}
+        <Section title="Профиль">
+          <div className="flex items-center gap-4 px-5 py-5">
+            <div className="w-14 h-14 rounded-full bg-[#1e2d1f]/[0.06] border border-[#1e2d1f]/8 flex items-center justify-center font-serif text-[22px] text-[#1e2d1f]/70 shrink-0">
+              {initial}
             </div>
-
-            {/* Form Fields */}
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-[#1E2D1F] mb-2">Имя автора</label>
-                <input 
-                  type="text" 
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 focus:border-[#1e2d1f]/20 focus:bg-white/90 focus:ring-4 focus:ring-[#1e2d1f]/5 outline-none transition-all text-[#1e2d1f]"
-                />
-              </div>
-              
-              <div className="opacity-50 pointer-events-none">
-                <label className="block text-sm font-medium text-[#1E2D1F] mb-2">
-                  Биография <span className="text-[10px] font-normal text-[#9ca3af] ml-1">— в разработке</span>
-                </label>
-                <textarea
-                  disabled
-                  rows={4}
-                  placeholder="Будет доступно в следующей версии"
-                  className="w-full px-4 py-3 rounded-xl bg-white/40 border border-white/50 outline-none transition-all text-[#1e2d1f] resize-none"
-                />
-              </div>
-
-              <div className="opacity-50 pointer-events-none">
-                <label className="block text-sm font-medium text-[#1E2D1F] mb-2">
-                  Литературный стиль <span className="text-[10px] font-normal text-[#9ca3af] ml-1">— в разработке</span>
-                </label>
-                <input
-                  disabled
-                  type="text"
-                  placeholder="Будет доступно в следующей версии"
-                  className="w-full px-4 py-3 rounded-xl bg-white/40 border border-white/50 outline-none transition-all text-[#1e2d1f]"
-                />
-              </div>
+            <div className="min-w-0">
+              <div className="text-[15px] font-semibold text-[#1e2d1f] truncate">{user?.displayName || 'Без имени'}</div>
+              <div className="text-[12.5px] text-[#1e2d1f]/55 truncate">{user?.email}</div>
             </div>
           </div>
-
-          {/* Right Column - Settings Cards */}
-          <div className="space-y-8">
-            {/* Тариф */}
-            <div className="bg-white/40 backdrop-blur-xl rounded-3xl p-8 border border-white/60">
-              <h2 className="text-xl font-bold text-[#1E2D1F] mb-6">Тариф</h2>
-
-              <div className="flex items-start gap-4 mb-6">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                  billing?.plan === 'pro' ? 'bg-[#F2E9D8] text-[#91682E]' : 'bg-white/60 border border-white/80 text-[#1e2d1f]/60'
-                }`}>
-                  <Crown size={20} />
-                </div>
-                <div>
-                  <h4 className="text-[16px] font-semibold text-[#1E2D1F] mb-1">
-                    {billing?.plan === 'pro' ? 'Pro' : 'Бесплатный'}
-                  </h4>
-                  <p className="text-sm text-[#6b7280] leading-relaxed">
-                    {billing?.plan === 'pro' ? (
-                      <>Активен{billing.planExpiresAt
-                        ? ` до ${new Date(billing.planExpiresAt).toLocaleDateString('ru-RU')}`
-                        : ''}. Безлимит проектов, 300 AI-действий в день, экспорт в Word, диктовка.</>
-                    ) : (
-                      <>1 активный проект, 20 AI-действий в день. Pro снимает лимиты:
-                      безлимит проектов, 300 AI-действий в день, экспорт в Word, диктовка.</>
-                    )}
-                  </p>
-                </div>
-              </div>
-
+          <div className="px-5 py-4">
+            <label className="block text-[12.5px] font-medium text-[#1e2d1f]/70 mb-1.5">Имя автора</label>
+            <div className="flex items-center gap-2">
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Как вас представить читателю"
+                className="flex-1 min-w-0 bg-[#1e2d1f]/[0.03] border border-[#1e2d1f]/10 rounded-xl px-3.5 py-2.5 text-[14px] text-[#1e2d1f] outline-none focus:border-[#1e2d1f]/25 transition-colors"
+              />
               <button
-                onClick={handleCheckout}
-                disabled={isCheckingOut || !billing}
-                className="flex items-center gap-2.5 px-5 py-3 bg-[#1E2D1F] hover:bg-[#16221A] disabled:opacity-50 text-white rounded-xl font-medium text-sm transition-colors"
+                onClick={handleSave}
+                disabled={isSaving || !nameChanged}
+                className="flex items-center gap-1.5 bg-[#1E2D1F] hover:bg-[#16221A] disabled:opacity-40 text-white px-4 py-2.5 rounded-xl font-medium text-[14px] transition-colors shrink-0"
               >
-                {isCheckingOut ? <Loader2 size={16} className="animate-spin" /> : <Crown size={16} />}
-                {billing?.plan === 'pro'
-                  ? `Продлить на ${billing?.periodDays ?? 30} дней — ${billing?.priceRub ?? 599} ₽`
-                  : `Оформить Pro — ${billing?.priceRub ?? 599} ₽/мес`}
+                {isSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+                {savedOk ? 'Готово' : 'Сохранить'}
               </button>
-              {billingError && <p className="text-xs text-[#9E4338] mt-2">{billingError}</p>}
-              <p className="text-[11px] text-[#9ca3af] mt-3">
-                Оплата через ЮKassa. Подписка без автопродления — продлевается вручную.
-              </p>
             </div>
-
-            {/* Studio Settings */}
-            <div className="bg-white/40 backdrop-blur-xl rounded-3xl p-8 border border-white/60">
-              <h2 className="text-xl font-bold text-[#1E2D1F] mb-6">Настройки студии</h2>
-              
-              <div className="space-y-6">
-                {/* Dark Theme — coming soon */}
-                <div className="flex items-center justify-between opacity-40 pointer-events-none">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-white/60 border border-white/80 flex items-center justify-center text-[#1e2d1f]/60">
-                      <Moon size={20} />
-                    </div>
-                    <div>
-                      <h4 className="text-[16px] font-medium text-[#1E2D1F]">Темная тема</h4>
-                      <p className="text-sm text-[#9ca3af]">В разработке</p>
-                    </div>
-                  </div>
-                  <div className="w-12 h-6 rounded-full bg-[#E8E2D5] relative">
-                    <div className="w-5 h-5 rounded-full bg-white absolute top-0.5 left-0.5" />
-                  </div>
-                </div>
-
-                {/* Background Sounds — coming soon */}
-                <div className="flex items-center justify-between opacity-40 pointer-events-none">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-white/60 border border-white/80 flex items-center justify-center text-[#1e2d1f]/60">
-                      <Volume2 size={20} />
-                    </div>
-                    <div>
-                      <h4 className="text-[16px] font-medium text-[#1E2D1F]">Фоновые звуки</h4>
-                      <p className="text-sm text-[#9ca3af]">В разработке</p>
-                    </div>
-                  </div>
-                  <div className="w-12 h-6 rounded-full bg-[#E8E2D5] relative">
-                    <div className="w-5 h-5 rounded-full bg-white absolute top-0.5 left-0.5" />
-                  </div>
-                </div>
-
-                {/* Smart Hints — coming soon */}
-                <div className="flex items-center justify-between opacity-40 pointer-events-none">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-white/60 border border-white/80 flex items-center justify-center text-[#1e2d1f]/60">
-                      <Sparkles size={20} />
-                    </div>
-                    <div>
-                      <h4 className="text-[16px] font-medium text-[#1E2D1F]">Умные подсказки</h4>
-                      <p className="text-sm text-[#9ca3af]">В разработке</p>
-                    </div>
-                  </div>
-                  <div className="w-12 h-6 rounded-full bg-[#E8E2D5] relative">
-                    <div className="w-5 h-5 rounded-full bg-white absolute top-0.5 left-0.5" />
-                  </div>
-                </div>
-
-                {/* Show Word Count */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-white/60 border border-white/80 flex items-center justify-center text-[#1e2d1f]/60">
-                      <Type size={20} />
-                    </div>
-                    <div>
-                      <h4 className="text-[16px] font-medium text-[#1E2D1F]">Показывать количество слов</h4>
-                      <p className="text-sm text-[#9ca3af]">Отображать счетчик слов в редакторе</p>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => setShowWordCount(!showWordCount)}
-                    className={`w-12 h-6 rounded-full transition-colors relative ${showWordCount ? 'bg-[#1E2D1F]' : 'bg-[#E8E2D5]'}`}
-                  >
-                    <div className={`w-5 h-5 rounded-full bg-white absolute top-0.5 transition-transform ${showWordCount ? 'translate-x-6.5 left-0' : 'translate-x-0.5 left-0'}`} />
-                  </button>
-                </div>
-
-                {/* Indent Paragraphs */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-white/60 border border-white/80 flex items-center justify-center text-[#1e2d1f]/60">
-                      <AlignLeft size={20} />
-                    </div>
-                    <div>
-                      <h4 className="text-[16px] font-medium text-[#1E2D1F]">Отступ абзацев</h4>
-                      <p className="text-sm text-[#9ca3af]">Добавлять красную строку для новых абзацев</p>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => setIndentParagraphs(!indentParagraphs)}
-                    className={`w-12 h-6 rounded-full transition-colors relative ${indentParagraphs ? 'bg-[#1E2D1F]' : 'bg-[#E8E2D5]'}`}
-                  >
-                    <div className={`w-5 h-5 rounded-full bg-white absolute top-0.5 transition-transform ${indentParagraphs ? 'translate-x-6.5 left-0' : 'translate-x-0.5 left-0'}`} />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Security */}
-            <div className="bg-white/40 backdrop-blur-xl rounded-3xl p-8 border border-white/60">
-              <h2 className="text-xl font-bold text-[#1E2D1F] mb-6">Безопасность</h2>
-              
-              <div className="space-y-4">
-                <button className="w-full flex items-center justify-between p-2 hover:bg-white/60 rounded-xl transition-colors group">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl border border-white/80 bg-white/50 flex items-center justify-center text-[#1e2d1f]/80 group-hover:bg-white/80 transition-colors">
-                      <Lock size={18} />
-                    </div>
-                    <span className="text-[16px] font-medium text-[#1E2D1F]">Смена пароля</span>
-                  </div>
-                  <ChevronRight size={18} className="text-ink/55" />
-                </button>
-
-                <button className="w-full flex items-center justify-between p-2 hover:bg-white/60 rounded-xl transition-colors group">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl border border-white/80 bg-white/50 flex items-center justify-center text-[#1e2d1f]/80 group-hover:bg-white/80 transition-colors">
-                      <Shield size={18} />
-                    </div>
-                    <span className="text-[16px] font-medium text-[#1E2D1F]">Двухфакторная аутентификация</span>
-                  </div>
-                  <ChevronRight size={18} className="text-ink/55" />
-                </button>
-              </div>
-            </div>
+            {saveError && <p className="text-[12.5px] text-[#9E4338] mt-2">{saveError}</p>}
           </div>
-        </div>
+        </Section>
 
-        {/* Data & Export section */}
-        <div className="mb-12">
-          <h2 className="text-xl font-bold text-[#1E2D1F] mb-4">Ваши данные</h2>
-          <div className="bg-white/40 backdrop-blur-xl rounded-3xl p-8 border border-white/60">
-            <div className="flex items-start gap-4 mb-6">
-              <div className="w-10 h-10 rounded-full bg-[#E5EBE0] flex items-center justify-center text-[#4D6B4D] shrink-0">
-                <Shield size={20} />
+        {/* Редактор */}
+        <Section title="Редактор">
+          <Row title="Шрифт рукописи" desc="Шрифт полотна текста — на ваш вкус."
+            control={<Segmented value={editorFont} options={FONT_OPTIONS} onChange={setEditorFont} optionStyle />} />
+          <Row title="Ширина колонки" desc="Насколько широка строка текста."
+            control={<Segmented value={textWidth} options={WIDTH_OPTIONS} onChange={setTextWidth} />} />
+          <Row title="Красная строка" desc="Отступ в начале новых абзацев."
+            control={<Toggle on={indentParagraphs} onChange={setIndentParagraphs} />} />
+          <Row title="Счётчик слов" desc="Показывать число слов в редакторе."
+            control={<Toggle on={showWordCount} onChange={setShowWordCount} />} />
+        </Section>
+
+        {/* Перо (ИИ) */}
+        <Section title="Перо">
+          <div className="px-5 py-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[14px] font-medium text-[#1e2d1f]">Дневная норма Пера</span>
+              <span className="text-[13px] font-semibold text-[#1e2d1f]/75">
+                {quota ? `${quota.used} из ${quota.limit}` : '…'}
+              </span>
+            </div>
+            {quota && (
+              <>
+                <div className="h-1.5 rounded-full bg-[#1e2d1f]/[0.08] overflow-hidden">
+                  <div className="h-full rounded-full bg-[#4A5D4E]" style={{ width: `${Math.min(100, (quota.used / Math.max(1, quota.limit)) * 100)}%` }} />
+                </div>
+                <p className="text-[12.5px] text-[#1e2d1f]/60 mt-2 leading-snug">
+                  Осталось {quota.remaining} действий Пера на сегодня (чтение глав, чат, проверка нестыковок). Обнулится завтра.
+                </p>
+              </>
+            )}
+          </div>
+        </Section>
+
+        {/* Тариф */}
+        <Section title="Тариф">
+          <div className="px-5 py-5">
+            <div className="flex items-start gap-3.5">
+              <div className="w-9 h-9 rounded-full bg-[#EBE4EE] flex items-center justify-center text-[#71597F] shrink-0">
+                <Crown size={18} />
               </div>
-              <div>
-                <h4 className="text-[16px] font-semibold text-[#1E2D1F] mb-1">Безопасное хранение</h4>
-                <p className="text-sm text-[#6b7280] leading-relaxed">
-                  Все ваши тексты хранятся в защищённой базе данных. Вы можете в любой момент скачать полную копию своих произведений — в Markdown, Word или в виде архива со всеми данными.
+              <div className="min-w-0 flex-1">
+                <div className="text-[15px] font-semibold text-[#1e2d1f] mb-0.5">{billing?.plan === 'pro' ? 'Pro' : 'Бесплатный'}</div>
+                <p className="text-[12.5px] text-[#1e2d1f]/60 leading-snug">
+                  {billing?.plan === 'pro'
+                    ? <>Активен{billing?.planExpiresAt ? ` до ${new Date(billing.planExpiresAt).toLocaleDateString('ru-RU')}` : ''}. Безлимит проектов, 300 действий Пера в день, экспорт в Word, диктовка.</>
+                    : <>1 активный проект, 20 действий Пера в день. Pro снимает лимиты: безлимит проектов, 300 действий в день, экспорт в Word, диктовка.</>}
                 </p>
               </div>
             </div>
+            {billing?.plan !== 'pro' && (
+              <button
+                onClick={handleCheckout}
+                disabled={isCheckingOut || !billing}
+                className="mt-4 flex items-center gap-2 px-4 py-2.5 bg-[#1E2D1F] hover:bg-[#16221A] disabled:opacity-40 text-white rounded-xl font-medium text-[14px] transition-colors"
+              >
+                {isCheckingOut ? <Loader2 size={15} className="animate-spin" /> : <Crown size={15} />}
+                {isCheckingOut ? 'Создаём платёж…' : `Оформить Pro — ${billing?.priceRub ?? 599} ₽/мес`}
+              </button>
+            )}
+            {billingError && <p className="text-[12.5px] text-[#9E4338] mt-2">{billingError}</p>}
+          </div>
+        </Section>
 
+        {/* Данные */}
+        <Section title="Данные">
+          <div className="px-5 py-4">
+            <p className="text-[12.5px] text-[#1e2d1f]/60 leading-relaxed mb-3">
+              Все тексты хранятся в защищённой базе. В любой момент можно скачать полную копию — со всеми проектами и главами.
+            </p>
             <button
-              onClick={async () => {
-                const token = localStorage.getItem('pero_token');
-                if (!token) return;
-                setIsDownloadingAll(true);
-                try {
-                  const res = await fetch(`${API}/export/all`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                  });
-                  if (!res.ok) throw new Error('Ошибка загрузки');
-                  const blob = await res.blob();
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  const date = new Date().toISOString().slice(0, 10);
-                  a.download = `pero-backup-${date}.zip`;
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-                  URL.revokeObjectURL(url);
-                } catch {
-                  // silent — user will see the network error in devtools
-                } finally {
-                  setIsDownloadingAll(false);
-                }
-              }}
+              onClick={handleDownloadAll}
               disabled={isDownloadingAll}
-              className="flex items-center gap-2.5 px-5 py-3 bg-white/60 hover:bg-white/90 border border-white/80 disabled:opacity-50 rounded-xl font-medium text-[#1e2d1f] text-sm transition-colors"
+              className="flex items-center gap-2 px-4 py-2.5 bg-[#E8E2D5] hover:bg-[#ded7c7] disabled:opacity-50 rounded-xl font-medium text-[#1e2d1f] text-[14px] transition-colors"
             >
-              {isDownloadingAll
-                ? <Loader2 size={16} className="animate-spin" />
-                : <Download size={16} />}
+              {isDownloadingAll ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
               Скачать все проекты (.zip)
             </button>
           </div>
-        </div>
+        </Section>
 
-        {/* Footer Actions */}
-        <div className="pt-8 border-t border-ink/10 flex items-center justify-between">
-          <button 
-            onClick={() => logout()}
-            className="flex items-center gap-2 text-[#6b7280] hover:text-[#1E2D1F] font-medium transition-colors"
-          >
-            <LogOut size={18} />
-            Выйти из аккаунта
+        {/* Аккаунт */}
+        <Section title="Аккаунт">
+          <button onClick={() => logout()} className="flex items-center gap-2.5 px-5 py-4 w-full text-left text-[14px] font-medium text-[#1e2d1f]/70 hover:text-[#1e2d1f] transition-colors">
+            <LogOut size={16} /> Выйти из аккаунта
           </button>
-          
-          <button className="text-[#9ca3af] hover:text-[#9E4338] text-sm font-medium transition-colors">
-            Удалить данные и аккаунт
-          </button>
-        </div>
+        </Section>
       </div>
     </div>
   );

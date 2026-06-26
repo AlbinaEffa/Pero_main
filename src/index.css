@@ -55,7 +55,10 @@
 
 @layer base {
   body {
-    @apply bg-[var(--color-paper)] text-[var(--color-ink)] font-sans antialiased selection:bg-[var(--color-accent)] selection:text-white;
+    @apply bg-[var(--color-paper)] text-[var(--color-ink)] font-sans antialiased selection:bg-[#71597F]/25 selection:text-[var(--color-ink)];
+    /* Глобальное укрупнение интерфейса (×1.1): текст/иконки/отступы крупнее пропорционально,
+       как браузерный зум. Один тумблер на весь UI (меню, панели, поповеры — всё под body). */
+    zoom: 1.1;
   }
   
   /* Серифы по умолчанию — только крупные контентные заголовки.
@@ -317,6 +320,29 @@
   font-size: 1.1rem;
   line-height: 1;
   user-select: none;
+}
+
+/* Сноска: надстрочный кликабельный маркер; номер берётся из decoration data-fn-number.
+   Скобки [N] + фон-чип, чтобы читалось как кликабельная сноска (а не случайная цифра). */
+.footnote-ref {
+  cursor: pointer;
+  font-size: 0.66em;
+  line-height: 0;
+  vertical-align: super;
+  font-weight: 700;
+  color: #71597F;
+  background: rgba(113, 89, 127, 0.1);
+  border-radius: 0.35em;
+  padding: 0.1em 0.28em;
+  margin: 0 0.05em;
+  user-select: none;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.footnote-ref::before { content: '['; }
+.footnote-ref::after  { content: attr(data-fn-number) ']'; }
+.footnote-ref:hover {
+  color: #fff;
+  background: #71597F;
 }
 
 .editor-font-cormorant .editor-body h1,

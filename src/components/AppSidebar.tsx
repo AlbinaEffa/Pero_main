@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import {
-  ChevronLeft, BookOpen, Lightbulb, PanelLeftClose,
+  ChevronLeft, BookOpen, Lightbulb, PanelLeft, ListTree,
   FileText, FileCheck, Settings as SettingsIcon,
 } from 'lucide-react';
 import { PeroLogo } from './Logo';
@@ -24,7 +24,7 @@ import { getChapterDisplayLabel } from './editor/chapterDisplay';
  * чтобы слово «Перо» в сайдбаре было только брендом на логотипе (без дубля).
  */
 
-type ActivePage = 'dashboard' | 'editor' | 'bible' | 'ideas' | 'settings';
+type ActivePage = 'dashboard' | 'editor' | 'bible' | 'plot' | 'ideas' | 'settings';
 
 interface AppSidebarProps {
   /** Если задан — показывается навигация проекта (Библия / Идеи). */
@@ -35,8 +35,12 @@ interface AppSidebarProps {
   onOpenBible?: () => void;
   /** Счётчик на «Мир»: новые находки + нестыковки по всему проекту. */
   bibleBadge?: number;
+  /** Если задан — «Сюжет» открывает столб планирования прямо в редакторе. */
+  onOpenPlot?: () => void;
   /** Если задан — показывается кнопка сворачивания панели. */
   onCollapse?: () => void;
+  /** Если задан — «Настройки» открывают модалку поверх редактора, а не уводят на /settings. */
+  onOpenSettings?: () => void;
   /** Середина: список глав (режим проекта). На глобальных страницах не передаётся. */
   children?: React.ReactNode;
   /** Доп. блок внизу под навигацией (например, строка статуса сохранения). */
@@ -48,7 +52,7 @@ const navIdle = 'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm fon
 const navActive = 'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold bg-white/15 text-white';
 
 export function AppSidebar({
-  projectId, active, onOpenBible, bibleBadge = 0, onCollapse, children, bottomExtra,
+  projectId, active, onOpenBible, bibleBadge = 0, onOpenPlot, onCollapse, onOpenSettings, children, bottomExtra,
 }: AppSidebarProps) {
   return (
     <aside className="w-[220px] bg-[#1e2d1f] text-white/80 flex flex-col flex-shrink-0 shadow-xl z-20">
@@ -77,7 +81,7 @@ export function AppSidebar({
             aria-label="Скрыть панель"
             className="p-1.5 rounded-md hover:bg-white/10 transition-colors text-white/60 hover:text-white shrink-0"
           >
-            <PanelLeftClose size={18} />
+            <PanelLeft size={18} />
           </button>
         )}
       </div>
@@ -112,6 +116,18 @@ export function AppSidebar({
               </Link>
             )}
 
+            {onOpenPlot ? (
+              <button onClick={onOpenPlot} className={active === 'plot' ? navActive : navIdle}>
+                <ListTree size={16} className="text-white/55" />
+                Сюжет
+              </button>
+            ) : (
+              <Link to={`/editor/${projectId}?view=plot`} className={active === 'plot' ? navActive : navIdle}>
+                <ListTree size={16} className="text-white/55" />
+                Сюжет
+              </Link>
+            )}
+
             <Link to={`/ideas/${projectId}`} className={active === 'ideas' ? navActive : navIdle}>
               <Lightbulb size={16} className="text-white/55" />
               Идеи
@@ -123,10 +139,17 @@ export function AppSidebar({
 
         {/* Глобальная навигация. «Проекты» убраны — дублировали стрелку «‹ К проектам»
             в шапке (REORG_PLAN шаг 1). */}
-        <Link to="/settings" className={active === 'settings' ? navActive : navIdle}>
-          <SettingsIcon size={16} className="text-white/55" />
-          Настройки
-        </Link>
+        {onOpenSettings ? (
+          <button onClick={onOpenSettings} className={`${navIdle} w-full text-left`}>
+            <SettingsIcon size={16} className="text-white/55" />
+            Настройки
+          </button>
+        ) : (
+          <Link to="/settings" className={active === 'settings' ? navActive : navIdle}>
+            <SettingsIcon size={16} className="text-white/55" />
+            Настройки
+          </Link>
+        )}
 
         {/* Резервируем высоту строки статуса (есть только в редакторе), чтобы меню
             стояло на одном месте на всех страницах проекта и не «прыгало». */}

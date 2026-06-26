@@ -36,6 +36,15 @@ export interface GenerateParams {
   temperature?: number;
   /** Максимум выходных токенов (обязателен для Anthropic; default 4096) */
   maxTokens?: number;
+  /**
+   * JSON Schema для структурированного вывода. Нужна слабым ЛОКАЛЬНЫМ моделям (Ollama):
+   * они не держат «верни JSON по промпту» и уходят в прозу/пустышку. Со схемой Ollama
+   * заставляет модель заполнить структуру. На облачных провайдерах (Kimi и т.п.) НЕ
+   * применяется — там промпт-JSON и так работает; см. OpenAICompatProvider.isLocal.
+   */
+  responseSchema?: Record<string, unknown>;
+  /** Имя схемы (для response_format.json_schema.name). По умолчанию 'response'. */
+  responseSchemaName?: string;
 }
 
 export interface AIUsage {
@@ -65,7 +74,10 @@ export interface EmbeddingProvider {
   embed(text: string, taskType: EmbedTaskType): Promise<number[] | null>;
 }
 
-export const EMBEDDING_DIM = 768;
+// Размерность вектора. Источник правды — env EMBEDDING_DIM (должна совпадать с
+// pgvector-колонкой semantic_memory.embedding и моделью). bge-m3 → 1024,
+// nomic-embed-text → 768. При смене требуется миграция колонки + переэмбед.
+export const EMBEDDING_DIM = Number(process.env.EMBEDDING_DIM) || 1024;
 
 const DEFAULT_MAX_TOKENS = 4096;
 
@@ -178,11 +190,16 @@ class GeminiEmbedding implements EmbeddingProvider {
 class OpenAICompatProvider implements AIProvider {
   readonly name = 'openai' as const;
 
+  /** Локальный эндпоинт (Ollama/LM Studio) — для него включаем структурированный вывод. */
+  private readonly isLocal: boolean;
+
   constructor(
     private apiKey: string,
     readonly chatModel: string,
     private baseUrl: string,
-  ) {}
+  ) {
+    this.isLocal = /localhost|127\.0\.0\.1|0\.0\.0\.0|::1/.test(baseUrl);
+  }
 
   private buildBody(params: GenerateParams, stream: boolean) {
     const messages: { role: string; content: string }[] = [];
@@ -195,6 +212,20 @@ class OpenAICompatProvider implements AIProvider {
       messages,
       ...(params.temperature !== undefined ? { temperature: params.temperature } : {}),
       max_tokens: params.maxTokens ?? DEFAULT_MAX_TOKENS,
+      // Структурированный вывод по JSON-схеме — только для локальных моделей (см. responseSchema).
+      // Облачным (Kimi) НЕ шлём: их промпт-JSON работает, а нестандартный json_schema может ронять.
+      ...(params.responseSchema && this.isLocal
+        ? {
+            response_format: {
+              type: 'json_schema',
+              json_schema: {
+                name: params.responseSchemaName ?? 'response',
+                strict: false,
+                schema: params.responseSchema,
+              },
+            },
+          }
+        : {}),
       stream,
     };
   }
@@ -265,8 +296,9 @@ class OpenAIEmbedding implements EmbeddingProvider {
         body: JSON.stringify({
           model: this.embedModel,
           input: text,
-          // text-embedding-3-* поддерживают усечение размерности — держим 768 под pgvector
-          dimensions: EMBEDDING_DIM,
+          // dimensions поддерживают только OpenAI text-embedding-3-* (усечение под pgvector 768).
+          // Локальные модели (Ollama nomic-embed-text → нативно 768) этот параметр не понимают.
+          ...(this.embedModel.includes('text-embedding-3') ? { dimensions: EMBEDDING_DIM } : {}),
         }),
       });
       if (!res.ok) {
@@ -393,6 +425,19 @@ let embeddingProvider: EmbeddingProvider | null | undefined;
 export function getAIProvider(): AIProvider | null {
   if (chatProvider !== undefined) return chatProvider;
 
+  // Полностью локальный режим: AI_LOCAL=1 → чат-LLM идёт в Ollama (OpenAI-совместимо),
+  // без API-токенов. Боевой конфиг (Kimi) в .env остаётся нетронутым — просто дремлет.
+  // Эмбеддинги от этого НЕ зависят (они всегда на EMBEDDING_* — локальный bge-m3), поэтому
+  // RAG строится в фоне независимо от того, кто ведёт чат/извлечение.
+  // Модель/URL настраиваются через AI_LOCAL_MODEL / AI_LOCAL_BASE_URL.
+  if (/^(1|true|yes|on)$/i.test(process.env.AI_LOCAL ?? '')) {
+    const base = (process.env.AI_LOCAL_BASE_URL || 'http://localhost:11434/v1').replace(/\/+$/, '');
+    const localModel = process.env.AI_LOCAL_MODEL || 'qwen2.5:7b';
+    chatProvider = new OpenAICompatProvider('local', localModel, base);
+    console.log(`[aiProvider] chat: LOCAL (ollama) / ${localModel}`);
+    return chatProvider;
+  }
+
   const name = (process.env.AI_PROVIDER ?? 'gemini').toLowerCase() as ProviderName;
   if (!['gemini', 'openai', 'anthropic'].includes(name)) {
     console.error(`[aiProvider] Unknown AI_PROVIDER="${name}" — AI features disabled`);
@@ -453,11 +498,16 @@ export function getEmbeddingProvider(): EmbeddingProvider | null {
       if (!geminiKey) return null;
       return new GeminiEmbedding(geminiKey, process.env.EMBEDDING_MODEL || 'text-embedding-004');
     }
-    if (!openaiKey) return null;
+    // Отдельный base для эмбеддингов (EMBEDDING_BASE_URL) — чтобы чат шёл на Kimi, а вектора
+    // на локальный Ollama (http://localhost:11434/v1). Для локального эндпоинта ключ не нужен —
+    // подставляем заглушку.
+    const embedBase = (process.env.EMBEDDING_BASE_URL || process.env.AI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '');
+    const embedKey = process.env.EMBEDDING_API_KEY || openaiKey || (process.env.EMBEDDING_BASE_URL ? 'local' : undefined);
+    if (!embedKey) return null;
     return new OpenAIEmbedding(
-      openaiKey,
+      embedKey,
       process.env.EMBEDDING_MODEL || 'text-embedding-3-small',
-      (process.env.AI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, ''),
+      embedBase,
     );
   };
 

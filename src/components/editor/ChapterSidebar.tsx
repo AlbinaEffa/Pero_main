@@ -5,7 +5,7 @@ import {
   Plus, FileText, FileCheck, AlertCircle, Trash2, ChevronDown, GripVertical,
 } from 'lucide-react';
 import { Chapter, ChapterType } from './types';
-import { getChapterDisplayLabel } from './chapterDisplay';
+import { getChapterDisplayLabel, CHAPTER_TYPES } from './chapterDisplay';
 import { AppSidebar } from '../AppSidebar';
 
 interface Props {
@@ -26,10 +26,13 @@ interface Props {
   editorFont: EditorFontName;
   /** «Библия истории» открывает инспектор в редакторе (а не страницу /bible). */
   onOpenBible?: () => void;
+  onOpenPlot?: () => void;
   /** Счётчик на «Мир»: находки + нестыковки по проекту. */
   bibleBadge?: number;
   /** Свернуть боковую панель (на десктопе). */
   onCollapse?: () => void;
+  /** Открыть настройки модалкой поверх редактора. */
+  onOpenSettings?: () => void;
 }
 
 export function ChapterSidebar({
@@ -49,8 +52,10 @@ export function ChapterSidebar({
   saveError,
   editorFont,
   onOpenBible,
+  onOpenPlot,
   bibleBadge,
   onCollapse,
+  onOpenSettings,
 }: Props) {
   const navigate = useNavigate();
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
@@ -129,12 +134,9 @@ export function ChapterSidebar({
   }, []);
   // ─────────────────────────────────────────────────────────────────────────────
 
-  const ADD_TYPES: { type: ChapterType; label: string }[] = [
-    { type: 'chapter',   label: 'Глава' },
-    { type: 'prologue',  label: 'Пролог' },
-    { type: 'epilogue',  label: 'Эпилог' },
-    { type: 'interlude', label: 'Интермедия' },
-  ];
+  // Создавать «с нуля» можно сюжетные/структурные разделы; служебные (благодарности и т.п.)
+  // обычно приходят из импорта или помечаются переключателем в заголовке.
+  const ADD_TYPES = CHAPTER_TYPES.filter(t => !t.service).map(t => ({ type: t.type, label: t.label }));
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Удалить раздел? Это действие нельзя отменить.')) return;
@@ -175,8 +177,10 @@ export function ChapterSidebar({
       projectId={projectId}
       active="editor"
       onOpenBible={onOpenBible}
+      onOpenPlot={onOpenPlot}
       bibleBadge={bibleBadge}
       onCollapse={onCollapse}
+      onOpenSettings={onOpenSettings}
       bottomExtra={saveStatus}
     >
       {/* Chapter list */}
@@ -193,7 +197,10 @@ export function ChapterSidebar({
               <ChevronDown size={10} />
             </button>
             {isAddMenuOpen && (
-              <div className="absolute right-0 top-full mt-1 w-36 bg-[#2a3d2c] rounded-xl shadow-xl border border-white/10 py-1 z-50">
+              <>
+                {/* Ловец клика вне меню — закрывает по нажатию в любую точку снаружи. */}
+                <div className="fixed inset-0 z-40" onClick={() => setIsAddMenuOpen(false)} />
+                <div className="absolute right-0 top-full mt-1 w-36 bg-[#2a3d2c] rounded-xl shadow-xl border border-white/10 py-1 z-50">
                 {ADD_TYPES.map(({ type, label }) => (
                   <button
                     key={type}
@@ -203,7 +210,8 @@ export function ChapterSidebar({
                     {label}
                   </button>
                 ))}
-              </div>
+                </div>
+              </>
             )}
           </div>
         </div>

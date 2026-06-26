@@ -10,6 +10,9 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 // ── Eagerly loaded (small, always needed on any route) ────────────────────────
 import Landing  from './pages/Landing';
 import Login    from './pages/Login';
+import SharedBible from './pages/SharedBible';
+import SeriesBible from './pages/SeriesBible';
+import SeriesWorkspace from './pages/SeriesWorkspace';
 
 // ── Lazily loaded (heavy pages — split into separate chunks) ──────────────────
 const Dashboard  = React.lazy(() => import('./pages/Dashboard'));
@@ -86,9 +89,12 @@ export default function App() {
             <Route path="/login"   element={<Login />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/demo"    element={<Demo />} />
+            <Route path="/share/:token" element={<SharedBible />} />
 
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/settings"  element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/series/:seriesId" element={<ProtectedRoute><SeriesWorkspace /></ProtectedRoute>} />
+            <Route path="/series/:seriesId/world" element={<ProtectedRoute><SeriesBible /></ProtectedRoute>} />
 
             <Route path="/editor/:projectId/:chapterId" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
             <Route path="/editor/:projectId"            element={<ProtectedRoute><Editor /></ProtectedRoute>} />

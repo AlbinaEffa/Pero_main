@@ -1,6 +1,9 @@
 import { Zap, Heart, Flag, Eye, Circle, BookOpen, Trash2 } from 'lucide-react';
 import { Entity, EntityAttributes, EntitySignificance, EntityLink, EntityEvent } from './types';
 
+/** Масштаб блоков: 'sm' — компактный (каталог/панель, по умолчанию), 'md' — крупнее (слой-профиль). */
+export type BlockSize = 'sm' | 'md';
+
 // ── Significance ──────────────────────────────────────────────────────────────
 
 export function significanceLabel(s: EntitySignificance | null | undefined): string {
@@ -76,20 +79,21 @@ export function attributeEntries(attrs: EntityAttributes | null | undefined): { 
     }));
 }
 
-export function EntityAttributesBlock({ attributes }: { attributes?: EntityAttributes | null }) {
+export function EntityAttributesBlock({ attributes, size = 'sm' }: { attributes?: EntityAttributes | null; size?: BlockSize }) {
   const entries = attributeEntries(attributes);
   if (entries.length === 0) return null;
+  const md = size === 'md';
   return (
     <div>
-      <h4 className="text-[10px] font-bold text-ink/55 uppercase tracking-wider mb-2 ml-1">Детали</h4>
+      <h4 className={`${md ? 'text-[11px]' : 'text-[10px]'} font-bold text-ink/55 uppercase tracking-wider mb-2 ml-1`}>Детали</h4>
       <div className="bg-white rounded-xl border border-ink/5 overflow-hidden">
         {entries.map(({ label, value }, i) => (
           <div
             key={label}
-            className={`flex gap-3 px-4 py-2.5 ${i < entries.length - 1 ? 'border-b border-ink/5' : ''}`}
+            className={`flex gap-3 ${md ? 'px-4 py-3' : 'px-4 py-2.5'} ${i < entries.length - 1 ? 'border-b border-ink/5' : ''}`}
           >
-            <span className="text-[11px] font-semibold text-ink/55 w-24 flex-shrink-0 pt-0.5">{label}</span>
-            <span className="text-[12px] text-ink/75 leading-relaxed">{value}</span>
+            <span className={`${md ? 'text-[13px] w-28' : 'text-[11px] w-24'} font-semibold text-ink/55 flex-shrink-0 pt-0.5`}>{label}</span>
+            <span className={`${md ? 'text-[14px]' : 'text-[12px]'} text-ink/75 leading-relaxed`}>{value}</span>
           </div>
         ))}
       </div>
@@ -105,13 +109,14 @@ interface ChapterRef {
   order: number;
 }
 
-export function FirstAppearanceLine({ entity, chapters }: { entity: Entity; chapters: ChapterRef[] }) {
+export function FirstAppearanceLine({ entity, chapters, size = 'sm' }: { entity: Entity; chapters: ChapterRef[]; size?: BlockSize }) {
   if (!entity.chapterId) return null;
   const chapter = chapters.find(c => c.id === entity.chapterId);
   if (!chapter) return null;
+  const md = size === 'md';
   return (
-    <div className="flex items-center gap-1.5 text-[11px] text-ink/60">
-      <BookOpen size={11} className="flex-shrink-0" />
+    <div className={`flex items-center gap-1.5 ${md ? 'text-[12.5px]' : 'text-[11px]'} text-ink/60`}>
+      <BookOpen size={md ? 13 : 11} className="flex-shrink-0" />
       <span>Впервые: {chapter.title}</span>
     </div>
   );
@@ -150,26 +155,28 @@ interface ConnectionsBlockProps {
   entities: Entity[];
   onSelectEntity?: (entity: Entity) => void;
   onDeleteLink?: (linkId: string) => void;
+  size?: BlockSize;
 }
 
-export function EntityConnectionsBlock({ entity, links, entities, onSelectEntity, onDeleteLink }: ConnectionsBlockProps) {
+export function EntityConnectionsBlock({ entity, links, entities, onSelectEntity, onDeleteLink, size = 'sm' }: ConnectionsBlockProps) {
   const rows = connectionsFor(entity, links, entities);
   if (rows.length === 0) return null;
+  const md = size === 'md';
   return (
     <div>
-      <h4 className="text-[10px] font-bold text-ink/55 uppercase tracking-wider mb-2 ml-1">Связи</h4>
+      <h4 className={`${md ? 'text-[11px]' : 'text-[10px]'} font-bold text-ink/55 uppercase tracking-wider mb-2 ml-1`}>Связи</h4>
       <div className="bg-white rounded-xl border border-ink/5 overflow-hidden">
         {rows.map(({ link, other, label }, i) => (
           <div
             key={link.id}
-            className={`flex items-center gap-2 px-4 py-2.5 group ${i < rows.length - 1 ? 'border-b border-ink/5' : ''}`}
+            className={`flex items-center gap-2 ${md ? 'px-4 py-3' : 'px-4 py-2.5'} group ${i < rows.length - 1 ? 'border-b border-ink/5' : ''}`}
           >
             <button
               onClick={onSelectEntity ? () => onSelectEntity(other) : undefined}
               className={`flex-1 min-w-0 text-left ${onSelectEntity ? 'cursor-pointer' : 'cursor-default'}`}
             >
-              <span className="text-[12px] font-semibold text-ink/80 hover:text-ink transition-colors">{other.name}</span>
-              <span className="text-[11px] text-ink/60 ml-2">{label}</span>
+              <span className={`${md ? 'text-[13.5px]' : 'text-[12px]'} font-semibold text-ink/80 hover:text-ink transition-colors`}>{other.name}</span>
+              <span className={`${md ? 'text-[12px]' : 'text-[11px]'} text-ink/60 ml-2`}>{label}</span>
             </button>
             {onDeleteLink && (
               <button
@@ -212,15 +219,17 @@ interface TimelineBlockProps {
   events: EntityEvent[];
   chapters: ChapterRef[];
   onDeleteEvent?: (eventId: string) => void;
+  size?: BlockSize;
 }
 
-export function EntityTimelineBlock({ entity, events, chapters, onDeleteEvent }: TimelineBlockProps) {
+export function EntityTimelineBlock({ entity, events, chapters, onDeleteEvent, size = 'sm' }: TimelineBlockProps) {
   const own = sortEventsByChapter(events.filter(ev => ev.entityId === entity.id), chapters);
   if (own.length === 0) return null;
+  const md = size === 'md';
   const chapterById = new Map(chapters.map(c => [c.id, c]));
   return (
     <div>
-      <h4 className="text-[10px] font-bold text-ink/55 uppercase tracking-wider mb-2 ml-1">Таймлайн</h4>
+      <h4 className={`${md ? 'text-[11px]' : 'text-[10px]'} font-bold text-ink/55 uppercase tracking-wider mb-2 ml-1`}>Таймлайн</h4>
       <div className="bg-white rounded-xl border border-ink/5 px-4 py-3">
         <div className="relative">
           {own.map((ev, i) => {
@@ -231,14 +240,14 @@ export function EntityTimelineBlock({ entity, events, chapters, onDeleteEvent }:
               <div key={ev.id} className="flex gap-3 group relative pb-4 last:pb-0">
                 {/* Vertical connector */}
                 {i < own.length - 1 && (
-                  <div className="absolute left-[13px] top-7 bottom-0 w-px bg-ink/8" />
+                  <div className={`absolute ${md ? 'left-[15px] top-8' : 'left-[13px] top-7'} bottom-0 w-px bg-ink/8`} />
                 )}
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${meta.color}`} title={meta.label}>
-                  <Icon size={13} />
+                <div className={`${md ? 'w-8 h-8' : 'w-7 h-7'} rounded-full flex items-center justify-center flex-shrink-0 ${meta.color}`} title={meta.label}>
+                  <Icon size={md ? 15 : 13} />
                 </div>
                 <div className="flex-1 min-w-0 pt-0.5">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-[12px] font-semibold text-ink/80 leading-snug">{ev.title}</p>
+                    <p className={`${md ? 'text-[13.5px]' : 'text-[12px]'} font-semibold text-ink/80 leading-snug`}>{ev.title}</p>
                     {onDeleteEvent && (
                       <button
                         onClick={() => onDeleteEvent(ev.id)}
@@ -250,10 +259,10 @@ export function EntityTimelineBlock({ entity, events, chapters, onDeleteEvent }:
                     )}
                   </div>
                   {ev.description && (
-                    <p className="text-[11px] text-ink/55 leading-relaxed mt-0.5">{ev.description}</p>
+                    <p className={`${md ? 'text-[12.5px]' : 'text-[11px]'} text-ink/55 leading-relaxed mt-0.5`}>{ev.description}</p>
                   )}
                   {chapterTitle && (
-                    <p className="text-[10px] text-ink/55 mt-1">{chapterTitle}</p>
+                    <p className={`${md ? 'text-[11px]' : 'text-[10px]'} text-ink/55 mt-1`}>{chapterTitle}</p>
                   )}
                 </div>
               </div>

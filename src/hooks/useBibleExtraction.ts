@@ -168,6 +168,18 @@ export function useBibleExtraction(
     }
   };
 
+  /** «Это тот же X»: находку-вариант сливаем в существующую сущность (имя → в алиасы цели),
+   *  находка исчезает из инбокса. Слияние карточек, не правка рукописи. */
+  const mergeSuggestionInto = async (suggestionId: string, targetId: string) => {
+    try {
+      await api.post(`/bible/${projectId}/suggestions/${suggestionId}/merge-into`, { targetId });
+      setSuggestions(prev => prev.filter(s => s.id !== suggestionId));
+      track('entity_suggestion_merged', { projectId });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   /** Accept a bible update suggestion: applies proposed description to the approved entity. */
   const acceptUpdate = async (updateId: string) => {
     try {
@@ -242,6 +254,7 @@ export function useBibleExtraction(
     recheckBatch,
     approveSuggestion,
     rejectSuggestion,
+    mergeSuggestionInto,
     loadUpdateSuggestions,
     acceptUpdate,
     rejectUpdate,

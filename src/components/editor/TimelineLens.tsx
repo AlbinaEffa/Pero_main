@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Swords, Heart, Activity, Lightbulb, Circle, X, Rewind, ChevronDown, ChevronRight } from 'lucide-react';
+import { Swords, Heart, Activity, Lightbulb, Circle, X, Rewind, FastForward, ChevronDown, ChevronRight } from 'lucide-react';
 import { Entity, EntityEvent } from './types';
 import { MargPath } from './Marginalia';
 
@@ -28,6 +28,19 @@ const EVENT_META: Record<string, { label: string; icon: typeof Circle; color: st
   revelation:   { label: 'Открытие', icon: Lightbulb, color: '#4A5D4E' },
   other:        { label: 'Событие',  icon: Circle,    color: '#54627F' },
 };
+
+/** Класс события на оси сюжетного времени по timeHint. */
+function timeClass(ev: EntityEvent): 'present' | 'flash' | 'future' {
+  if (ev.timeHint === 'flashback' || ev.timeHint === 'past') return 'flash';
+  if (ev.timeHint === 'future') return 'future';
+  return 'present';
+}
+const TIME_FILTERS: { key: 'all' | 'present' | 'flash' | 'future'; label: string; color: string }[] = [
+  { key: 'all',     label: 'Всё время',   color: '#1e2d1f' },
+  { key: 'present', label: 'По сюжету',   color: '#4A5D4E' },
+  { key: 'flash',   label: 'Флешбеки',    color: '#71597F' },
+  { key: 'future',  label: 'Вперёд',      color: '#91682E' },
+];
 
 /**
  * Линза «Таймлайн/Арки» — события (`entity_events`) по оси глав. Один движок, два охвата:
@@ -74,10 +87,22 @@ export function TimelineLens({ entities, events, chapters, focusEntityId, onSetF
     [base, eventTypeFilter],
   );
 
+  // Сюжетная хронология: класс события по timeHint (флешбек/прошлое = «назад», future = «вперёд»).
+  const [timeFilter, setTimeFilter] = useState<'all' | 'present' | 'flash' | 'future'>('all');
+  const timeCounts = useMemo(() => {
+    const m = { all: scoped.length, present: 0, flash: 0, future: 0 };
+    scoped.forEach(e => { m[timeClass(e)]++; });
+    return m;
+  }, [scoped]);
+  const timed = useMemo(
+    () => (timeFilter === 'all' ? scoped : scoped.filter(e => timeClass(e) === timeFilter)),
+    [scoped, timeFilter],
+  );
+
   // Группировка по главам в порядке глав; внутри — по timeLabel-наличию (флешбеки помечены, не двигаем).
   const groups = useMemo(() => {
     const m = new Map<string, EntityEvent[]>();
-    scoped.forEach(ev => {
+    timed.forEach(ev => {
       const key = ev.chapterId ?? '__none__';
       if (!m.has(key)) m.set(key, []);
       m.get(key)!.push(ev);
@@ -85,9 +110,9 @@ export function TimelineLens({ entities, events, chapters, focusEntityId, onSetF
     return [...m.entries()]
       .sort((a, b) => (chapterOrder.get(a[0]) ?? 9999) - (chapterOrder.get(b[0]) ?? 9999))
       .map(([chapterId, evs], i) => ({ chapterId, index: i + 1, events: evs }));
-  }, [scoped, chapterOrder]);
+  }, [timed, chapterOrder]);
 
-  if (scoped.length === 0) {
+  if (timed.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center text-center px-6 py-12 text-[#1e2d1f]/45">
         <MargPath size={56} className="mb-3 text-[#1e2d1f]/30" />
@@ -161,27 +186,55 @@ export function TimelineLens({ entities, events, chapters, focusEntityId, onSetF
           })}
       </div>
 
+      {/* Сюжетное время — изолировать флешбеки / забегания вперёд (видеть реальный порядок). */}
+      {(timeCounts.flash > 0 || timeCounts.future > 0) && (
+        <div className="flex flex-wrap gap-1.5 mb-3 items-center">
+          {TIME_FILTERS.filter(t => t.key === 'all' || t.key === 'present' || timeCounts[t.key] > 0).map(t => {
+            const active = timeFilter === t.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setTimeFilter(t.key)}
+                className={`flex items-center gap-1 text-[10.5px] px-2 py-0.5 rounded-md transition-colors ${
+                  active ? 'text-[#f5f0e8]' : 'text-[#1e2d1f]/55 hover:bg-[#1e2d1f]/[0.06]'
+                }`}
+                style={active ? { background: t.color } : undefined}
+              >
+                {t.key === 'flash' && <Rewind size={10} />}
+                {t.key === 'future' && <FastForward size={10} />}
+                {t.label}
+                <span className={active ? 'text-[#f5f0e8]/60' : 'text-[#1e2d1f]/35'}>{timeCounts[t.key]}</span>
+              </button>
+            );
+          })}
+          <span className="text-[10px] text-[#1e2d1f]/40 ml-0.5">нелинейность: {timeCounts.flash} флешб. · {timeCounts.future} вперёд</span>
+        </div>
+      )}
+
       {focusEntityId && (
         <p className="text-[11px] text-[#1e2d1f]/45 mb-3">Арка: «{byId.get(focusEntityId)?.name}» — её события по ходу книги.</p>
       )}
 
-      <div className="relative pl-4">
-        {/* вертикальная ось */}
-        <div className="absolute left-[5px] top-1 bottom-1 w-px bg-[#1e2d1f]/10" />
-        {groups.map(group => (
-          <div key={group.chapterId} className="mb-4">
-            <div className="flex items-center gap-2 mb-2 -ml-4">
-              <span className="w-[11px] h-[11px] rounded-full bg-[#1e2d1f]/15 border-2 border-[#f5f0e8] flex-shrink-0" />
-              <span className="text-[11px] font-semibold text-[#1e2d1f]/70 truncate">
-                {chapterTitle.get(group.chapterId ?? '') || `Глава ${group.index}`}
-              </span>
-            </div>
-            <div className="flex flex-col gap-2">
-              {group.events.map(ev => {
+      {/* Ось времени — ГОРИЗОНТАЛЬНАЯ, слева направо: первая глава слева, время течёт вправо. */}
+      <div className="overflow-x-auto pb-3 -mx-1 px-1">
+        <div className="flex items-start gap-3 min-w-min">
+          {groups.map(group => (
+            <div key={group.chapterId} className="flex-shrink-0 w-48">
+              {/* заголовок главы = узел на оси */}
+              <div className="flex items-center gap-1.5 mb-2.5 pb-2 border-b border-[#1e2d1f]/10">
+                <span className="w-[10px] h-[10px] rounded-full bg-[#1e2d1f]/15 border-2 border-[#f5f0e8] flex-shrink-0" />
+                <span className="text-[11px] font-semibold text-[#1e2d1f]/70 truncate">
+                  {chapterTitle.get(group.chapterId ?? '') || `Глава ${group.index}`}
+                </span>
+              </div>
+              <div className="flex flex-col gap-2">
+                {group.events.map(ev => {
                 const meta = EVENT_META[ev.eventType ?? 'other'] ?? EVENT_META.other;
                 const Icon = meta.icon;
                 const ent = byId.get(ev.entityId);
-                const flashback = ev.timeHint === 'flashback' || ev.timeHint === 'past';
+                const tc = timeClass(ev);
+                const flashback = tc === 'flash';
+                const future = tc === 'future';
                 return (
                   <button
                     key={ev.id}
@@ -199,7 +252,12 @@ export function TimelineLens({ entities, events, chapters, focusEntityId, onSetF
                             <Rewind size={9} /> {ev.timeLabel || 'флешбек'}
                           </span>
                         )}
-                        {!flashback && ev.timeLabel && (
+                        {future && (
+                          <span className="flex items-center gap-0.5 text-[9px] uppercase tracking-wide text-[#91682E] bg-[#91682E]/10 rounded px-1 py-0.5">
+                            <FastForward size={9} /> {ev.timeLabel || 'вперёд'}
+                          </span>
+                        )}
+                        {!flashback && !future && ev.timeLabel && (
                           <span className="text-[9px] text-[#1e2d1f]/45 bg-[#1e2d1f]/[0.05] rounded px-1 py-0.5">{ev.timeLabel}</span>
                         )}
                       </span>
@@ -213,11 +271,12 @@ export function TimelineLens({ entities, events, chapters, focusEntityId, onSetF
                     </span>
                   </button>
                 );
-              })}
-            </div>
+                })}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
     </div>
   );
 }

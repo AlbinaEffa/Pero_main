@@ -1,5 +1,5 @@
 import express from 'express';
-import { eq, and, desc, isNull, sql } from 'drizzle-orm';
+import { eq, and, desc, isNull, sql, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import * as schema from '../db/schema.js';
 import { pool, db } from '../db/client.js';
@@ -7,6 +7,7 @@ import { authenticateToken } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rateLimiter.js';
 import { guardChat, CircuitOpenError } from '../lib/aiGuard.js';
 import { getAIProvider, getEmbeddingProvider, type ChatTurn } from '../lib/aiProvider.js';
+import { searchSeriesPassages } from '../lib/semanticRetrieval.js';
 import { aiQuota, getQuotaStatus } from '../lib/quota.js';
 import { buildStoryBibleContext } from '../lib/extraction.js';
 
@@ -17,6 +18,15 @@ const ChatSchema = z.object({
   chapterContent: z.string().max(500_000).optional(),
   projectId:      z.string().optional(),
   chapterId:      z.string().optional(),
+  // Выделенный автором фрагмент, прикреплённый как контекст вопроса (бар → «Спросить Перо»).
+  // Идёт в промпт модели, но НЕ в историю/пузырь — там остаётся только сам вопрос.
+  selection:      z.string().max(5_000).optional(),
+  // Ширина контекста чата: 'chapter' — только текущая глава; 'book' — глава + весь Мир
+  // (сущности) + поиск по рукописи. По умолчанию 'book' (Перо видит всю книгу).
+  scope:          z.enum(['chapter', 'book', 'series']).optional(),
+  // Серия-уровневый чат-брейншторм на холсте серии (книги может не быть). Если задан БЕЗ projectId —
+  // контекст = замысел серии (премис/лор/герои), история по серии.
+  seriesId:       z.string().optional(),
 });
 
 const ConsistencySchema = z.object({
@@ -46,8 +56,10 @@ const SYSTEM_INSTRUCTION = `Вы — профессиональный редак
 Помогайте писателю с текстом: советы по стилистике, развитие сюжета, дописывание абзацев.
 Отвечайте креативно и конструктивно, но ОЧЕНЬ ЛАКОНИЧНО (максимум 2-3 небольших абзаца).
 Строго по делу, никакой воды.
-У вас есть доступ к Библии истории — одобренным фактам о мире, персонажах и локациях.
-Используйте их для точных, консистентных ответов. Никогда не противоречьте установленным фактам.`;
+У вас есть доступ к Миру — одобренным фактам о персонажах, локациях, предметах и правилах мира
+(то, что в других инструментах называют «библией истории»). В ответах называйте это хранилище
+только «Мир», не «библия истории».
+Используйте факты Мира для точных, консистентных ответов. Никогда не противоречьте установленным фактам.`;
 
 const DICTATION_SYSTEM_INSTRUCTION = `Вы — невидимый слой постобработки диктовки для писателя.
 Ваша задача: превратить сырой фрагмент голосового ввода в чистый литературный текст.
@@ -56,7 +68,7 @@ const DICTATION_SYSTEM_INSTRUCTION = `Вы — невидимый слой по�
 - Верните ТОЛЬКО итоговый текст без пояснений, кавычек, markdown и комментариев.
 - Исправляйте пунктуацию, регистр, очевидные огрехи распознавания речи и повторы.
 - Сохраняйте исходный смысл, не переписывайте содержание заново.
-- Если в контексте Библии истории или текущей рукописи есть каноническое имя/термин, используйте именно его.
+- Если в контексте Мира или текущей рукописи есть каноническое имя/термин, используйте именно его.
 - Не выдумывайте новых фактов.
 - Если фрагмент уже выглядит нормально, верните его почти без изменений.
 - Не добавляйте вводных фраз вроде "Вот исправленный текст".`;
@@ -120,6 +132,41 @@ async function saveMessage(
   }
 }
 
+// ─── Серия-чат (брейншторм замысла на холсте серии) ───────────────────────────
+async function loadSeriesHistory(userId: string, seriesId: string, limit = 30): Promise<(typeof schema.chatHistory.$inferSelect)[]> {
+  try {
+    const rows = await db.select().from(schema.chatHistory)
+      .where(and(eq(schema.chatHistory.userId, userId), eq(schema.chatHistory.seriesId, seriesId)))
+      .orderBy(desc(schema.chatHistory.timestamp)).limit(limit);
+    return rows.reverse();
+  } catch (e: any) { if (e?.code !== '42P01') console.error('load series history', e); return []; }
+}
+async function saveSeriesMessage(userId: string, seriesId: string, role: string, content: string): Promise<void> {
+  try { await db.insert(schema.chatHistory).values({ userId, seriesId, role, content }); }
+  catch (e: any) { if (e?.code !== '42P01') console.error('save series message', e); }
+}
+/** Контекст серия-чата: замысел серии (премис/лор/герои) + история. Перо — собеседник по брейнштормингу. */
+async function buildSeriesChatContents(userId: string, message: string, seriesId: string): Promise<ChatTurn[] | null> {
+  const [s] = await db.select().from(schema.series)
+    .where(and(eq(schema.series.id, seriesId), eq(schema.series.userId, userId)));
+  if (!s) return null; // access denied
+  const parts = [
+    s.title ? `Серия: ${s.title}` : '',
+    s.premise ? `О чём серия: ${s.premise}` : '',
+    s.lore ? `Мир / лор:\n${s.lore}` : '',
+    s.castNotes ? `Герои:\n${s.castNotes}` : '',
+  ].filter(Boolean);
+  const ctx = parts.length ? parts.join('\n\n') : '(замысел пока пустой — помоги его придумать)';
+  const history = await loadSeriesHistory(userId, seriesId);
+  const contents: ChatTurn[] = [
+    { role: 'user', text: `Мы планируем серию книг. Ты — Перо, партнёр по брейнштормингу: задавай вопросы, предлагай варианты мира/героев/структуры, помогай оформить замысел. Прозу за автора НЕ пишешь. Отвечай ИСКЛЮЧИТЕЛЬНО на русском.\n\n=== ЗАМЫСЕЛ СЕРИИ ===\n${ctx}` },
+    { role: 'model', text: 'Понял замысел серии. Готов помочь придумать.' },
+  ];
+  for (const m of history) contents.push({ role: m.role === 'user' ? 'user' : 'model', text: m.content });
+  contents.push({ role: 'user', text: message });
+  return contents;
+}
+
 // ─── Semantic Retrieval ───────────────────────────────────────────────────────
 
 /** Embed a query string for retrieval */
@@ -177,57 +224,87 @@ async function buildChatContents(
   chapterContent: string | undefined,
   validProjectId: string | null,
   validChapterId: string | null,
+  // Ширина контекста: true = вся книга (Мир + поиск по рукописи + глава),
+  // false = только текущая глава. По умолчанию вся книга.
+  includeBook = true,
+  // Если задан — контекст РАСШИРЯЕТСЯ на всю серию (Мир + поиск по всем книгам серии).
+  seriesId: string | null = null,
 ): Promise<ChatTurn[] | null> {
   let entities: (typeof schema.storyEntities.$inferSelect)[] = [];
   let entityLinks: (typeof schema.entityLinks.$inferSelect)[] = [];
   if (validProjectId) {
+    // Проверка владельца — ВСЕГДА (даже если контекст «Мир» выключен).
     const projectRows = await db
       .select({ id: schema.projects.id })
       .from(schema.projects)
       .where(and(eq(schema.projects.id, validProjectId), eq(schema.projects.userId, userId)));
     if (projectRows.length === 0) return null; // access denied
 
-    entities = await db
-      .select()
-      .from(schema.storyEntities)
-      .where(and(
-        eq(schema.storyEntities.projectId, validProjectId),
-        eq(schema.storyEntities.status, 'approved'),
-      ));
-    entityLinks = await db
-      .select()
-      .from(schema.entityLinks)
-      .where(eq(schema.entityLinks.projectId, validProjectId));
+    // Сущности Мира грузим только в режиме «вся книга»/«вся серия».
+    if (includeBook) {
+      // scope серии: сущности+связи по всем книгам серии; иначе — по текущей книге.
+      let scopeProjectIds: string[] = [validProjectId];
+      if (seriesId) {
+        const books = await db.select({ id: schema.projects.id }).from(schema.projects)
+          .where(and(eq(schema.projects.seriesId, seriesId), eq(schema.projects.userId, userId)));
+        if (books.length > 0) scopeProjectIds = books.map(b => b.id);
+      }
+      entities = await db
+        .select()
+        .from(schema.storyEntities)
+        .where(and(
+          inArray(schema.storyEntities.projectId, scopeProjectIds),
+          eq(schema.storyEntities.status, 'approved'),
+        ));
+      entityLinks = await db
+        .select()
+        .from(schema.entityLinks)
+        .where(inArray(schema.entityLinks.projectId, scopeProjectIds));
+    }
   }
 
   const history = validProjectId
     ? await loadHistory(userId, validProjectId, validChapterId)
     : [];
 
+  // Поиск релевантных фрагментов по всей рукописи — тоже только в режиме «вся книга».
   let semanticBlock = '';
-  if (validProjectId) {
-    const queryVec = await embedQuery(message.trim());
-    if (queryVec) {
-      const chunks = await retrieveSemanticChunks(userId, validProjectId, queryVec);
-      if (chunks.length > 0) {
-        semanticBlock = `=== РЕЛЕВАНТНЫЕ ФРАГМЕНТЫ РУКОПИСИ ===\n${chunks.map((c, i) => `[${i + 1}] ${c}`).join('\n\n')}`;
+  if (validProjectId && includeBook) {
+    if (seriesId) {
+      // scope серии: поиск релевантных фрагментов по ВСЕМ книгам серии (с пометкой книги).
+      const passages = await searchSeriesPassages(seriesId, message.trim(), 8);
+      if (passages.length > 0) {
+        semanticBlock = `=== РЕЛЕВАНТНЫЕ ФРАГМЕНТЫ СЕРИИ ===\n${passages.map((p, i) => `[${i + 1}] [Книга «${p.bookTitle ?? '?'}»] ${p.chunkText}`).join('\n\n')}`;
+      }
+    } else {
+      const queryVec = await embedQuery(message.trim());
+      if (queryVec) {
+        const chunks = await retrieveSemanticChunks(userId, validProjectId, queryVec);
+        if (chunks.length > 0) {
+          semanticBlock = `=== РЕЛЕВАНТНЫЕ ФРАГМЕНТЫ РУКОПИСИ ===\n${chunks.map((c, i) => `[${i + 1}] ${c}`).join('\n\n')}`;
+        }
       }
     }
   }
 
   const bibleBlock   = buildStoryBibleContext(entities, entityLinks);
-  const chapterBlock = `=== ТЕКУЩАЯ ГЛАВА ===\n<chapter_content>\n${chapterContent?.trim() || '(пока пусто)'}\n</chapter_content>`;
-  const contextBlock = [bibleBlock, semanticBlock, chapterBlock].filter(Boolean).join('\n\n');
+  // Глава попадает в контекст, только если фронт прислал её текст (чип «Глава» включён).
+  const chapterBlock = chapterContent?.trim()
+    ? `=== ТЕКУЩАЯ ГЛАВА ===\n<chapter_content>\n${chapterContent.trim()}\n</chapter_content>`
+    : '';
+  const contextBlock = [bibleBlock, semanticBlock, chapterBlock].filter(Boolean).join('\n\n') || '(контекст не выбран)';
 
   const contents: ChatTurn[] = [
     { role: 'user',  text: `Вот контекст для нашей работы:\n\n${contextBlock}` },
-    { role: 'model', text: 'Контекст получен. Готов помогать с учётом Библии истории и текущей главы.' },
+    { role: 'model', text: 'Контекст получен. Готов помогать с учётом Мира и текущей главы.' },
   ];
 
   for (const msg of history) {
     contents.push({ role: msg.role === 'user' ? 'user' : 'model', text: msg.content });
   }
-  contents.push({ role: 'user', text: message.trim() });
+  // Языковой пин В ТЕКСТЕ промпта (system-инструкцию Kimi/Moonshot часто игнорирует на длинном
+  // контексте и отвечает по-китайски). В сам ответ это не попадает — это инструкция модели.
+  contents.push({ role: 'user', text: `${message.trim()}\n\n[Отвечай ИСКЛЮЧИТЕЛЬНО на русском языке. Никакого китайского или английского, даже если в контексте есть другие языки.]` });
 
   return contents;
 }
@@ -297,11 +374,27 @@ router.post('/chat/stream',
 
     const parsed = ChatSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.errors[0]?.message });
-    const { message, chapterContent, projectId, chapterId } = parsed.data;
+    const { message, chapterContent, projectId, chapterId, selection, scope, seriesId } = parsed.data;
+    const includeBook = scope !== 'chapter'; // по умолчанию вся книга
 
     const validProjectId = projectId && isValidUUID(projectId) ? projectId : null;
     const validChapterId = chapterId && isValidUUID(chapterId) ? chapterId : null;
+    // Серия-чат: seriesId БЕЗ projectId → брейншторм замысла серии.
+    const seriesChatId = !validProjectId && seriesId && isValidUUID(seriesId) ? seriesId : null;
+
+    // scope='series' → расширить контекст на всю серию (резолвим seriesId книги).
+    let seriesScopeId: string | null = null;
+    if (scope === 'series' && validProjectId) {
+      const [p] = await db.select({ seriesId: schema.projects.seriesId }).from(schema.projects)
+        .where(and(eq(schema.projects.id, validProjectId), eq(schema.projects.userId, req.user.userId)));
+      seriesScopeId = p?.seriesId ?? null;
+    }
     const userText       = message.trim();
+    // Фрагмент даём модели как контекст вопроса, но в историю сохраняем чистый вопрос.
+    const sel            = selection?.trim();
+    const modelText      = sel
+      ? `Автор выделил фрагмент главы и спрашивает о нём.\n\nВыделенный фрагмент:\n«${sel}»\n\nВопрос: ${userText}`
+      : userText;
 
     // Prepare SSE headers before async work so the connection stays open
     res.setHeader('Content-Type', 'text/event-stream');
@@ -314,15 +407,16 @@ router.post('/chat/stream',
     const sendJson = (obj: object) => send(JSON.stringify(obj));
 
     try {
-      const contents = await buildChatContents(
-        req.user.userId, userText, chapterContent, validProjectId, validChapterId,
-      );
+      const contents = seriesChatId
+        ? await buildSeriesChatContents(req.user.userId, modelText, seriesChatId)
+        : await buildChatContents(req.user.userId, modelText, chapterContent, validProjectId, validChapterId, includeBook, seriesScopeId);
       if (contents === null) {
         sendJson({ error: 'Access denied' });
         return res.end();
       }
 
-      if (validProjectId) await saveMessage(req.user.userId, validProjectId, validChapterId, 'user', userText);
+      if (seriesChatId) await saveSeriesMessage(req.user.userId, seriesChatId, 'user', userText);
+      else if (validProjectId) await saveMessage(req.user.userId, validProjectId, validChapterId, 'user', userText);
 
       // Abort the stream if the AI provider doesn't complete within 45 seconds
       const abortController = new AbortController();
@@ -352,8 +446,9 @@ router.post('/chat/stream',
         return res.end();
       }
 
-      if (validProjectId && fullText) {
-        await saveMessage(req.user.userId, validProjectId, validChapterId, 'model', fullText);
+      if (fullText) {
+        if (seriesChatId) await saveSeriesMessage(req.user.userId, seriesChatId, 'model', fullText);
+        else if (validProjectId) await saveMessage(req.user.userId, validProjectId, validChapterId, 'model', fullText);
       }
 
       send('[DONE]');
@@ -386,10 +481,17 @@ router.get('/quota', authenticateToken, async (req: any, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 router.get('/history', authenticateToken, async (req: any, res) => {
   try {
-    const { projectId, chapterId } = req.query as {
+    const { projectId, chapterId, seriesId } = req.query as {
       projectId?: string;
       chapterId?: string;
+      seriesId?: string;
     };
+
+    // Серия-чат: история по seriesId (без проекта).
+    if (seriesId && isValidUUID(seriesId)) {
+      const sRows = await loadSeriesHistory(req.user.userId, seriesId, 60);
+      return res.json({ messages: sRows.map(r => ({ id: r.id, role: r.role, text: r.content, timestamp: r.timestamp })) });
+    }
 
     if (!projectId || !isValidUUID(projectId)) {
       return res.status(400).json({ error: 'Valid projectId is required' });
@@ -457,7 +559,7 @@ router.post('/consistency',
     if (entities.length === 0) {
       return res.json({
         issues: [],
-        note: 'Нет одобренных сущностей для проверки — одобрите факты в Библии истории.',
+        note: 'Нет одобренных сущностей для проверки — одобрите факты в Мире.',
       });
     }
 
@@ -478,14 +580,15 @@ ${chapterContent.trim()}
 </chapter_content>
 
 === ЗАДАЧА ===
-Найди ТОЛЬКО фактические противоречия между текстом главы и Библией истории.
+Найди ТОЛЬКО фактические противоречия между текстом главы и Миром (одобренными фактами выше).
 Ищи: несоответствия в описании персонажей, локаций, предметов; нарушение правил мира.
-НЕ комментируй стиль, орфографию, сюжетные решения или то, чего нет в Библии.
+НЕ комментируй стиль, орфографию, сюжетные решения или то, чего нет в Мире.
+В тексте противоречий называй хранилище фактов только «Мир», НЕ «библия истории».
 Если противоречий нет — верни пустой массив.
 
 Верни ТОЛЬКО валидный JSON-массив без markdown-обёртки:
 [
-  { "entity": "Имя сущности из Библии", "issue": "Краткое описание противоречия", "severity": "low|medium|high" }
+  { "entity": "Имя сущности из Мира", "issue": "Краткое описание противоречия", "severity": "low|medium|high" }
 ]`;
 
     const response = await guardChat(
@@ -687,7 +790,7 @@ router.post('/transform',
 
       const promptText = TRANSFORM_PROMPTS[action](text.trim());
       const fullPrompt = bibleBlock
-        ? `${bibleBlock}\n\nПри редактуре используй имена и термины из Библии истории.\n\n${promptText}`
+        ? `${bibleBlock}\n\nПри редактуре используй имена и термины из Мира.\n\n${promptText}`
         : promptText;
 
       const response = await guardChat(

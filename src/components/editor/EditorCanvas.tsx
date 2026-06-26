@@ -1,15 +1,19 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Editor as TiptapEditor } from '@tiptap/react';
 import { EditorContent } from '@tiptap/react';
 import { EditorFirstRunHints } from './EditorFirstRunHints';
 import {
   Bold, Italic, Underline, Strikethrough, List, ListOrdered, ListTodo,
-  Undo2, Redo2, User, Download, Search, ChevronDown, PanelLeft,
+  Undo2, Redo2, Download, Search, ChevronDown, PanelLeft, PanelRight,
   Link2, AlignLeft, AlignCenter, AlignRight, AlignJustify, Code, ListIndentIncrease,
-  CornerDownLeft, ExternalLink, Trash2, Highlighter, CircleOff, Quote, StretchHorizontal
+  CornerDownLeft, ExternalLink, Trash2, Highlighter, CircleOff, Quote, StretchHorizontal, Check,
+  MoreHorizontal
 } from 'lucide-react';
+
 import type { HighlightColor } from './HighlightMarkExtension';
 import { toolbarSelectionKey } from './toolbarSelectionExtension';
+import { CHAPTER_TYPES } from './chapterDisplay';
+import { newFootnoteId, footnoteNumberKey } from './FootnoteExtension';
 
 interface Props {
   editor: TiptapEditor | null;
@@ -20,11 +24,16 @@ interface Props {
   chapterPrefix?: string;
   chapterTitleSuffix?: string;
   onChapterTitleSuffixChange?: (value: string) => void;
+  /** Тип текущей главы и его смена (переключатель в заголовке). */
+  chapterType?: string;
+  onChapterTypeChange?: (type: string) => void;
   indentParagraphs: boolean;
   onIndentParagraphsChange: (v: boolean) => void;
   editorFont: EditorFontName;
   onEditorFontChange: (font: EditorFontName) => void;
   isFocusMode?: boolean;
+  /** Зарезервировать правое поле под гаттер комментариев (режим рецензирования, ≥lg). */
+  reserveCommentGutter?: boolean;
   isDictating: boolean;
   interimTranscript: string;
   onOpenSettings: () => void;
@@ -34,6 +43,9 @@ interface Props {
   onOpenChapters?: () => void;
   /** Свёрнут ли сайдбар глав на десктопе — тогда кнопка «показать» видна и на ≥ lg. */
   isChaptersCollapsed?: boolean;
+  /** Открыт ли правый спутник «Перо». Когда свёрнут — в тулбаре показываем кнопку раскрытия. */
+  isCompanionOpen?: boolean;
+  onToggleCompanion?: () => void;
   projectId?: string;
 }
 
@@ -44,7 +56,7 @@ type ListStyle = 'bulletList' | 'orderedList' | 'taskList';
 type SlashCommandId =
   | 'chapterTitle' | 'paragraph' | 'h1' | 'h2' | 'h3'
   | 'bulletList' | 'orderedList' | 'taskList'
-  | 'blockquote' | 'codeBlock' | 'sceneBreak';
+  | 'blockquote' | 'codeBlock' | 'sceneBreak' | 'footnote';
 type SlashMenuState = {
   query: string;
   range: { from: number; to: number };
@@ -79,6 +91,7 @@ const SLASH_COMMANDS: {
   { id: 'blockquote',   label: 'Цитата',                hint: 'Цитата или эпиграф',              search: ['quote', 'blockquote', 'цитата', 'эпиграф'] },
   { id: 'codeBlock',    label: 'Блок кода',             hint: 'Моноширинный блок',               search: ['code', 'код', 'блок', 'моноширинный'] },
   { id: 'sceneBreak',   label: 'Разделитель сцены',     hint: 'Вставить разрыв сцены',           search: ['scene', 'break', 'divider', 'сцена', 'разделитель'] },
+  { id: 'footnote',     label: 'Сноска',                hint: 'Надстрочный маркер с примечанием', search: ['footnote', 'note', 'сноска', 'примечание', 'ref'] },
 ];
 
 function isWordChar(char: string | undefined): boolean {
@@ -247,11 +260,14 @@ export function EditorCanvas({
   chapterPrefix = 'Глава',
   chapterTitleSuffix = '',
   onChapterTitleSuffixChange,
+  chapterType = 'chapter',
+  onChapterTypeChange,
   indentParagraphs,
   onIndentParagraphsChange,
   editorFont,
   onEditorFontChange,
   isFocusMode = false,
+  reserveCommentGutter = false,
   isDictating,
   interimTranscript,
   onOpenSettings,
@@ -259,6 +275,8 @@ export function EditorCanvas({
   onOpenExport,
   onOpenChapters,
   isChaptersCollapsed,
+  isCompanionOpen,
+  onToggleCompanion,
   projectId,
 }: Props) {
   const [isBlockMenuOpen, setIsBlockMenuOpen] = useState(false);
@@ -267,6 +285,78 @@ export function EditorCanvas({
   const [isLinkMenuOpen, setIsLinkMenuOpen] = useState(false);
   const [isHighlightMenuOpen, setIsHighlightMenuOpen] = useState(false);
   const [isColumnMenuOpen, setIsColumnMenuOpen] = useState(false);
+  const [isChapterTypeMenuOpen, setIsChapterTypeMenuOpen] = useState(false);
+  // «⋯ Ещё» — переполнение тулбара: контролы, не влезающие в узкую колонку (открыт спутник /
+  // узкий ноут), уезжают в это меню. Что прячется — решают container-queries (@container/tb),
+  // меню лишь зеркалит спрятанное. Подробности у разметки тулбара ниже.
+  const [isOverflowMenuOpen, setIsOverflowMenuOpen] = useState(false);
+  // Сноски главы (как в Word): маркер в тексте, текст редактируется в области внизу.
+  // Список = отражение узлов-маркеров (id/текст + сквозной номер); пересчёт на каждую транзакцию.
+  const [footnotes, setFootnotes] = useState<{ id: string; content: string; number: number }[]>([]);
+  const [pendingFocusFootnoteId, setPendingFocusFootnoteId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!editor) return;
+    const recompute = () => {
+      const offset = (footnoteNumberKey.getState(editor.state) as { offset: number } | undefined)?.offset ?? 0;
+      const list: { id: string; content: string }[] = [];
+      editor.state.doc.descendants((n) => { if (n.type.name === 'footnote') list.push({ id: n.attrs.id, content: n.attrs.content ?? '' }); });
+      setFootnotes(list.map((f, i) => ({ ...f, number: offset + i + 1 })));
+    };
+    recompute();
+    editor.on('transaction', recompute);
+    return () => { editor.off('transaction', recompute); };
+  }, [editor]);
+
+  const scrollToFootnoteItem = useCallback((id: string) => {
+    const el = document.querySelector(`[data-fn-item="${id}"]`) as HTMLElement | null;
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    (el?.querySelector('textarea') as HTMLTextAreaElement | null)?.focus();
+  }, []);
+
+  const scrollToFootnoteMarker = useCallback((id: string) => {
+    if (!editor) return;
+    let dom: Element | null = null;
+    try { dom = editor.view.dom.querySelector(`.footnote-ref[data-footnote-id="${id}"]`); } catch { dom = null; }
+    (dom as HTMLElement | null)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [editor]);
+
+  const insertFootnote = useCallback(() => {
+    if (!editor) return;
+    const id = newFootnoteId();
+    editor.chain().focus().insertFootnote({ id }).run();
+    setPendingFocusFootnoteId(id); // курсор уходит вниз к новой сноске (Word-style)
+  }, [editor]);
+
+  // Новая сноска появилась в списке → прокрутить вниз к её полю и сфокусировать.
+  useEffect(() => {
+    if (!pendingFocusFootnoteId) return;
+    if (footnotes.some(f => f.id === pendingFocusFootnoteId)) {
+      scrollToFootnoteItem(pendingFocusFootnoteId);
+      setPendingFocusFootnoteId(null);
+    }
+  }, [pendingFocusFootnoteId, footnotes, scrollToFootnoteItem]);
+
+  // Клик по маркеру сноски в тексте → прыжок к её тексту внизу.
+  useEffect(() => {
+    if (!editor) return;
+    const onClick = (e: MouseEvent) => {
+      const ref = (e.target as HTMLElement)?.closest?.('.footnote-ref') as HTMLElement | null;
+      const id = ref?.getAttribute('data-footnote-id');
+      if (id) { e.preventDefault(); scrollToFootnoteItem(id); }
+    };
+    let dom: HTMLElement | null = null;
+    const attach = () => {
+      try { dom = editor.view.dom as HTMLElement; } catch { dom = null; }
+      if (dom) dom.addEventListener('click', onClick);
+    };
+    attach();
+    editor.on('create', attach);
+    return () => {
+      editor.off('create', attach);
+      if (dom) dom.removeEventListener('click', onClick);
+    };
+  }, [editor, scrollToFootnoteItem]);
   const [activeHighlightColor, setActiveHighlightColor] = useState<HighlightColor | null>(null);
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
   const [slashIndex, setSlashIndex] = useState(0);
@@ -411,6 +501,12 @@ export function EditorCanvas({
     setTextWidth(w);
     localStorage.setItem('pero_textWidth', w);
   };
+  // Настройки могут менять ширину колонки — слушаем и подхватываем живьём.
+  useEffect(() => {
+    const onWidth = () => setTextWidth((localStorage.getItem('pero_textWidth') as 'narrow' | 'medium' | 'wide') || 'medium');
+    window.addEventListener('pero:textwidth', onWidth);
+    return () => window.removeEventListener('pero:textwidth', onWidth);
+  }, []);
 
   const widthClass = {
     narrow: 'max-w-[44rem]',
@@ -482,6 +578,13 @@ export function EditorCanvas({
         .insertContent([{ type: 'sceneBreak' }, { type: 'paragraph' }])
         .run();
       setSlashMenu(null);
+      return;
+    }
+    if (commandId === 'footnote') {
+      const id = newFootnoteId();
+      editor.chain().focus().deleteRange(slashMenu.blockRange).insertFootnote({ id }).run();
+      setSlashMenu(null);
+      setPendingFocusFootnoteId(id); // курсор уходит вниз к новой сноске
       return;
     }
     if (commandId === 'paragraph') chain.setParagraph().run();
@@ -651,9 +754,11 @@ export function EditorCanvas({
     <main className="flex-1 min-w-0 flex flex-col relative bg-transparent shadow-[-10px_0_20px_rgba(30,45,31,0.02)] z-10 transition-all duration-300">
       {!isFocusMode && (
       <>
-      {/* Top Formatting Toolbar */}
+      {/* Top Formatting Toolbar — @container/tb: контролы прячутся в «⋯ Ещё» по ШИРИНЕ КОЛОНКИ
+          (а не вьюпорта), поэтому реагирует и на открытие спутника, и на узкий ноут. */}
+      <div className="@container/tb sticky top-0 z-30 shrink-0">
       <div
-        className="relative min-h-14 border-b border-[#1e2d1f]/10 bg-[#f5f0e8]/90 backdrop-blur-md flex items-center justify-between px-6 max-md:px-3 max-md:flex-wrap max-md:justify-center max-md:gap-y-1 max-md:py-2 max-md:pl-12 sticky top-0 z-30 shrink-0"
+        className="relative min-h-14 border-b border-[#1e2d1f]/10 bg-[#f5f0e8]/90 backdrop-blur-md flex items-center justify-between px-6 max-md:px-3 max-md:flex-wrap max-md:justify-center max-md:gap-y-1 max-md:py-2 max-md:pl-12 md:overflow-x-clip"
         onMouseEnter={() => {
           if (isLinkMenuOpen && linkSelectionRef.current && editor && !editor.isDestroyed) {
             editor.view.dispatch(
@@ -1008,6 +1113,9 @@ export function EditorCanvas({
               )}
             </div>
 
+            {/* S2 — второй сегмент переполнения: индексы · сноска · выравнивание · отступ · шрифт.
+                Прячется в «⋯ Ещё» когда колонка ≤1120px (display:contents → раскладка не ломается). */}
+            <div className="contents md:@max-[1120px]/tb:hidden">
             <div className="w-px h-6 bg-[#1e2d1f]/10 max-md:hidden" />
 
             <button
@@ -1029,6 +1137,16 @@ export function EditorCanvas({
               }`}
             >
               x₂
+            </button>
+            <button
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => insertFootnote()}
+              title="Вставить сноску"
+              aria-label="Вставить сноску"
+              className="max-md:hidden px-1.5 py-1 rounded-md transition-colors text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4 inline-flex items-start leading-none"
+            >
+              <span className="text-[15px] font-medium">аб</span>
+              <span className="text-[9px] font-bold text-[#71597F] ml-px">1</span>
             </button>
 
             <div className="w-px h-6 bg-[#1e2d1f]/10 max-md:hidden" />
@@ -1124,11 +1242,15 @@ export function EditorCanvas({
                 </div>
               )}
             </div>
+            </div>
 
           </div>
         </div>
 
         <div className="flex items-center gap-3">
+          {/* S1 — первый сегмент переполнения (правый кластер): ширина колонки · поиск · экспорт.
+              Прячется в «⋯ Ещё» когда колонка < 1200px (display:contents → не ломает раскладку). */}
+          <div className="contents md:@max-[1200px]/tb:hidden">
           {/* Ширина колонки — выпадающее меню (нативный паттерн Tiptap, как заголовок/списки) */}
           <div ref={columnMenuRef} className="relative max-md:hidden">
             <button
@@ -1197,14 +1319,174 @@ export function EditorCanvas({
               <Download size={18} />
             </button>
           )}
-          <button
-            onClick={onOpenSettings}
-            title="Настройки профиля"
-            className="p-1.5 rounded-md text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4 transition-colors flex items-center justify-center"
-          >
-            <User size={18} />
-          </button>
+          </div>
+          {/* «⋯ Ещё» — появляется только на десктопе, когда контролы не влезают (колонка ≤1200px).
+              Зеркалит спрятанные контролы: S1 (всегда при открытом меню) + S2 (когда колонка ≤1120px). */}
+          <div className="relative hidden md:@max-[1200px]/tb:block">
+            <button
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => setIsOverflowMenuOpen(v => !v)}
+              title="Ещё"
+              aria-label="Ещё инструменты"
+              className={`p-1.5 rounded-md transition-colors flex items-center justify-center ${
+                isOverflowMenuOpen ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'
+              }`}
+            >
+              <MoreHorizontal size={20} strokeWidth={2.2} />
+            </button>
+            {isOverflowMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-[100]" onClick={() => setIsOverflowMenuOpen(false)} />
+                <div className="absolute top-full mt-2 right-0 w-56 bg-[#f5f0e8] rounded-xl shadow-lg border border-[#1e2d1f]/10 p-1.5 z-[101]">
+                  {/* ── S2 (формат) — видно в меню только когда S2 спрятан из бара (колонка ≤1120px) ── */}
+                  <div className="hidden @max-[1120px]/tb:block">
+                    <div className="px-2.5 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-[#1e2d1f]/55">
+                      Выравнивание
+                    </div>
+                    <div className="flex items-center gap-1 px-1.5 pb-1.5">
+                      {([
+                        { key: 'left', icon: AlignLeft, title: 'По левому краю' },
+                        { key: 'center', icon: AlignCenter, title: 'По центру' },
+                        { key: 'right', icon: AlignRight, title: 'По правому краю' },
+                        { key: 'justify', icon: AlignJustify, title: 'По ширине' },
+                      ] as const).map((item) => {
+                        const Icon = item.icon;
+                        const isActive = item.key === 'left'
+                          ? !editor?.isActive({ textAlign: 'center' }) && !editor?.isActive({ textAlign: 'right' }) && !editor?.isActive({ textAlign: 'justify' })
+                          : !!editor?.isActive({ textAlign: item.key });
+                        return (
+                          <button
+                            key={item.key}
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => item.key === 'left'
+                              ? editor?.chain().focus().unsetTextAlign().run()
+                              : editor?.chain().focus().setTextAlign(item.key).run()}
+                            title={item.title}
+                            className={`flex-1 p-1.5 rounded-md flex items-center justify-center transition-colors ${isActive ? 'text-[#1e2d1f] bg-[#1e2d1f]/6' : 'text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4'}`}
+                          >
+                            <Icon size={18} strokeWidth={2.2} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <button
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => onIndentParagraphsChange(!indentParagraphs)}
+                      className={`w-full rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors flex items-center gap-2 ${
+                        indentParagraphs ? 'bg-[#1e2d1f] text-white' : 'text-[#1e2d1f]/75 hover:bg-[#1e2d1f]/6'
+                      }`}
+                    >
+                      <ListIndentIncrease size={16} strokeWidth={2.1} />
+                      <span className="font-medium">Красная строка</span>
+                    </button>
+                    <button
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => applyScriptMark(editor, 'superscript')}
+                      className={`w-full rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors flex items-center gap-2 ${
+                        editor?.isActive('superscript') ? 'bg-[#1e2d1f] text-white' : 'text-[#1e2d1f]/75 hover:bg-[#1e2d1f]/6'
+                      }`}
+                    >
+                      <span className="text-[15px] leading-none w-4 text-center">x²</span>
+                      <span className="font-medium">Верхний индекс</span>
+                    </button>
+                    <button
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => applyScriptMark(editor, 'subscript')}
+                      className={`w-full rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors flex items-center gap-2 ${
+                        editor?.isActive('subscript') ? 'bg-[#1e2d1f] text-white' : 'text-[#1e2d1f]/75 hover:bg-[#1e2d1f]/6'
+                      }`}
+                    >
+                      <span className="text-[15px] leading-none w-4 text-center">x₂</span>
+                      <span className="font-medium">Нижний индекс</span>
+                    </button>
+                    <button
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => { insertFootnote(); setIsOverflowMenuOpen(false); }}
+                      className="w-full rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors flex items-center gap-2 text-[#1e2d1f]/75 hover:bg-[#1e2d1f]/6"
+                    >
+                      <span className="text-[14px] leading-none w-4 text-center font-medium">аб<span className="text-[9px] text-[#71597F]">1</span></span>
+                      <span className="font-medium">Сноска</span>
+                    </button>
+                    <div className="px-2.5 pt-2 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-[#1e2d1f]/55 border-t border-[#1e2d1f]/8 mt-1">
+                      Шрифт всего текста
+                    </div>
+                    {([
+                      { key: 'cormorant', label: 'Cormorant' },
+                      { key: 'literata', label: 'Literata' },
+                      { key: 'source-serif', label: 'Source Serif' },
+                    ] as const).map((font) => (
+                      <button
+                        key={font.key}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => { onEditorFontChange(font.key); setIsOverflowMenuOpen(false); }}
+                        className={`w-full rounded-lg px-2.5 py-1.5 text-left transition-colors ${
+                          editorFont === font.key ? 'bg-[#1e2d1f] text-white' : 'text-[#1e2d1f]/75 hover:bg-[#1e2d1f]/6'
+                        }`}
+                      >
+                        <span className={`text-[15px] leading-none ${font.key === 'cormorant' ? 'font-serif' : font.key === 'literata' ? 'editor-font-literata' : 'editor-font-source-serif'}`}>
+                          {font.label}
+                        </span>
+                      </button>
+                    ))}
+                    <div className="border-t border-[#1e2d1f]/8 mt-1 mb-1" />
+                  </div>
+
+                  {/* ── S1 (правый кластер) — всегда в меню, пока оно открыто ── */}
+                  <div className="px-2.5 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-[#1e2d1f]/55">
+                    Ширина колонки
+                  </div>
+                  {([
+                    { key: 'narrow', label: 'Узкая',   hint: 'S' },
+                    { key: 'medium', label: 'Средняя', hint: 'M' },
+                    { key: 'wide',   label: 'Широкая', hint: 'L' },
+                  ] as const).map((item) => (
+                    <button
+                      key={item.key}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => { handleWidthChange(item.key); }}
+                      className={`w-full rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors flex items-center justify-between gap-3 ${
+                        textWidth === item.key ? 'bg-[#1e2d1f] text-white' : 'text-[#1e2d1f]/75 hover:bg-[#1e2d1f]/6'
+                      }`}
+                    >
+                      <span className="font-medium">{item.label}</span>
+                      <span className={`text-[11px] ${textWidth === item.key ? 'text-white/60' : 'text-[#1e2d1f]/55'}`}>{item.hint}</span>
+                    </button>
+                  ))}
+                  <div className="border-t border-[#1e2d1f]/8 mt-1 mb-1" />
+                  {onOpenSearch && (
+                    <button
+                      onClick={() => { onOpenSearch(); setIsOverflowMenuOpen(false); }}
+                      className="w-full rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors flex items-center gap-2 text-[#1e2d1f]/75 hover:bg-[#1e2d1f]/6"
+                    >
+                      <Search size={16} />
+                      <span className="font-medium">Поиск по тексту</span>
+                    </button>
+                  )}
+                  {onOpenExport && (
+                    <button
+                      onClick={() => { onOpenExport(); setIsOverflowMenuOpen(false); }}
+                      className="w-full rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors flex items-center gap-2 text-[#1e2d1f]/75 hover:bg-[#1e2d1f]/6"
+                    >
+                      <Download size={16} />
+                      <span className="font-medium">Экспорт</span>
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+          {onToggleCompanion && !isCompanionOpen && (
+            <button
+              onClick={onToggleCompanion}
+              title="Показать спутник «Перо»"
+              aria-label="Показать спутник «Перо»"
+              className="p-1.5 rounded-md text-ink/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/4 transition-colors flex items-center justify-center max-md:hidden"
+            >
+              <PanelRight size={18} />
+            </button>
+          )}
         </div>
+      </div>
       </div>
       </>
       )}
@@ -1242,12 +1524,50 @@ export function EditorCanvas({
       )}
 
       {/* Scrollable Writing Area */}
-      <div className={`absolute inset-0 px-8 md:px-16 overflow-y-auto hide-scrollbar scroll-smooth ${isFocusMode ? 'pt-8' : 'pt-28'}`}>
+      <div
+        className={`absolute inset-0 px-8 md:px-16 overflow-y-auto hide-scrollbar scroll-smooth transition-[padding] duration-300 ${isFocusMode ? 'pt-8' : 'pt-28'}`}
+        style={reserveCommentGutter ? { paddingRight: 372 } : undefined}
+      >
         <div className={`${widthClass} mx-auto relative h-full transition-all duration-500`}>
           <div className={`${editorFontClass} mb-10 ${isFocusMode ? 'mt-2' : 'mt-4'} flex items-baseline gap-4 text-[#1e2d1f]/90`}>
-            <span className="text-[2.35rem] leading-tight tracking-[-0.02em] shrink-0 font-medium">
-              {chapterPrefix}
-            </span>
+            <div className="relative shrink-0">
+              <button
+                onClick={() => setIsChapterTypeMenuOpen(o => !o)}
+                title="Тип главы"
+                className="group inline-flex items-baseline gap-1.5 text-[2.35rem] leading-tight tracking-[-0.02em] font-medium rounded-lg px-1.5 -mx-1.5 hover:bg-[#1e2d1f]/[0.04] transition-colors"
+              >
+                {chapterPrefix}
+                <ChevronDown size={20} className="self-center text-[#1e2d1f]/25 group-hover:text-[#1e2d1f]/50 transition-colors" />
+              </button>
+              {isChapterTypeMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsChapterTypeMenuOpen(false)} />
+                  <div className="absolute left-0 top-full mt-1 z-50 w-52 rounded-xl border border-[#1e2d1f]/8 bg-[#f5f0e8] shadow-[0_18px_50px_rgba(30,45,31,0.14)] p-1 max-h-[60vh] overflow-y-auto"
+                    style={{ fontFamily: '"Golos Text", system-ui, sans-serif' }}>
+                    {CHAPTER_TYPES.map((opt, i) => {
+                      const active = (chapterType ?? 'chapter') === opt.type;
+                      const firstService = opt.service && !CHAPTER_TYPES[i - 1]?.service;
+                      return (
+                        <div key={opt.type}>
+                          {firstService && (
+                            <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[#1e2d1f]/35 border-t border-[#1e2d1f]/8 mt-1">Служебное · не анализируется</div>
+                          )}
+                          <button
+                            onClick={() => { onChapterTypeChange?.(opt.type); setIsChapterTypeMenuOpen(false); }}
+                            className={`flex items-center justify-between w-full text-left text-[14px] rounded-lg px-3 py-2 transition-colors ${
+                              active ? 'bg-[#1e2d1f]/[0.06] text-[#1e2d1f] font-semibold' : 'text-[#1e2d1f]/70 hover:bg-[#1e2d1f]/[0.04]'
+                            }`}
+                          >
+                            {opt.label}
+                            {active && <Check size={15} className="text-[#4D6B4D]" />}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
             <span className="text-[2rem] leading-none text-[#1e2d1f]/16 shrink-0 translate-y-[-0.04em]">|</span>
             <input
               ref={chapterTitleInputRef}
@@ -1275,6 +1595,40 @@ export function EditorCanvas({
               </div>
             )}
           </div>
+
+          {/* Сноски главы — область внизу (как в Word): номер + редактируемый текст. */}
+          {footnotes.length > 0 && (
+            <div className="mt-12 pt-5 border-t border-[#1e2d1f]/12 pb-32" style={{ fontFamily: '"Golos Text", system-ui, sans-serif' }}>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-[#1e2d1f]/40 mb-3">Сноски</div>
+              <div className="flex flex-col gap-1.5">
+                {footnotes.map((fn) => (
+                  <div key={fn.id} data-fn-item={fn.id} className="flex items-start gap-2.5 group rounded-lg -mx-2 px-2 py-0.5 hover:bg-[#1e2d1f]/[0.02] transition-colors">
+                    <button
+                      onClick={() => scrollToFootnoteMarker(fn.id)}
+                      title="К месту в тексте"
+                      className="text-[12px] font-semibold text-[#71597F] hover:underline pt-2 w-5 text-right shrink-0"
+                    >
+                      {fn.number}.
+                    </button>
+                    <textarea
+                      value={fn.content}
+                      onChange={(e) => editor?.commands.updateFootnote(fn.id, e.target.value)}
+                      placeholder="Текст сноски…"
+                      rows={2}
+                      className="flex-1 resize-none bg-transparent border border-transparent rounded-md outline-none text-[13px] text-[#1e2d1f]/80 leading-snug px-2 py-1.5 placeholder:text-[#1e2d1f]/30 focus:bg-white focus:border-[#1e2d1f]/10 transition-colors"
+                    />
+                    <button
+                      onClick={() => editor?.commands.removeFootnote(fn.id)}
+                      title="Удалить сноску"
+                      className="p-1 mt-1.5 rounded-md text-[#1e2d1f]/30 hover:text-[#9E4338] hover:bg-[#F1DFDA] transition-colors opacity-0 group-hover:opacity-100 shrink-0"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

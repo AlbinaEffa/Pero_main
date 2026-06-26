@@ -14,7 +14,9 @@ export interface ExtractEntitiesPayload {
 
 export interface EmbedChapterPayload {
   chapterId: string;
-  content: string;         // HTML from tiptap — worker will strip before chunking
+  content?: string;        // HTML from tiptap. Необязателен: если не задан, воркер
+                           // прочитает АКТУАЛЬНЫЙ текст главы из БД на момент запуска
+                           // (нужно для дедупа отложенных джоб — см. scheduleChapterEmbed).
 }
 
 export interface ScanContradictionsPayload {
@@ -97,4 +99,33 @@ export async function enqueueJobs(
   } finally {
     client.release();
   }
+}
+
+/**
+ * Поставить переэмбеддинг главы как следствие сохранения — durable-гарантия свежести
+ * вектора (переживает закрытие вкладки, в отличие от фронтового таймера).
+ *  • Дедуп: не больше одной ожидающей джобы embed_chapter на главу — всплеск автосейвов
+ *    (раз в ~1с при печати) схлопывается в одну.
+ *  • Задержка delayMs: даём тексту «устаканиться», прежде чем эмбеддить.
+ *  • Контент НЕ кладём в payload — воркер прочитает АКТУАЛЬНЫЙ текст главы на момент
+ *    запуска, поэтому дедуп не «замораживает» устаревший снимок.
+ */
+export async function scheduleChapterEmbed(
+  chapterId: string,
+  projectId: string,
+  userId: string,
+  delayMs = 15_000,
+): Promise<void> {
+  const runAfter = new Date(Date.now() + delayMs).toISOString();
+  await pool.query(
+    `INSERT INTO jobs (type, payload, status, max_attempts, project_id, user_id, run_after)
+     SELECT 'embed_chapter', $1, 'queued', 3, $2, $3, $4
+      WHERE NOT EXISTS (
+        SELECT 1 FROM jobs
+         WHERE type = 'embed_chapter'
+           AND status IN ('queued','running')
+           AND payload->>'chapterId' = $5
+      )`,
+    [JSON.stringify({ chapterId }), projectId, userId, runAfter, chapterId],
+  );
 }

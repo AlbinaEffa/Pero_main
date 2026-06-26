@@ -14,7 +14,7 @@
  */
 
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { eq, and, asc } from 'drizzle-orm';
+import { eq, and, asc, lt } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import type { ExtractEntitiesPayload, EmbedChapterPayload, ScanContradictionsPayload } from './queue.js';
 import { stripHtml } from '../lib/html.js';
@@ -22,11 +22,12 @@ import { guardChat, guardEmbed } from '../lib/aiGuard.js';
 import { pool as sharedPool } from '../db/client.js';
 import { getAIProvider, getEmbeddingProvider, type AIProvider } from '../lib/aiProvider.js';
 import {
-  BASE_EXTRACTION_PROMPT, cleanJsonResponse, processExtractionResults, sanitizePov,
+  BASE_EXTRACTION_PROMPT, EXTRACTION_SCHEMA, cleanJsonResponse, processExtractionResults, sanitizePov,
   sanitizeSynopsis, isLowInfoChapterTitle,
   buildStoryBibleContext, buildContradictionPrompt, type RawContradiction,
   type AiEntity, type AiRelation,
 } from '../lib/extraction.js';
+import { retrieveCrossChapterPassages, retrieveCrossBookPassages } from '../lib/semanticRetrieval.js';
 
 const POLL_INTERVAL_MS   = 5_000;  // check for new jobs every 5 seconds
 const STUCK_JOB_MINUTES  = 5;      // running jobs older than this are assumed crashed
@@ -105,6 +106,8 @@ async function handleExtractEntities(
         // No truncation — send full chapter content
         contents: `${BASE_EXTRACTION_PROMPT}\n\n<chapter_content>\n${plainText}\n</chapter_content>`,
         temperature: 0.15,
+        responseSchema: EXTRACTION_SCHEMA,      // структурный вывод для локальных моделей (Ollama)
+        responseSchemaName: 'entity_extraction',
       }),
       { userId, projectId, route: 'worker:extract_entities', circuit: 'extract', timeoutMs: 60_000 }
     );
@@ -188,7 +191,19 @@ async function handleEmbedChapter(
   }
 
   const db = drizzle(sharedPool, { schema });
-  const plainText = stripHtml(payload.content);
+
+  // Контент может прийти в payload (импорт/бэкфилл) либо отсутствовать (отложенная
+  // джоба от scheduleChapterEmbed) — тогда читаем АКТУАЛЬНЫЙ текст главы из БД,
+  // чтобы переэмбеддить самую свежую версию, а не устаревший снимок.
+  let html = payload.content;
+  if (!html) {
+    const [ch] = await db
+      .select({ content: schema.chapters.content })
+      .from(schema.chapters)
+      .where(eq(schema.chapters.id, payload.chapterId));
+    html = ch?.content ?? '';
+  }
+  const plainText = stripHtml(html);
   const chunks = chunkText(plainText);
   if (chunks.length === 0) return;
 
@@ -283,6 +298,26 @@ async function handleScanContradictions(
 
   const storyBible = buildStoryBibleContext(entities, links);
 
+  // E3: если книга в серии — подтянуть канон из ПРЕДЫДУЩИХ книг (series_order меньше текущего),
+  // чтобы ловить нестыковки МЕЖДУ книгами. Нужен заданный порядок книги.
+  let earlierBookIds: string[] = [];
+  let priorCanonLines: string[] = []; // E4: явный канон-снимок предыдущих книг (если зафиксирован)
+  const [thisProj] = await db.select({ seriesId: schema.projects.seriesId, seriesOrder: schema.projects.seriesOrder })
+    .from(schema.projects).where(eq(schema.projects.id, projectId));
+  if (thisProj?.seriesId != null && thisProj.seriesOrder != null) {
+    const earlier = await db.select({ id: schema.projects.id, title: schema.projects.title, snapshot: schema.projects.worldSnapshot })
+      .from(schema.projects)
+      .where(and(eq(schema.projects.seriesId, thisProj.seriesId), lt(schema.projects.seriesOrder, thisProj.seriesOrder)));
+    earlierBookIds = earlier.map(e => e.id);
+    for (const b of earlier) {
+      const snap = (Array.isArray(b.snapshot) ? b.snapshot : []) as { name?: string; type?: string; state?: string | null }[];
+      for (const it of snap.slice(0, 40)) {
+        if (!it?.name) continue;
+        priorCanonLines.push(`[Из книги «${b.title}», итог] ${it.name}${it.type ? ` (${it.type})` : ''}${it.state ? ` — ${it.state}` : ''}`);
+      }
+    }
+  }
+
   const chapters = await db.select({
       id: schema.chapters.id, title: schema.chapters.title, content: schema.chapters.content,
     })
@@ -300,7 +335,13 @@ async function handleScanContradictions(
 
   let scanned = 0;
   for (const ch of withText) {
-    const prompt = buildContradictionPrompt(storyBible, ch.title, ch.plainText.slice(0, CONTRADICTION_CHAPTER_CHAR_CAP));
+    // RAG: близкие по смыслу места из ДРУГИХ глав (для сверки по всей книге, а не только с Миром).
+    const related = await retrieveCrossChapterPassages(projectId, ch.id, ch.plainText, 6);
+    // E3: канон из предыдущих книг серии, помечен «[Из книги «X»]» — чтобы ИИ ловил межкнижные нестыковки.
+    const crossBook = earlierBookIds.length
+      ? (await retrieveCrossBookPassages(earlierBookIds, ch.plainText, 4)).map(p => `[Из книги «${p.bookTitle ?? '?'}»] ${p.chunkText}`)
+      : [];
+    const prompt = buildContradictionPrompt(storyBible, ch.title, ch.plainText.slice(0, CONTRADICTION_CHAPTER_CHAR_CAP), [...related, ...priorCanonLines, ...crossBook]);
 
     try {
       const response = await guardChat(
@@ -324,7 +365,7 @@ async function handleScanContradictions(
           chapterId: ch.id,
           chapterTitle: ch.title,
           entityName: (typeof it.entity === 'string' ? it.entity : '').slice(0, 200) || null,
-          issue: it.issue.trim().slice(0, 1000),
+          issue: (it.issue.trim() + (it.canon && String(it.canon).trim() ? ` · Канон: ${String(it.canon).trim()}` : '')).slice(0, 1000),
           quote: (typeof it.quote === 'string' ? it.quote.trim().slice(0, 300) : '') || null,
           severity: VALID_SEVERITY.has(it.severity) ? it.severity : 'medium',
           status: 'open' as const,

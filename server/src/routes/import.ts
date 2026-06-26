@@ -245,6 +245,31 @@ function detectTitle(text: string, filename: string): string {
   return filename.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' ').trim() || 'Без названия';
 }
 
+/**
+ * Определяет тип главы по её заголовку и чистит мусорные заголовки из оглавления.
+ * - Пролог/Эпилог/Интерлюдия/Интермедия → соответствующий тип.
+ * - Заголовок с 2+ прогонами «Глава N» подряд — это затащенное оглавление (TOC):
+ *   сбрасываем title в пустой, чтобы показывалась чистая «Глава N» по порядку.
+ */
+function classifyImportChapter(rawTitle: string, index: number): { chapterType: string; title: string } {
+  const t = (rawTitle || '').trim();
+  let chapterType = 'chapter';
+  if (/^пролог\b/i.test(t))                              chapterType = 'prologue';
+  else if (/^эпилог\b/i.test(t))                         chapterType = 'epilogue';
+  else if (/^(интерлюди|интермеди|interlude)/i.test(t))  chapterType = 'interlude';
+  else if (/^часть\b/i.test(t))                          chapterType = 'part';
+  else if (/^(благодарност|выражение признательности|acknowledg)/i.test(t)) chapterType = 'acknowledgments';
+  else if (/^посвящ/i.test(t))                           chapterType = 'dedication';
+  else if (/^(предислови|вступлени|введени|пролог от автора|foreword|introduction)/i.test(t)) chapterType = 'foreword';
+  else if (/^(послеслови|афтерворд|afterword)/i.test(t)) chapterType = 'afterword';
+
+  const chapterRuns = (t.match(/глава\s*\d+/gi) || []).length;
+  const isTocJunk = chapterRuns >= 2;                 // оглавление, а не заголовок главы
+  const cleanTitle = (!t || isTocJunk) ? `Глава ${index + 1}` : t;
+
+  return { chapterType, title: cleanTitle };
+}
+
 // Background extraction is now handled by the job worker (src/jobs/worker.ts)
 // This route just enqueues jobs and returns immediately.
 
@@ -350,19 +375,27 @@ router.post('/create', authenticateToken, idempotency(), async (req: any, res) =
       }).returning();
 
       const insertedChapters = await tx.insert(schema.chapters).values(
-        chaptersToInsert.map((c, i) => ({
-          projectId: project.id,
-          title: c.title || `Глава ${i + 1}`,
-          content: c.content || '',
-          order: i,
-        }))
+        chaptersToInsert.map((c, i) => {
+          const { chapterType, title } = classifyImportChapter(c.title, i);
+          return {
+            projectId: project.id,
+            title,
+            content: c.content || '',
+            order: i,
+            chapterType,
+          };
+        })
       ).returning();
 
       return { project, insertedChapters };
     });
 
+    // Служебные разделы (благодарности/посвящение/пред-/послесловие) — не сюжет, ИИ не анализируем.
+    const SERVICE_TYPES = new Set(['acknowledgments', 'dedication', 'foreword', 'afterword']);
+
     // Enqueue entity extraction + embedding jobs for each chapter — survives restarts
     const jobItems = insertedChapters.flatMap(c => {
+      if (SERVICE_TYPES.has((c as { chapterType?: string }).chapterType ?? 'chapter')) return [];
       const plainContent = c.content || '';
       const wordCount = plainContent.split(/\s+/).filter(Boolean).length;
       if (wordCount < 50) return [];

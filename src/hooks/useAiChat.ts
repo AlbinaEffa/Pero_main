@@ -7,6 +7,10 @@ interface UseAiChatArgs {
   projectId: string | undefined;
   chapterId: string | undefined;
   getContent: () => string;
+  /** Прикреплённый фрагмент-контекст (бар → «Спросить Перо» / чип «Выделение»). */
+  getSelection?: () => string;
+  /** Ширина контекста чата: глава / вся книга / вся серия (глава + Мир + RAG соответствующего уровня). */
+  getScope?: () => 'chapter' | 'book' | 'series';
 }
 
 interface ConsistencyIssue {
@@ -15,12 +19,14 @@ interface ConsistencyIssue {
   severity: 'low' | 'medium' | 'high';
 }
 
+// Текст служит маркером «пустого стейта» в CoauthorPanel (там же рисуется живой пустой
+// экран). Если меняешь строку — синхронизируй GREETING_TEXT в CoauthorPanel.
 const GREETING: ChatMessage = {
   role: 'ai',
-  text: 'Привет! Я твой ИИ-соавтор. Чем могу помочь с этой главой?',
+  text: 'Я Перо — помню всю твою книгу. Спроси о персонажах, событиях, локациях или нестыковках.',
 };
 
-export function useAiChat({ projectId, chapterId, getContent }: UseAiChatArgs) {
+export function useAiChat({ projectId, chapterId, getContent, getSelection, getScope }: UseAiChatArgs) {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([GREETING]);
   const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
   const [chatInput, setChatInput] = useState('');
@@ -59,7 +65,7 @@ export function useAiChat({ projectId, chapterId, getContent }: UseAiChatArgs) {
   }, [projectId, chapterId]);
 
   // ── Core: stream a message to the AI ────────────────────────────────────────
-  const sendMessage = async (text: string, eventName = 'chat_message_sent') => {
+  const sendMessage = async (text: string, eventName = 'chat_message_sent', selection?: string) => {
     if (!text.trim() || isAiLoading || isCheckingConsistency) return;
 
     // Optimistically add user bubble + empty AI bubble
@@ -82,9 +88,11 @@ export function useAiChat({ projectId, chapterId, getContent }: UseAiChatArgs) {
         },
         body: JSON.stringify({
           message:        text,
-          chapterContent: getContent(),
+          chapterContent: getContent(),        // глава всегда в контексте
+          scope:          getScope?.() ?? 'book', // 'chapter' — только глава; 'book' — + весь Мир
           projectId,
           chapterId,
+          ...(selection?.trim() ? { selection: selection.trim() } : {}),
         }),
       });
 
@@ -159,7 +167,7 @@ export function useAiChat({ projectId, chapterId, getContent }: UseAiChatArgs) {
     const text = chatInput.trim();
     if (!text) return;
     setChatInput('');
-    await sendMessage(text, 'chat_message_sent');
+    await sendMessage(text, 'chat_message_sent', getSelection?.());
   };
 
   // ── Send a pre-built prompt (from quick actions) ─────────────────────────────

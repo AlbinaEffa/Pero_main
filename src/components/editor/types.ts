@@ -1,4 +1,6 @@
-export type ChapterType = 'chapter' | 'prologue' | 'epilogue' | 'interlude';
+export type ChapterType =
+  | 'chapter' | 'prologue' | 'epilogue' | 'part' | 'interlude'
+  | 'acknowledgments' | 'dedication' | 'foreword' | 'afterword';
 
 export type Chapter = {
   id: string;
@@ -16,6 +18,8 @@ export type Chapter = {
   povCharacter?: string | null;
   /** Краткая аннотация главы (1–2 предложения «что произошло»), извлекается ИИ. */
   summary?: string | null;
+  /** Авторский план главы (что задумано), заполняется ДО текста — режим архитектора. */
+  plan?: string | null;
 };
 
 export type EntitySignificance = 'major' | 'moderate' | 'minor';

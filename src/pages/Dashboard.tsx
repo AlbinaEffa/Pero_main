@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Search, Plus, User, Settings, HelpCircle,
   FileText, Upload, X, BookOpen, TrendingUp,
-  Trash2, Edit3, Eye, Archive, ArchiveRestore, Download, MoreVertical, Copy
+  Trash2, Edit3, Eye, Archive, ArchiveRestore, Download, MoreVertical, Copy, Library, ChevronUp, ChevronDown
 } from 'lucide-react';
 import { MargOpenBook } from '../components/editor/Marginalia';
 import ImportModal from '../components/ImportModal';
@@ -34,6 +34,8 @@ interface Project {
   updatedAtMs: number;      // raw ms for sorting
   status: 'active' | 'archive';
   progress: number;         // 0-100 based on done/total chapters
+  seriesId: string | null;     // серия книги (Этап E) или null = вне серии
+  seriesOrder: number | null;  // порядок книги в серии
 }
 
 // Stable "random" height seeded by project id (consistent across renders)
@@ -90,6 +92,8 @@ function fromApiProject(p: any): Project {
     updatedAtMs,
     status:          (p.status as 'active' | 'archive') || 'active',
     progress,
+    seriesId:        p.seriesId ?? null,
+    seriesOrder:     p.seriesOrder ?? null,
   };
 }
 
@@ -101,7 +105,7 @@ function formatWords(n: number) {
 
 const PRESET_COLORS = ['#41523F', '#C66B49', '#2C3E50', '#806B8A', '#2B7A6B', '#8B6B32', '#6B2B2B', '#2B4A8B'];
 
-function BookContextMenu({ project, position, onClose, onEdit, onOpen, onBible, onExport, onArchive, onDelete, onDuplicate, onChangeColor }: {
+function BookContextMenu({ project, position, onClose, onEdit, onOpen, onBible, onExport, onArchive, onDelete, onDuplicate, onChangeColor, onContinue }: {
   project: Project;
   position: { top: number, left: number };
   onClose: () => void;
@@ -113,6 +117,7 @@ function BookContextMenu({ project, position, onClose, onEdit, onOpen, onBible, 
   onDelete: () => void;
   onDuplicate: () => void;
   onChangeColor: (color: string) => void;
+  onContinue: () => void;
 }) {
   const isArchived = project.status === 'archive';
   const menuRef = useRef<HTMLDivElement>(null);
@@ -165,6 +170,12 @@ function BookContextMenu({ project, position, onClose, onEdit, onOpen, onBible, 
         </button>
 
         <div className="h-px bg-white/10 mx-3 my-1" />
+
+        <button onClick={onContinue} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-white/80 hover:bg-white/10 transition-colors">
+          <Library size={14} /> Написать продолжение
+        </button>
+
+        <div className="h-px bg-white/10 mx-3 my-1" />
         
         <div className="px-4 py-2 my-1 flex items-center justify-between">
           {PRESET_COLORS.map(c => (
@@ -194,7 +205,7 @@ function BookContextMenu({ project, position, onClose, onEdit, onOpen, onBible, 
 }
 
 
-function Book({ project, onOpen, onDelete, onEdit, onBible, onExport, onArchive, onDuplicate, onChangeColor, isProcessing, onProcessingClick }: { project: Project; onOpen: (id: string) => void; onDelete: (id: string) => void; onEdit: (id: string) => void; onBible: (id: string) => void; onExport: (id: string) => void; onArchive: (id: string) => void; onDuplicate: (id: string) => void; onChangeColor: (id: string, color: string) => void; isProcessing?: boolean; onProcessingClick?: (id: string) => void }) {
+function Book({ project, onOpen, onDelete, onEdit, onBible, onExport, onArchive, onDuplicate, onChangeColor, onContinue, isProcessing, onProcessingClick }: { project: Project; onOpen: (id: string) => void; onDelete: (id: string) => void; onEdit: (id: string) => void; onBible: (id: string) => void; onExport: (id: string) => void; onArchive: (id: string) => void; onDuplicate: (id: string) => void; onChangeColor: (id: string, color: string) => void; onContinue: (id: string) => void; isProcessing?: boolean; onProcessingClick?: (id: string) => void }) {
   const [hovered, setHovered] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number, left: number } | null>(null);
 
@@ -220,6 +231,7 @@ function Book({ project, onOpen, onDelete, onEdit, onBible, onExport, onArchive,
           onDelete={() => { onDelete(project.id); setMenuPos(null); }}
           onDuplicate={() => { onDuplicate(project.id); setMenuPos(null); }}
           onChangeColor={(color) => onChangeColor(project.id, color)}
+          onContinue={() => { onContinue(project.id); setMenuPos(null); }}
         />
       )}
 
@@ -331,9 +343,11 @@ function ShelfSlot({ icon: Icon, label, height, onClick }: {
   );
 }
 
-function Shelf({ projects, label, onOpen, onDelete, onEdit, onBible, onExport, onArchive, onDuplicate, onChangeColor, emptyLabel, getProcessing, onProcessingClick, trailing }: {
+function Shelf({ projects, label, onLabelClick, onOpen, onDelete, onEdit, onBible, onExport, onArchive, onDuplicate, onChangeColor, onContinue, emptyLabel, getProcessing, onProcessingClick, trailing }: {
   projects: Project[];
   label: string;
+  onLabelClick?: () => void;
+  onContinue: (id: string) => void;
   onOpen: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
@@ -351,12 +365,16 @@ function Shelf({ projects, label, onOpen, onDelete, onEdit, onBible, onExport, o
   return (
     <div className="mb-14">
       <div className="flex items-center gap-4 mb-0 px-1">
-        <span style={{
-          fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em',
-          textTransform: 'uppercase', color: 'rgba(30,45,31,0.55)',
-          fontFamily: "'Golos Text', sans-serif"
-        }}>
-          {label}
+        <span
+          onClick={onLabelClick}
+          title={onLabelClick ? 'Открыть единый Мир серии' : undefined}
+          style={{
+            fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em',
+            textTransform: 'uppercase', color: onLabelClick ? '#A14F44' : 'rgba(30,45,31,0.55)',
+            fontFamily: "'Golos Text', sans-serif",
+            cursor: onLabelClick ? 'pointer' : 'default',
+          }}>
+          {label}{onLabelClick ? ' ›' : ''}
         </span>
         <div style={{ flex: 1, height: '1px', background: 'rgba(30,45,31,0.08)' }} />
         <span style={{ fontSize: '11px', color: 'rgba(30,45,31,0.25)' }}>
@@ -393,7 +411,7 @@ function Shelf({ projects, label, onOpen, onDelete, onEdit, onBible, onExport, o
                   animationDelay: `${i * 0.05}s`,
                   opacity: 0,
                 }}>
-                  <Book project={p} onOpen={onOpen} onDelete={onDelete} onEdit={onEdit} onBible={onBible} onExport={onExport} onArchive={onArchive} onDuplicate={onDuplicate} onChangeColor={onChangeColor} isProcessing={getProcessing?.(p.id)} onProcessingClick={onProcessingClick} />
+                  <Book project={p} onOpen={onOpen} onDelete={onDelete} onEdit={onEdit} onBible={onBible} onExport={onExport} onArchive={onArchive} onDuplicate={onDuplicate} onChangeColor={onChangeColor} onContinue={onContinue} isProcessing={getProcessing?.(p.id)} onProcessingClick={onProcessingClick} />
                 </div>
               ))}
               {trailing}
@@ -791,6 +809,7 @@ type SortKey = 'updatedAt' | 'wordCount' | 'title';
 export default function Dashboard() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
+  const [series, setSeries] = useState<{ id: string; title: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -815,8 +834,15 @@ export default function Dashboard() {
     toastTimer.current = setTimeout(() => setToast(''), 2800);
   };
 
+  // Перезагрузить проекты (+ серии) — после изменений серий на дашборде.
+  const reloadProjects = () =>
+    api.get<{ projects: any[] }>('/projects').then(data => setProjects((data.projects || []).map(fromApiProject)));
+  const reloadSeries = () =>
+    api.get<{ series: { id: string; title: string }[] }>('/series').then(data => setSeries(data.series || [])).catch(() => {});
+
   // Load projects from API — trigger onboarding if this is a brand-new user
   useEffect(() => {
+    reloadSeries();
     api.get<{ projects: any[] }>('/projects')
       .then(data => {
         const loaded = (data.projects || []).map(fromApiProject);
@@ -829,6 +855,7 @@ export default function Dashboard() {
       })
       .catch(err => console.error('Failed to load projects:', err))
       .finally(() => setIsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Job status polling for the processing badge
@@ -853,6 +880,22 @@ export default function Dashboard() {
     } else {
       navigate(`/editor/${projectId}`);
     }
+  };
+
+  // «Написать продолжение»: завести серию из книги (если её нет) + новая книга → в её редактор.
+  const handleContinue = async (projectId: string) => {
+    try {
+      const { project } = await api.post<{ seriesId: string; project: { id: string } }>(`/series/continue/${projectId}`, {});
+      navigate(`/editor/${project.id}`);
+    } catch (e) { console.error('continue series failed', e); }
+  };
+
+  // «Новая серия» (слот на дашборде) → создать пустую серию и сразу в её рабочее пространство.
+  const handleNewSeries = async () => {
+    try {
+      const { series: s } = await api.post<{ series: { id: string } }>('/series', { title: 'Новая серия' });
+      navigate(`/series/${s.id}`);
+    } catch (e) { console.error('new series failed', e); }
   };
 
   // Derived genre list from active projects (мультижанр: разбиваем CSV на токены)
@@ -1137,11 +1180,38 @@ export default function Dashboard() {
             <EmptyState onNew={() => setIsModalOpen(true)} />
           ) : (
             <>
+              {/* Серии (Этап E) — каждая серия отдельной полкой по порядку книг */}
+              {series
+                .map(s => ({ s, books: activeProjects.filter(p => p.seriesId === s.id).sort((a, b) => (a.seriesOrder ?? 0) - (b.seriesOrder ?? 0)) }))
+                .filter(x => x.books.length > 0)
+                .map(({ s, books }) => (
+                  <Shelf
+                    key={s.id}
+                    projects={books}
+                    label={s.title}
+                    onLabelClick={() => navigate(`/series/${s.id}`)}
+                    onOpen={handleOpen}
+                    onDelete={id => setDeletingProjectId(id)}
+                    onEdit={id => setRenamingProjectId(id)}
+                    onBible={handleBible}
+                    onExport={id => setExportingProjectId(id)}
+                    onArchive={handleArchive}
+                    onDuplicate={handleDuplicate}
+                    onChangeColor={handleChangeColor}
+                onContinue={handleContinue}
+                    getProcessing={getProcessing}
+                    onProcessingClick={id => { const p = projects.find(pr => pr.id === id); if (p) setProcessingPanel({ id, title: p.title }); }}
+                  />
+                ))}
+
               <Shelf
-                projects={activeProjects}
+                projects={activeProjects.filter(p => !p.seriesId)}
                 label="Текущие"
                 trailing={
-                  <ShelfSlot icon={Plus} label="Новая книга" height={300} onClick={() => setIsModalOpen(true)} />
+                  <>
+                    <ShelfSlot icon={Plus} label="Новая книга" height={300} onClick={() => setIsModalOpen(true)} />
+                    <ShelfSlot icon={Library} label="Новая серия" height={300} onClick={handleNewSeries} />
+                  </>
                 }
                 onOpen={handleOpen}
                 onDelete={id => setDeletingProjectId(id)}
@@ -1151,6 +1221,7 @@ export default function Dashboard() {
                 onArchive={handleArchive}
                 onDuplicate={handleDuplicate}
                 onChangeColor={handleChangeColor}
+                onContinue={handleContinue}
                 emptyLabel="Нет проектов с такими фильтрами"
                 getProcessing={getProcessing}
                 onProcessingClick={id => {
@@ -1169,6 +1240,7 @@ export default function Dashboard() {
                 onArchive={handleArchive}
                 onDuplicate={handleDuplicate}
                 onChangeColor={handleChangeColor}
+                onContinue={handleContinue}
                 emptyLabel="Архив пуст"
                 getProcessing={getProcessing}
                 onProcessingClick={id => {

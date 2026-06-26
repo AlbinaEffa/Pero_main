@@ -12,7 +12,6 @@ import { api } from '../services/api';
 import { track } from '../services/analytics';
 import { useDictation } from '../hooks/useDictation';
 import { useAutosave } from '../hooks/useAutosave';
-import { useEmbedding } from '../hooks/useEmbedding';
 import { useWritingStats } from '../hooks/useWritingStats';
 import { useAiChat } from '../hooks/useAiChat';
 import { useBibleExtraction } from '../hooks/useBibleExtraction';
@@ -22,10 +21,16 @@ import { ChapterSidebar } from '../components/editor/ChapterSidebar';
 import { EditorCanvas } from '../components/editor/EditorCanvas';
 import { BottomToolbar } from '../components/editor/BottomToolbar';
 import { WorldCompanion } from '../components/editor/WorldCompanion';
+import { EntityDetailPanel } from '../components/editor/EntityDetailPanel';
+import { CHAPTER_TYPE_LABELS, isServiceChapterType } from '../components/editor/chapterDisplay';
+import type { BookFootnote } from '../components/editor/FootnotesLens';
 import { CommandPalette, Command } from '../components/editor/CommandPalette';
-import { EntitySelectionMenu } from '../components/editor/EntitySelectionMenu';
+import { SelectionBar } from '../components/editor/SelectionBar';
+import { NotesBoard, Note } from '../components/NotesBoard';
 import { ContradictionPopover } from '../components/editor/ContradictionPopover';
 import { StoryBiblePanel } from '../components/editor/StoryBiblePanel';
+import { PlotPanel } from '../components/editor/PlotPanel';
+import type { PlotThread } from '../components/editor/ThreadsLens';
 import { CoauthorPanel } from '../components/editor/CoauthorPanel';
 import { RevisionPanel } from '../components/editor/RevisionPanel';
 import { ProjectSyncPanel } from '../components/editor/ProjectSyncPanel';
@@ -34,6 +39,7 @@ import { FindReplacePopup } from '../components/FindReplacePopup';
 import { SearchPanel } from '../components/editor/SearchPanel';
 import { SearchHighlightExtension, searchHighlightKey } from '../components/editor/searchHighlightExtension';
 import { ContradictionHighlightExtension, contradictionHighlightKey } from '../components/editor/contradictionHighlightExtension';
+import { NameNudgeExtension, nameNudgeKey } from '../components/editor/NameNudgeExtension';
 import { DictationGhostExtension, dictationGhostKey } from '../components/editor/DictationGhostExtension';
 import { ToolbarSelectionExtension } from '../components/editor/toolbarSelectionExtension';
 import { TextAlignExtension } from '../components/editor/TextAlignExtension';
@@ -41,6 +47,10 @@ import { SuperscriptExtension } from '../components/editor/SuperscriptExtension'
 import { SubscriptExtension } from '../components/editor/SubscriptExtension';
 import { HighlightMarkExtension } from '../components/editor/HighlightMarkExtension';
 import { SceneBreakExtension } from '../components/editor/SceneBreakExtension';
+import { FootnoteExtension } from '../components/editor/FootnoteExtension';
+import { CommentMarkExtension } from '../components/editor/CommentMarkExtension';
+import { CommentPopover, type CommentData } from '../components/editor/CommentPopover';
+import { CommentsGutter, type GutterItem } from '../components/editor/CommentsGutter';
 import { ExportPanel } from '../components/ExportPanel';
 import Settings from './Settings';
 
@@ -48,7 +58,7 @@ import { Chapter, Entity, EntityLink, EntityEvent } from '../components/editor/t
 import { AhaCelebration } from '../components/AhaCelebration';
 import { Users, MapPin, Box, Scale, Bookmark, X, AlertTriangle, ChevronUp, ChevronDown,
   Eye, Bell, BookOpen, Feather, Telescope, BarChart2, Search, FolderSearch, Download, Maximize2, Minimize2, Settings as SettingsIcon,
-  ChevronLeft, ChevronRight } from 'lucide-react';
+  StickyNote } from 'lucide-react';
 
 type EditorFontName = 'cormorant' | 'literata' | 'source-serif';
 
@@ -68,49 +78,37 @@ function russianStemMatch(entityName: string, text: string): boolean {
 }
 
 /**
- * Упоминание сущности в тексте с учётом многословных имён («Ашер Волков», «Тётя Вера»):
- * совпадение по любому значимому токену имени (≥ 3 букв, по стемме). Старый
- * russianStemMatch брал имя целиком и потому не ловил персонажей из двух слов.
+ * Совпадение сущности с текстом главы ЗА ОДИН проход: принимает заранее токенизированный текст
+ * (слова с offset) и возвращает СРАЗУ и «упомянута», и индекс ПЕРВОГО появления — чтобы не
+ * сканировать текст дважды (для присутствия и для порядка). Многословное имя («Король Сонного
+ * королевства») требует ВСЕ значимые токены (иначе любое «корол…» ложно притягивает); однословное —
+ * по одному. firstAt = самое раннее слово среди токенов.
  */
-function entityMentionedInText(entityName: string, text: string): boolean {
-  const tokens = entityName.toLowerCase().split(/[^а-яёa-z0-9'-]+/i).filter(t => t.length >= 3);
-  if (tokens.length === 0) return russianStemMatch(entityName, text);
-  const words = text.toLowerCase().split(/[^а-яёa-z0-9'-]+/i).filter(Boolean);
-  return tokens.some(tok => {
-    const stem = tok.length <= 4 ? tok : tok.slice(0, tok.length - 1);
-    return words.some(w => w.startsWith(stem));
-  });
+function entityMatch(name: string, words: { w: string; at: number }[], fullText: string): { mentioned: boolean; firstAt: number } {
+  const tokens = name.toLowerCase().split(/[^а-яёa-z0-9'-]+/i).filter(t => t.length >= 3);
+  if (tokens.length === 0) return { mentioned: russianStemMatch(name, fullText), firstAt: Infinity };
+  const stems = tokens.map(t => (t.length <= 4 ? t : t.slice(0, t.length - 1)));
+  const earliest = stems.map(() => Infinity);
+  for (const { w, at } of words) {
+    for (let i = 0; i < stems.length; i++) {
+      if (earliest[i] === Infinity && w.startsWith(stems[i])) earliest[i] = at;
+    }
+  }
+  const finite = earliest.filter(f => f !== Infinity);
+  const mentioned = stems.length >= 2 ? finite.length === stems.length : finite.length > 0;
+  return { mentioned, firstAt: mentioned ? Math.min(...finite) : Infinity };
 }
 
-/**
- * «Кадр» — текущая сцена вокруг курсора: окно из соседних абзацев, не пересекающее
- * разделители сцены (***). Нужен для памяти сцены в спутнике «Перо»: показать, кто
- * сейчас в кадре, а не во всей главе. Возвращает диапазон позиций ProseMirror.
- */
-function computeSceneRange(editor: TiptapEditor, pos: number): { from: number; to: number } {
-  const doc = editor.state.doc;
-  const blocks: { start: number; end: number; isBreak: boolean }[] = [];
-  doc.forEach((node, offset) => {
-    blocks.push({ start: offset, end: offset + node.nodeSize, isBreak: node.type.name === 'sceneBreak' });
-  });
-  if (blocks.length === 0) return { from: 0, to: doc.content.size };
-  let idx = blocks.findIndex(b => pos >= b.start && pos < b.end);
-  if (idx === -1) idx = blocks.length - 1;
-  const WINDOW = 4; // ± абзацев вокруг курсора
-  let lo = idx, hi = idx;
-  for (let i = idx - 1, c = 0; i >= 0 && c < WINDOW; i--, c++) {
-    if (blocks[i].isBreak) break;
-    lo = i;
-  }
-  for (let i = idx + 1, c = 0; i < blocks.length && c < WINDOW; i++, c++) {
-    if (blocks[i].isBreak) break;
-    hi = i;
-  }
-  return { from: blocks[lo].start, to: blocks[hi].end };
-}
-
-function splitChapterTitle(title: string, fallbackOrder?: number): { prefix: string; suffix: string } {
+function splitChapterTitle(title: string, fallbackOrder?: number, chapterType?: string): { prefix: string; suffix: string } {
   const trimmed = title.trim();
+
+  // Не-«глава» (Пролог/Эпилог/Часть/Благодарности…) — префикс это слово-тип, а не «Глава N».
+  if (chapterType && chapterType !== 'chapter' && CHAPTER_TYPE_LABELS[chapterType]) {
+    const label = CHAPTER_TYPE_LABELS[chapterType];
+    const suffix = trimmed.replace(new RegExp(`^${label}[\\s.:—–-]*`, 'i'), '').trim();
+    return { prefix: label, suffix: suffix.toLowerCase() === label.toLowerCase() ? '' : suffix };
+  }
+
   const match = trimmed.match(/^(Глава\s+\d+)(?:[\s.:—-]+(.+))?$/i);
   if (match) {
     return {
@@ -218,7 +216,7 @@ function jumpToMatch(
       // Fingerprint found but query not isolated inside it — select the fingerprint range.
       result = { from: pos + fpIdx, to: pos + fpIdx + fingerprint.length };
     }
-    editor.commands.setTextSelection(result);
+    editor.commands.setTextSelection(result.from); // курсор схлопнут → подсветка декорацией, без выделения (бар не триггерится)
     editor.commands.scrollIntoView();
   });
 
@@ -230,7 +228,7 @@ function jumpToMatch(
     const idx = node.text.toLowerCase().indexOf(qLower);
     if (idx === -1 || idx + query.length > node.text.length) return;
     result = { from: pos + idx, to: pos + idx + query.length };
-    editor.commands.setTextSelection(result);
+    editor.commands.setTextSelection(result.from); // курсор схлопнут → подсветка декорацией, без выделения (бар не триггерится)
     editor.commands.scrollIntoView();
   });
 
@@ -364,12 +362,41 @@ export default function Editor() {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [isLoadingChapters, setIsLoadingChapters] = useState(false);
   const [projectTitle, setProjectTitle] = useState('');
+  const [projectSeriesId, setProjectSeriesId] = useState<string | null>(null);
+  // Хэндофф серии: данные серии (нити + книги) для контекста новой книги в редакторе.
+  const [seriesInfo, setSeriesInfo] = useState<{ title: string; premise: string | null; franchiseThreads: { id: string; title: string; opensBook?: string; closesBook?: string }[]; books: { id: string; order: number | null }[] } | null>(null);
+  useEffect(() => {
+    if (!projectSeriesId) { setSeriesInfo(null); return; }
+    let alive = true;
+    api.get<{ series: { title?: string; premise?: string | null; franchiseThreads?: { id: string; title: string; opensBook?: string; closesBook?: string }[] }; books: { id: string; order: number | null }[] }>(`/series/${projectSeriesId}`)
+      .then(d => { if (alive) setSeriesInfo({ title: d.series?.title ?? 'Серия', premise: d.series?.premise ?? null, franchiseThreads: d.series?.franchiseThreads ?? [], books: d.books ?? [] }); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [projectSeriesId]);
+  // Открытые нити франшизы для ЭТОЙ книги (книга >1) — чек-лист «не забудь двигать».
+  const seriesHandoff = useMemo(() => {
+    if (!projectSeriesId || !seriesInfo) return null;
+    const thisOrder = seriesInfo.books.find(b => b.id === projectId)?.order ?? null;
+    if (thisOrder == null || thisOrder <= 1) return null; // книга 1 — наследовать нечего
+    const openThreads = (seriesInfo.franchiseThreads ?? [])
+      .filter(t => t.title?.trim())
+      .filter(t => !t.opensBook || Number(t.opensBook) <= thisOrder)
+      .filter(t => !t.closesBook || Number(t.closesBook) >= thisOrder)
+      .map(t => ({ title: t.title.trim(), closesHere: !!t.closesBook && Number(t.closesBook) === thisOrder }));
+    return { bookOrder: thisOrder, openThreads };
+  }, [projectSeriesId, seriesInfo, projectId]);
   const [bibleEntities, setBibleEntities] = useState<Entity[]>([]);
   const [entityLinks, setEntityLinks] = useState<EntityLink[]>([]);
   const [entityEvents, setEntityEvents] = useState<EntityEvent[]>([]);
+  // Сущность, чей профиль открыт в общем слоте оверлеев (тот же `<aside>`, что «Мир»). null — закрыт.
+  const [detailEntity, setDetailEntity] = useState<Entity | null>(null);
   const [referenceScope, setReferenceScope] = useState<'project' | 'chapter'>('project');
 
   const [isBibleOpen, setIsBibleOpen] = useState(false);
+  // Deep-link «Мира» на нужную линзу (из «Сводки» / «Найти похожее»).
+  const [worldInitialLens, setWorldInitialLens] = useState<string | null>(null);
+  const [worldLensNonce, setWorldLensNonce] = useState(0);
+  const [echoQuery, setEchoQuery] = useState<string | null>(null);
   /** Шторка списка глав на узких экранах (< lg); на широких сайдбар всегда в потоке. */
   const [isChaptersDrawerOpen, setIsChaptersDrawerOpen] = useState(false);
   /** Свёрнут ли сайдбар глав на десктопе (≥ lg). */
@@ -377,6 +404,13 @@ export default function Editor() {
   const [isReferenceOpen, setIsReferenceOpen] = useState(false);
   const [isBibleMenuOpen, setIsBibleMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isNotesOpen, setIsNotesOpen] = useState(false);
+  const [isPlotOpen, setIsPlotOpen] = useState(false);
+  const [plotInitialLens, setPlotInitialLens] = useState<'skeleton' | 'threads' | 'beats' | 'arcs'>('skeleton');
+  // Заметки текущей главы — для маргиналий в «В кадре». notesVersion дёргает рефетч
+  // при любом изменении заметок (захват из бара, правки в линзе).
+  const [notesVersion, setNotesVersion] = useState(0);
+  const [chapterNotes, setChapterNotes] = useState<Note[]>([]);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isCoauthoring, setIsCoauthoring] = useState(false);
   const [isRevisionOpen, setIsRevisionOpen] = useState(false);
@@ -389,10 +423,35 @@ export default function Editor() {
   const [isCompanionCollapsed, setIsCompanionCollapsed] = useState(() => {
     try { return window.matchMedia('(max-width: 767px)').matches; } catch { return false; }
   });
-  const [companionMode, setCompanionMode] = useState<'scene' | 'chat'>('scene');
+  const [companionMode, setCompanionMode] = useState<'scene' | 'sverka' | 'chat'>('scene');
+  // Scope «Мира» (Эта глава / Вся книга) поднят в Editor, чтобы кнопка «Мир» в нижнем
+  // тулбаре могла открывать сразу мир ТЕКУЩЕЙ главы.
+  const [bibleScope, setBibleScope] = useState<'project' | 'chapter' | 'series'>('project');
   const [contradictionPopover, setContradictionPopover] = useState<{ name: string; x: number; y: number; issue?: string; issueChapterId?: string | null } | null>(null);
   // Превью нестыковки по наведению (как у проверки орфографии): peek без клика.
   const [contradictionHover, setContradictionHover] = useState<{ issue?: string; name: string; x: number; y: number } | null>(null);
+  // Комментарии главы (авторские пометки, привязанные к диапазону текста).
+  const [comments, setComments] = useState<CommentData[]>([]);
+  const [commentPopover, setCommentPopover] = useState<{ comment: CommentData; x: number; y: number; startEditing?: boolean } | null>(null);
+  // Активная карточка на полях (режим рецензирования). gutterHasRoom — хватает ли поля справа;
+  // если нет (узкий экран/открыт спутник) — падаем на поповер по клику.
+  const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
+  // Достаточно ли широкий экран для полей-гаттера (иначе — поповер). matchMedia надёжнее
+  // window.innerWidth (последний бывает 0 в фоновых/headless-вкладках).
+  const [isWideForGutter, setIsWideForGutter] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches);
+  useEffect(() => {
+    const check = () => setIsWideForGutter(window.matchMedia('(min-width: 1024px)').matches);
+    check();
+    const mq = window.matchMedia('(min-width: 1024px)');
+    mq.addEventListener('change', check);
+    // resize тоже: mq 'change' не срабатывает, если ширина не ПЕРЕСЕКает 1024 (а viewport может
+    // прийти 0 на маунте и расшириться без пересечения границы — флаг бы завис). + отложенные
+    // перепроверки на случай, когда размеры устаканиваются уже после первого кадра.
+    window.addEventListener('resize', check);
+    const t1 = setTimeout(check, 200);
+    const t2 = setTimeout(check, 700);
+    return () => { mq.removeEventListener('change', check); window.removeEventListener('resize', check); clearTimeout(t1); clearTimeout(t2); };
+  }, []);
   const [totalProjectWords, setTotalProjectWords] = useState(0);
   const [isRecheckingAll, setIsRecheckingAll] = useState(false);
   const [isReading, setIsReading] = useState(false);
@@ -423,11 +482,20 @@ export default function Editor() {
 
   const { isSaving, lastSavedAt, saveError, onUpdate: autosaveUpdate, forceSave } = useAutosave(chapterId);
   const [isLoadingContent, setIsLoadingContent] = useState(false);
-  const { scheduleEmbed } = useEmbedding(projectId, chapterId);
+  // Переэмбеддинг теперь — следствие сохранения на бэкенде (chapters.ts → scheduleChapterEmbed):
+  // durable-гарантия свежести вектора, переживает закрытие вкладки. Фронтовый таймер убран.
   const [selectedText, setSelectedText] = useState('');
-  // «Кадр» вокруг курсора — диапазон текущей сцены (память сцены в спутнике «Перо»).
-  const [sceneRange, setSceneRange] = useState<{ from: number; to: number } | null>(null);
-  const sceneRangeRef = useRef<{ from: number; to: number } | null>(null);
+  // Фрагмент, закреплённый как контекст чата «Спросить» (бар → «Спросить Перо» / чип «Выделение»).
+  // Живёт отдельно от selectedText: выделение в тексте схлопывается при клике в поле ввода чата,
+  // а закреплённый контекст должен сохраняться, пока автор сам его не снимет.
+  const [pinnedSelection, setPinnedSelection] = useState('');
+  const pinnedSelectionRef = useRef('');
+  pinnedSelectionRef.current = pinnedSelection;
+  // Ширина контекста чата: 'chapter' (только глава) ↔ 'book' (глава + весь Мир).
+  // Глава учитывается всегда; тумблер решает, добавлять ли знания всей книги.
+  const [chatScope, setChatScope] = useState<'chapter' | 'book' | 'series'>('book');
+  const chatScopeRef = useRef<'chapter' | 'book' | 'series'>('book');
+  chatScopeRef.current = chatScope;
   const currentChapterRef = useRef<Chapter | null>(null);
   currentChapterRef.current = chapters.find(ch => ch.id === chapterId) ?? null;
   // Живой ref на текущую главу — нужен в замыканиях редактора (onSelectionUpdate),
@@ -443,7 +511,12 @@ export default function Editor() {
   const onUpdate = useCallback(
     ({ editor }: { editor: import('@tiptap/react').Editor }) => {
       autosaveUpdate({ editor });
-      scheduleEmbed(editor.getHTML());
+      // B1: перескан нуджа разнописи через 900мс после остановки набора (не на горячем пути клавиш).
+      if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current);
+      nudgeTimerRef.current = setTimeout(() => {
+        try { editor.view.dispatch(editor.view.state.tr.setMeta(nameNudgeKey, { names: nudgeNamesRef.current })); } catch { /* закрыт */ }
+      }, 900);
+      // Эмбеддинг ставит бэкенд при сохранении (см. scheduleChapterEmbed) — здесь не нужен.
       // Any content edit makes existing match positions stale — dismiss the nav bar.
       // setMatchNav is a stable React setter, so it doesn't need to be in deps.
       setMatchNav(null);
@@ -453,7 +526,7 @@ export default function Editor() {
         writingStats.recordChapterWords(chapterId, words);
       }
     },
-    [autosaveUpdate, scheduleEmbed, chapterId, writingStats.recordChapterWords]
+    [autosaveUpdate, chapterId, writingStats.recordChapterWords]
   );
 
   const editor = useEditor({
@@ -473,6 +546,8 @@ export default function Editor() {
       TextAlignExtension,
       SuperscriptExtension,
       SubscriptExtension,
+      FootnoteExtension,
+      CommentMarkExtension,
       HighlightMarkExtension,
       CharacterCount,
       Placeholder.configure({
@@ -493,6 +568,7 @@ export default function Editor() {
       }),
       SearchHighlightExtension,
       ContradictionHighlightExtension,
+      NameNudgeExtension,
       DictationGhostExtension,
       ToolbarSelectionExtension,
     ],
@@ -510,16 +586,6 @@ export default function Editor() {
       const cid = chapterIdRef.current;
       if (cid && !ed.isDestroyed) {
         try { localStorage.setItem(`pero_cursor_${cid}`, String(from)); } catch { /* quota */ }
-      }
-      // Обновляем «кадр» (сцену вокруг курсора), но только когда он реально сменился —
-      // чтобы не пересчитывать память сцены на каждое движение каретки внутри сцены.
-      if (!ed.isDestroyed) {
-        const next = computeSceneRange(ed, from);
-        const prev = sceneRangeRef.current;
-        if (!prev || prev.from !== next.from || prev.to !== next.to) {
-          sceneRangeRef.current = next;
-          setSceneRange(next);
-        }
       }
     },
   });
@@ -552,7 +618,7 @@ export default function Editor() {
     handleSendMessage,
     handleSendPrompt,
     handleCheckConsistency,
-  } = useAiChat({ projectId, chapterId, getContent });
+  } = useAiChat({ projectId, chapterId, getContent, getSelection: () => pinnedSelectionRef.current, getScope: () => chatScopeRef.current });
 
   const {
     isExtracting, suggestions, approvedEntities,
@@ -560,7 +626,7 @@ export default function Editor() {
     handleExtract: rawHandleExtract,
     recheckChapter: rawRecheckChapter,
     recheckBatch,
-    approveSuggestion, rejectSuggestion,
+    approveSuggestion, rejectSuggestion, mergeSuggestionInto,
     loadUpdateSuggestions,
     acceptUpdate, rejectUpdate, dismissUpdate,
     bulkDismissChapter, bulkRejectChapter,
@@ -582,6 +648,16 @@ export default function Editor() {
   // Отчёт о противоречиях (полный скан P1.2) — для подсветки конкретных фраз в тексте (B2).
   type ScanIssue = { id: string; chapterId: string | null; entityName: string | null; issue: string; quote: string | null; severity: string; status: string };
   const [contradictionIssues, setContradictionIssues] = useState<ScanIssue[]>([]);
+  // Счётчик «провисают» для Сводки: значимые сущности с 0–1 связью (как в линзе «Связи»).
+  const danglingCount = useMemo(() => {
+    const deg = new Map<string, number>();
+    entityLinks.forEach(l => {
+      if (l.sourceEntityId === l.targetEntityId) return;
+      deg.set(l.sourceEntityId, (deg.get(l.sourceEntityId) ?? 0) + 1);
+      deg.set(l.targetEntityId, (deg.get(l.targetEntityId) ?? 0) + 1);
+    });
+    return bibleEntities.filter(e => (e.significance ?? 'minor') !== 'minor' && (deg.get(e.id) ?? 0) <= 1).length;
+  }, [bibleEntities, entityLinks]);
   const loadContradictions = useCallback(() => {
     if (!projectId) return;
     api.get<{ issues: ScanIssue[] }>(`/bible/${projectId}/contradictions`)
@@ -589,6 +665,182 @@ export default function Editor() {
       .catch(() => { /* отчёта ещё нет — подсвечиваем по именам (эвристика) */ });
   }, [projectId]);
   useEffect(() => { loadContradictions(); }, [loadContradictions]);
+
+  // Комментарии текущей главы — грузим при смене главы.
+  const loadComments = useCallback(() => {
+    if (!projectId || !chapterId) { setComments([]); return; }
+    api.get<{ comments: any[] }>(`/comments/${projectId}?chapterId=${chapterId}`)
+      .then(d => setComments((d.comments ?? []).filter(c => !c.resolved).map(c => ({
+        id: c.id, body: c.body ?? '', quote: c.quote ?? '', source: c.source === 'pero' ? 'pero' : 'author', resolved: !!c.resolved,
+        replies: Array.isArray(c.replies) ? c.replies : [],
+      }))))
+      .catch(() => setComments([]));
+  }, [projectId, chapterId]);
+  useEffect(() => { loadComments(); }, [loadComments]);
+
+  // Режим рецензирования: при ПЕРВОМ появлении комментариев в главе (на широком экране) —
+  // сворачиваем спутник, освобождая правое поле под гаттер. Делаем это ОДИН раз на главу
+  // (ref по chapterId): если автор потом сам откроет спутник, не навязываемся повторно при
+  // добавлении новых комментариев. На смене главы — снова можем войти в режим.
+  const hasGutterItems = comments.length > 0 || contradictionIssues.some(i => i.chapterId === chapterId && i.quote);
+  // Спутник «Перо» и поле комментариев НЕ конфликтуют: спутником управляет автор (открыл/свернул),
+  // а комментарии подстраиваются — гаттер на полях, когда спутник свёрнут; иначе инлайн-поповер.
+  // Никакого авто-сворачивания «под комментарий» (раньше это дралось со спутником).
+  const wideNow = typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches;
+  const companionCollapsed = isCompanionCollapsed;
+  const companionCollapsedRef = useRef(companionCollapsed);
+  companionCollapsedRef.current = companionCollapsed;
+  const toggleCompanion = useCallback(() => { setIsCompanionCollapsed(v => !v); }, []);
+
+  // ── Действия с комментариями ─────────────────────────────────────────────────
+  // Создать комментарий из выделения: навесить марку + строку в БД + открыть карточку.
+  const handleCreateComment = useCallback(async (text: string) => {
+    if (!editorRef.current || !projectId || !chapterId) return;
+    const ed = editorRef.current;
+    const { from, to } = ed.state.selection;
+    if (from === to) return;
+    const id = crypto.randomUUID();
+    const quote = text.slice(0, 2000);
+    ed.chain().focus().setTextSelection({ from, to }).setComment(id, 'author').run();
+    let x = window.innerWidth / 2, y = 200;
+    try { const c = ed.view.coordsAtPos(to); x = c.left; y = c.bottom; } catch { /* keep defaults */ }
+    const fresh: CommentData = { id, body: '', quote, source: 'author', resolved: false };
+    setComments(prev => [...prev, fresh]);
+    // Спутник свёрнут на широком экране → карточка на полях (гаттер). Иначе (спутник открыт или
+    // узкий экран) → инлайн-поповер у текста — НЕ трогаем спутник, не конфликтуем с ним.
+    if (window.matchMedia('(min-width: 1024px)').matches && companionCollapsedRef.current) {
+      setActiveCommentId(id);
+    } else setCommentPopover({ comment: fresh, x, y, startEditing: true });
+    try {
+      await api.post(`/comments/${projectId}`, { id, chapterId, quote, source: 'author' });
+      await forceSave(ed.getHTML()); // зафиксировать марку в контенте сразу
+    } catch {
+      // POST не прошёл → откатываем марку, чтобы не осталось «мёртвой» подсветки без строки в БД.
+      ed.commands.removeCommentById(id);
+      forceSave(ed.getHTML()).catch(() => {});
+      setComments(prev => prev.filter(c => c.id !== id));
+      setActiveCommentId(prev => (prev === id ? null : prev));
+      setCommentPopover(prev => (prev?.comment.id === id ? null : prev));
+    }
+  }, [projectId, chapterId, forceSave]);
+
+  const handleSaveComment = useCallback(async (id: string, body: string) => {
+    setComments(prev => prev.map(c => c.id === id ? { ...c, body } : c));
+    try { await api.patch(`/comments/item/${id}`, { body }); }
+    catch { loadComments(); } // ресинк с сервером, чтобы локально не разъехалось молча
+  }, [loadComments]);
+
+  // resolve / delete / to-note — общий хвост: снять марку из текста + убрать из списка + закрыть.
+  const dropCommentMark = useCallback((id: string) => {
+    const ed = editorRef.current;
+    if (ed) { ed.commands.removeCommentById(id); forceSave(ed.getHTML()).catch(() => {}); }
+    setComments(prev => prev.filter(c => c.id !== id));
+    setCommentPopover(null);
+    setActiveCommentId(prev => (prev === id ? null : prev));
+  }, [forceSave]);
+
+  // Терминальные действия — сначала сервер, потом снимаем марку. Ошибка → ничего не меняем
+  // (не остаётся «решённого/удалённого» без записи в БД и наоборот).
+  const handleResolveComment = useCallback(async (id: string) => {
+    try { await api.patch(`/comments/item/${id}`, { resolved: true }); dropCommentMark(id); } catch { /* оставляем как есть */ }
+  }, [dropCommentMark]);
+
+  const handleDeleteComment = useCallback(async (id: string) => {
+    try { await api.delete(`/comments/item/${id}`); dropCommentMark(id); } catch { /* оставляем как есть */ }
+  }, [dropCommentMark]);
+
+  const handleCommentToNote = useCallback(async (id: string) => {
+    try { await api.post(`/comments/item/${id}/to-note`, {}); dropCommentMark(id); setNotesVersion(v => v + 1); } catch { /* оставляем как есть */ }
+  }, [dropCommentMark]);
+
+  // Ответить в тред комментария (как в Word). Оптимистично добавляем, сервер вернёт канон.
+  const handleReplyComment = useCallback(async (id: string, body: string) => {
+    const optimistic = { id: crypto.randomUUID(), body, author: 'author' as const, createdAt: new Date().toISOString() };
+    setComments(prev => prev.map(c => c.id === id ? { ...c, replies: [...(c.replies ?? []), optimistic] } : c));
+    try {
+      const row = await api.post<{ replies?: any[] }>(`/comments/item/${id}/reply`, { body });
+      if (row?.replies) setComments(prev => prev.map(c => c.id === id ? { ...c, replies: row.replies } : c));
+    } catch { loadComments(); }
+  }, [loadComments]);
+
+  // Единый слой полей (Фаза 3): твои комментарии (author) + нестыковки Перо текущей главы (pero).
+  const gutterItems = useMemo<GutterItem[]>(() => {
+    const mine: GutterItem[] = comments.map(c => ({ id: c.id, source: 'author', body: c.body, quote: c.quote, resolved: c.resolved, replies: c.replies ?? [] }));
+    const pero: GutterItem[] = contradictionIssues
+      .filter(i => i.chapterId === chapterId && i.quote)
+      .map(i => ({ id: i.id, source: 'pero', body: i.issue, quote: i.quote!, entityName: i.entityName, severity: i.severity }));
+    return [...mine, ...pero];
+  }, [comments, contradictionIssues, chapterId]);
+
+  // Отклонить одну нестыковку по id (ложное срабатывание) — для линзы «Нестыковки».
+  const dismissContradictionIssue = useCallback(async (issueId: string) => {
+    setContradictionIssues(prev => prev.filter(i => i.id !== issueId));
+    try { await api.post(`/bible/contradictions/${issueId}/dismiss`, {}); } catch { loadContradictions(); }
+  }, [loadContradictions]);
+
+  // Сюжетные линии (столб «Сюжет» → «Линии»).
+  const [plotThreads, setPlotThreads] = useState<PlotThread[]>([]);
+  const [scanningThreads, setScanningThreads] = useState(false);
+  const loadThreads = useCallback(() => {
+    if (!projectId) return;
+    api.get<{ threads: PlotThread[] }>(`/plot/${projectId}/threads`)
+      .then(d => setPlotThreads(d.threads ?? [])).catch(() => {});
+  }, [projectId]);
+  const scanThreads = useCallback(async () => {
+    if (!projectId) return;
+    setScanningThreads(true);
+    try { await api.post(`/plot/${projectId}/threads/scan`, {}); loadThreads(); }
+    catch { /* квота/ошибка — тихо */ }
+    finally { setScanningThreads(false); }
+  }, [projectId, loadThreads]);
+  const dismissThread = useCallback(async (id: string) => {
+    setPlotThreads(prev => prev.filter(t => t.id !== id));
+    try { await api.patch(`/plot/threads/${id}`, { userStatus: 'dismissed' }); } catch { loadThreads(); }
+  }, [loadThreads]);
+  const toggleThreadResolved = useCallback(async (id: string, resolved: boolean) => {
+    setPlotThreads(prev => prev.map(t => t.id === id ? { ...t, resolved } : t));
+    try { await api.patch(`/plot/threads/${id}`, { resolved }); } catch { loadThreads(); }
+  }, [loadThreads]);
+  const addThread = useCallback(async (data: { title: string; kind: string; summary: string }) => {
+    if (!projectId) return;
+    try { await api.post(`/plot/${projectId}/threads`, data); loadThreads(); } catch { /* тихо */ }
+  }, [projectId, loadThreads]);
+  const editThread = useCallback(async (id: string, data: { title?: string; summary?: string; kind?: string }) => {
+    setPlotThreads(prev => prev.map(t => t.id === id ? { ...t, ...data } : t));
+    try { await api.patch(`/plot/threads/${id}`, data); } catch { loadThreads(); }
+  }, [loadThreads]);
+  // Режим архитектора в «Скелете»: план главы + запланировать пустую главу (без ухода).
+  const saveChapterPlan = useCallback(async (id: string, plan: string) => {
+    setChapters(prev => prev.map(c => c.id === id ? { ...c, plan: plan.trim() || null } : c));
+    try { await api.patch(`/chapters/${id}`, { plan }); } catch { /* тихо */ }
+  }, []);
+  const addPlannedChapter = useCallback(async () => {
+    if (!projectId) return;
+    const count = chapters.filter(c => (c.chapterType ?? 'chapter') === 'chapter').length;
+    try {
+      const data = await api.post<{ chapter: Chapter }>(`/projects/${projectId}/chapters`, { title: `Глава ${count + 1}`, chapterType: 'chapter' });
+      setChapters(prev => [...prev, data.chapter]);
+    } catch { /* тихо */ }
+  }, [projectId, chapters]);
+  // Линии нужны и карточке героя («Сюжетные линии») — грузим при входе в проект.
+  useEffect(() => { loadThreads(); }, [loadThreads]);
+
+  // Проактивно: после «Прочитать» тихо проверяем эту главу и обновляем отчёт нестыковок.
+  const scanChapterContradictions = useCallback((chId?: string | null) => {
+    const id = chId ?? chapterId;
+    if (!projectId || !id) return;
+    api.post(`/bible/${projectId}/contradictions/scan-chapter`, { chapterId: id })
+      .then(() => loadContradictions())
+      .catch(() => { /* квота/ошибка — тихо, отчёт остаётся прежним */ });
+  }, [projectId, chapterId, loadContradictions]);
+
+  // Пересчёт значимости по присутствию (без ИИ) + перезагрузка Мира со свежими тирами.
+  const recomputeSignificance = useCallback(() => {
+    if (!projectId) { loadBibleData(); return; }
+    api.post(`/bible/${projectId}/recompute-significance`, {})
+      .catch(() => { /* тихо */ })
+      .finally(() => loadBibleData());
+  }, [projectId, loadBibleData]);
 
   // Живой статус скана (№1 — обратная связь ИИ): прогресс по главам + результат.
   const [scanState, setScanState] = useState<{ status: 'running' | 'done' | 'failed'; scanned: number; total: number; found: number } | null>(null);
@@ -635,8 +887,9 @@ export default function Editor() {
         return { ...c, title, lastExtractedAt: new Date().toISOString() };
       }));
     }
-    loadBibleData();
-  }, [rawHandleExtract, chapterId, loadBibleData]);
+    recomputeSignificance();
+    scanChapterContradictions(chapterId);
+  }, [rawHandleExtract, chapterId, recomputeSignificance, scanChapterContradictions]);
 
   // Server-side recheck wrapper — updates local freshness after the API responds.
   const handleRecheckChapter = useCallback(async () => {
@@ -651,8 +904,9 @@ export default function Editor() {
         return { ...c, title, lastExtractedAt: new Date().toISOString() };
       }));
     }
-    loadBibleData();
-  }, [rawRecheckChapter, chapterId, loadBibleData]);
+    recomputeSignificance();
+    scanChapterContradictions(chapterId);
+  }, [rawRecheckChapter, chapterId, recomputeSignificance, scanChapterContradictions]);
 
   // Load pending update suggestions when Bible or Sync panel is opened.
   // Sync panel needs the count for the "updates" tile; Bible panel needs full list.
@@ -690,7 +944,7 @@ export default function Editor() {
     setIsLoadingChapters(true);
     // Fetch project info (for title) alongside chapters
     api.get<{ project: any }>(`/projects/${projectId}`)
-      .then(data => { if (data.project?.title) setProjectTitle(data.project.title); })
+      .then(data => { if (data.project?.title) setProjectTitle(data.project.title); setProjectSeriesId(data.project?.seriesId ?? null); })
       .catch(() => {});
     api.get<{ chapters: Chapter[] }>(`/projects/${projectId}/chapters`)
       .then(data => {
@@ -722,10 +976,15 @@ export default function Editor() {
   const worldOpenedRef = useRef(false);
   useEffect(() => {
     if (worldOpenedRef.current || !chapterId) return;
-    if (new URLSearchParams(location.search).get('view') === 'world') {
+    const view = new URLSearchParams(location.search).get('view');
+    if (view === 'world') {
       worldOpenedRef.current = true;
       handleBibleMenuClick('characters');
       navigate(location.pathname, { replace: true }); // убрать query, чтобы не повторялось
+    } else if (view === 'plot') {
+      worldOpenedRef.current = true;
+      handleOpenPlot();
+      navigate(location.pathname, { replace: true });
     }
   }, [chapterId, location.search]);
 
@@ -804,14 +1063,12 @@ export default function Editor() {
             const match = jumpToMatch(editor, hl.fingerprint, hl.query);
             if (match) {
               applySearchHighlight(editor, match.from, match.to);
-              // Compute all occurrences and activate the navigation bar.
+              // Навигатор «N из M» — только когда есть что навигировать (>1). Одно место = тихая подсветка.
               const allMatches = findAllMatches(editor, hl.query);
               const idx = allMatches.findIndex(m => m.from === match.from);
-              setMatchNav({
-                query:      hl.query,
-                matches:    allMatches,
-                currentIdx: idx >= 0 ? idx : 0,
-              });
+              setMatchNav(allMatches.length > 1
+                ? { query: hl.query, matches: allMatches, currentIdx: idx >= 0 ? idx : 0 }
+                : null);
             }
           });
         } else {
@@ -847,14 +1104,12 @@ export default function Editor() {
       const match = jumpToMatch(editor, fingerprint, query);
       if (match) {
         applySearchHighlight(editor, match.from, match.to);
-        // Compute all occurrences and activate the navigation bar.
+        // Навигатор «N из M» — только когда есть что навигировать (>1). Одно место = тихая подсветка.
         const allMatches = findAllMatches(editor, query);
         const idx = allMatches.findIndex(m => m.from === match.from);
-        setMatchNav({
-          query,
-          matches:    allMatches,
-          currentIdx: idx >= 0 ? idx : 0,
-        });
+        setMatchNav(allMatches.length > 1
+          ? { query, matches: allMatches, currentIdx: idx >= 0 ? idx : 0 }
+          : null);
       }
     });
   }, [routeHighlight, routeSearchQuery, editor]);
@@ -905,11 +1160,19 @@ export default function Editor() {
 
   useEffect(() => { loadBibleData(); }, [loadBibleData]);
 
+  // Заметки текущей главы (маргиналии в «В кадре»). Рефетч при смене главы / правках заметок.
+  useEffect(() => {
+    if (!projectId || !chapterId) { setChapterNotes([]); return; }
+    api.get<{ notes: Note[] }>(`/notes/${projectId}`)
+      .then(d => setChapterNotes((d.notes ?? []).filter(n => n.chapterId === chapterId && n.status !== 'archived')))
+      .catch(() => setChapterNotes([]));
+  }, [projectId, chapterId, notesVersion]);
+
   // Закрыть шторку глав после перехода к другой главе (узкие экраны)
   useEffect(() => { setIsChaptersDrawerOpen(false); }, [chapterId]);
 
   const isAnySidePanelOpen = isBibleOpen || isCoauthoring || isReferenceOpen
-    || isRevisionOpen || isSyncOpen || isStatsOpen;
+    || isRevisionOpen || isSyncOpen || isStatsOpen || !!detailEntity || isSettingsOpen || isNotesOpen || isPlotOpen;
 
   /** Закрыть все правые панели (тап по затемнению на телефонах). */
   const closeAllSidePanels = useCallback(() => {
@@ -919,6 +1182,10 @@ export default function Editor() {
     setIsRevisionOpen(false);
     setIsSyncOpen(false);
     setIsStatsOpen(false);
+    setIsNotesOpen(false);
+    setIsPlotOpen(false);
+    setIsSettingsOpen(false);
+    setDetailEntity(null);
     setIsInspectorExpanded(false);
   }, []);
 
@@ -958,7 +1225,7 @@ export default function Editor() {
       // Cmd/Ctrl+J — вызвать/скрыть спутника «Перо»
       if (mod && e.key === 'j') {
         e.preventDefault();
-        setIsCompanionCollapsed(v => !v);
+        toggleCompanion();
       }
 
       // Cmd/Ctrl+F — open find/replace
@@ -997,7 +1264,9 @@ export default function Editor() {
     if (!chapterId) return 'unknown';
     const chapter = chapters.find(c => c.id === chapterId);
     if (!chapter) return 'unknown';
-    if (!chapter.lastExtractedAt) return 'unknown';
+    // Нет таймстампа извлечения, но синопсис уже есть → глава фактически прочитана
+    // (бэкфилл-скрипты могли записать summary, не проставив lastExtractedAt). Не врём «не прочитана».
+    if (!chapter.lastExtractedAt) return chapter.summary ? 'fresh' : 'unknown';
     const editedAt    = new Date(chapter.updatedAt).getTime();
     const extractedAt = new Date(chapter.lastExtractedAt).getTime();
     return editedAt > extractedAt ? 'stale' : 'fresh';
@@ -1016,24 +1285,29 @@ export default function Editor() {
     return allApprovedEntities.filter(e => e.chapterId === chapterId);
   }, [allApprovedEntities, chapterId]);
 
-  // Chapter scope tier 2: entities matched in text by stem (not already in tier 1)
-  const chapterMentionedEntities = useMemo(() => {
-    const linkedIds = new Set(chapterLinkedEntities.map(e => e.id));
-    const text = editor?.getText() ?? '';
-    return allApprovedEntities.filter(e => !linkedIds.has(e.id) && entityMentionedInText(e.name, text));
-  }, [allApprovedEntities, chapterLinkedEntities, editor]);
+  // Chapter scope tier 2 + порядок появления — ЗА ОДИН проход: токенизируем текст главы один раз,
+  // на каждую сущность один entityMatch → сразу и «упомянута» (tier 2), и индекс первого появления.
+  // Из этого выводим И список упомянутых, И отсортированный по появлению список для спутника.
+  const { chapterMentionedEntities, chapterEntitiesByAppearance } = useMemo(() => {
+    const text = (editor?.getText() ?? '').toLowerCase();
+    const words: { w: string; at: number }[] = [];
+    const re = /[а-яёa-z0-9'-]+/gi; let m: RegExpExecArray | null;
+    while ((m = re.exec(text))) words.push({ w: m[0], at: m.index });
 
-  // «В кадре»: сущности, упомянутые в текущей сцене вокруг курсора (память сцены).
-  // Пересчитывается только при смене кадра — sceneRange меняется лишь между сценами.
-  const inSceneIds = useMemo(() => {
-    if (!editor || !sceneRange) return new Set<string>();
-    const text = editor.state.doc.textBetween(sceneRange.from, sceneRange.to, ' ');
-    const ids = new Set<string>();
+    const linkedIds = new Set(chapterLinkedEntities.map(e => e.id));
+    const mentioned: Entity[] = [];
+    const ordered: { e: Entity; at: number }[] = [];
+    // tier 1 (linked по chapter_id) — в порядок по их первому появлению (если имя встречается)
+    for (const e of chapterLinkedEntities) ordered.push({ e, at: entityMatch(e.name, words, text).firstAt });
+    // tier 2 (упомянуты по имени, не linked)
     for (const e of allApprovedEntities) {
-      if (entityMentionedInText(e.name, text)) ids.add(e.id);
+      if (linkedIds.has(e.id)) continue;
+      const r = entityMatch(e.name, words, text);
+      if (r.mentioned) { mentioned.push(e); ordered.push({ e, at: r.firstAt }); }
     }
-    return ids;
-  }, [editor, sceneRange, allApprovedEntities]);
+    ordered.sort((a, b) => a.at - b.at);
+    return { chapterMentionedEntities: mentioned, chapterEntitiesByAppearance: ordered.map(x => x.e) };
+  }, [allApprovedEntities, chapterLinkedEntities, editor]);
 
   // Contradiction detection: same name (case-insensitive) with differing descriptions
   // Нестыковки, помеченные автором как «не нестыковка» — больше не флагаем (B1).
@@ -1082,6 +1356,26 @@ export default function Editor() {
       editor.view.dispatch(editor.view.state.tr.setMeta(contradictionHighlightKey, { terms: [...quotes, ...names] }));
     } catch { /* редактор ещё не готов — без подсветки */ }
   }, [editor, contradictions, allApprovedEntities, chapterId, isLoadingContent, contradictionIssues]);
+
+  // B1: проактивный нудж разнописи имени. Список известных имён (+ алиасы) для сверки при письме.
+  const nudgeNames = useMemo(() => {
+    const out: string[] = [];
+    for (const e of allApprovedEntities) {
+      if (e.name) out.push(e.name);
+      const al = (e.attributes as { aliases?: string[] } | undefined)?.aliases;
+      if (Array.isArray(al)) out.push(...al);
+    }
+    return out;
+  }, [allApprovedEntities]);
+  const nudgeNamesRef = useRef<string[]>([]);
+  const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    nudgeNamesRef.current = nudgeNames;
+    if (!editor || isLoadingContent) return;
+    try {
+      editor.view.dispatch(editor.view.state.tr.setMeta(nameNudgeKey, { names: nudgeNames }));
+    } catch { /* редактор ещё не готов */ }
+  }, [editor, nudgeNames, chapterId, isLoadingContent]);
 
   const isCreatingChapterRef = useRef(false);
 
@@ -1134,7 +1428,7 @@ export default function Editor() {
     setChapterTitleDraft(suffix);
     setChapterTitleDraftChapterId(chapter.id);
 
-    const { prefix } = splitChapterTitle(chapter.title, chapter.order);
+    const { prefix } = splitChapterTitle(chapter.title, chapter.order, chapter.chapterType);
     const nextTitle = composeChapterTitle(prefix, suffix);
 
     setChapters(prev => prev.map(c => (
@@ -1170,6 +1464,52 @@ export default function Editor() {
     // Чат теперь живёт в правом спутнике — открываем его на вкладке «Спросить».
     setIsCompanionCollapsed(false);
     setCompanionMode('chat');
+  };
+
+  // Мост «выделение → чат»: бар «Спросить Перо» закрепляет фрагмент как контекст и
+  // открывает спутник на вкладке «Спросить» (текст остаётся домом, разговор уходит вправо).
+  const handleAskPero = (text: string) => {
+    setPinnedSelection(text);
+    setIsCompanionCollapsed(false);
+    setCompanionMode('chat');
+  };
+
+  // Кнопка «Перо»: открыть спутник на «Спросить». Toggle: открыт на «Спросить» — свернуть;
+  // открыт на «В кадре» — переключить на «Спросить» (не закрывать).
+  const handlePeroButton = () => {
+    if (!companionCollapsed && companionMode === 'chat') { setIsCompanionCollapsed(true); return; }
+    setIsCompanionCollapsed(false);
+    setCompanionMode('chat');
+  };
+
+  // Кнопка «Мир» в нижнем тулбаре: toggle. Открыта — закрыть; иначе открыть в scope главы.
+  const handleOpenWorldChapter = () => {
+    if (isBibleOpen) { setIsBibleOpen(false); return; }
+    if (chapterId) setBibleScope('chapter');
+    handleBibleMenuClick('characters');
+  };
+
+  // Открыть «Мир» сразу на нужной линзе/инбоксе (deep-link из «Сводки»). target:
+  // 'inbox' → находки; иначе LensMode ('contradictions' | 'links' | 'echo' | …).
+  const openWorldAtLens = (target: string, echoQ?: string) => {
+    setBibleScope('project');                 // сводка/поиск — про всю книгу
+    if (target === 'inbox') { setActiveBibleTab('inbox'); setWorldInitialLens('catalog'); }
+    else { setActiveBibleTab('characters'); setWorldInitialLens(target); }
+    if (echoQ !== undefined) setEchoQuery(echoQ);
+    setWorldLensNonce(n => n + 1);
+    setIsBibleOpen(true);
+    setIsCoauthoring(false); setIsReferenceOpen(false); setIsRevisionOpen(false);
+    setIsSyncOpen(false); setIsStatsOpen(false); setIsNotesOpen(false); setIsPlotOpen(false);
+  };
+  // A3: «Найти похожее» по выделению → открыть Эхо с этим текстом.
+  const handleFindSimilar = (text: string) => openWorldAtLens('echo', text);
+
+  // Кнопка «В кадре»: спутник на вкладке памяти сцены. Toggle: если уже открыт на «В кадре» —
+  // свернуть; если открыт на «Спросить» — переключить на «В кадре» (не закрывать).
+  const handleOpenInFrame = () => {
+    if (!companionCollapsed && companionMode === 'scene') { setIsCompanionCollapsed(true); return; }
+    setIsCompanionCollapsed(false);
+    setCompanionMode('scene');
   };
 
   const handleToggleRevision = () => {
@@ -1239,8 +1579,35 @@ export default function Editor() {
     setIsRevisionOpen(false);
     setIsSyncOpen(false);
     setIsStatsOpen(false);
+    setIsNotesOpen(false);
+    setIsPlotOpen(false);
     if (isDictating) toggleListening();
     setIsReading(false);
+  };
+
+  // Линза «Заметки» в редакторе (оверлей в общем aside, как «Мир»). Закрывает остальные.
+  const handleOpenNotes = () => {
+    const next = !isNotesOpen;
+    setIsNotesOpen(next);
+    if (next) {
+      setIsBibleOpen(false); setIsCoauthoring(false); setIsReferenceOpen(false);
+      setIsRevisionOpen(false); setIsSyncOpen(false); setIsStatsOpen(false);
+      setDetailEntity(null); setIsSettingsOpen(false); setIsPlotOpen(false);
+    }
+  };
+
+  // Столб «Сюжет» (оверлей в общем aside, как «Мир»). Закрывает остальные.
+  // lens — на какую линзу открыть (для прыжков из карточки героя в «Линии»).
+  const handleOpenPlot = (lens: 'skeleton' | 'threads' | 'beats' | 'arcs' = 'skeleton') => {
+    const next = lens !== 'skeleton' ? true : !isPlotOpen; // прыжок на конкретную линзу всегда открывает
+    setPlotInitialLens(lens);
+    setIsPlotOpen(next);
+    if (next) {
+      setIsBibleOpen(false); setIsCoauthoring(false); setIsReferenceOpen(false);
+      setIsRevisionOpen(false); setIsSyncOpen(false); setIsStatsOpen(false);
+      setDetailEntity(null); setIsSettingsOpen(false); setIsNotesOpen(false);
+      loadThreads();
+    }
   };
 
   const handleToggleReading = () => {
@@ -1294,14 +1661,14 @@ export default function Editor() {
   useEffect(() => {
     const chapter = currentChapterRef.current;
     if (!chapter || chapter.id === chapterTitleDraftChapterId) return;
-    setChapterTitleDraft(splitChapterTitle(chapter.title, chapter.order).suffix);
+    setChapterTitleDraft(splitChapterTitle(chapter.title, chapter.order, chapter.chapterType).suffix);
     setChapterTitleDraftChapterId(chapter.id);
   }, [chapterId, chapters, chapterTitleDraftChapterId]);
 
   const currentChapterPrefix = (() => {
     const chapter = currentChapterRef.current;
     if (!chapter) return 'Глава';
-    return splitChapterTitle(chapter.title, chapter.order).prefix;
+    return splitChapterTitle(chapter.title, chapter.order, chapter.chapterType).prefix;
   })();
   const currentChapterTitleSuffix = (() => {
     const chapter = currentChapterRef.current;
@@ -1309,8 +1676,84 @@ export default function Editor() {
     if (chapter.id === chapterTitleDraftChapterId) {
       return chapterTitleDraft;
     }
-    return splitChapterTitle(chapter.title, chapter.order).suffix;
+    return splitChapterTitle(chapter.title, chapter.order, chapter.chapterType).suffix;
   })();
+  const currentChapterType = chapters.find(c => c.id === chapterId)?.chapterType ?? 'chapter';
+
+  // Сменить тип текущей главы (переключатель в заголовке). Авто-заголовок «Глава N» при смене
+  // на не-главу заменяем словом-типом; обратно на главу — чистим, чтобы показалась «Глава N».
+  const handleChapterTypeChange = useCallback(async (type: string) => {
+    if (!chapterId) return;
+    const chapter = chapters.find(c => c.id === chapterId);
+    if (!chapter || chapter.chapterType === type) return;
+    const trimmed = (chapter.title ?? '').trim();
+    const typeLabels = Object.values(CHAPTER_TYPE_LABELS).filter(Boolean);
+    // «Авто»-заголовок = пусто / «Глава N» / ровно слово-тип (Эпилог и т.п.) — такой можно заменять.
+    const isAutoTitle = !trimmed || /^Глава\s+\d+$/i.test(trimmed) || typeLabels.includes(trimmed);
+    let nextTitle = chapter.title;
+    if (type !== 'chapter' && isAutoTitle) nextTitle = CHAPTER_TYPE_LABELS[type] || chapter.title;
+    else if (type === 'chapter' && typeLabels.includes(trimmed)) nextTitle = `Глава ${chapter.order + 1}`;
+
+    const body: { chapterType: string; title?: string } = { chapterType: type };
+    if (nextTitle !== chapter.title) body.title = nextTitle;
+    try {
+      await api.patch(`/chapters/${chapterId}`, body);
+      setChapters(prev => prev.map(c => c.id === chapterId ? { ...c, chapterType: type as Chapter['chapterType'], title: nextTitle } : c));
+      setChapterTitleDraftChapterId(null); // сбросить черновик суффикса — пересчитается из нового типа
+    } catch { /* тихо */ }
+  }, [chapterId, chapters]);
+
+  // Сквозная нумерация сносок: offset = число сносок во всех главах ДО текущей (по order).
+  useEffect(() => {
+    if (!editor) return;
+    const current = chapters.find(c => c.id === chapterId);
+    if (!current) return;
+    const offset = chapters
+      .filter(c => c.order < current.order)
+      .reduce((sum, c) => sum + ((c.content || '').match(/data-footnote-id/g)?.length ?? 0), 0);
+    try { editor.commands.setFootnoteOffset(offset); } catch { /* view ещё не смонтирован */ }
+  }, [editor, chapterId, chapters]);
+
+  // Все сноски книги (для линзы «Сноски» в «Мире») — парсим контент глав по порядку, сквозная нумерация.
+  const bookFootnotes = useMemo<BookFootnote[]>(() => {
+    const items: BookFootnote[] = [];
+    let n = 0;
+    for (const ch of [...chapters].sort((a, b) => a.order - b.order)) {
+      const html = ch.content || '';
+      if (!html.includes('data-footnote-id')) continue;
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      doc.querySelectorAll('[data-footnote-id]').forEach((el) => {
+        n += 1;
+        items.push({
+          id: el.getAttribute('data-footnote-id') || '',
+          content: el.getAttribute('data-content') || '',
+          chapterId: ch.id, chapterTitle: ch.title, chapterOrder: ch.order, number: n,
+        });
+      });
+    }
+    return items;
+  }, [chapters]);
+
+  // Переход к сноске из линзы: закрыть «Мир», открыть её главу, проскроллить к маркеру.
+  const [pendingFootnoteScroll, setPendingFootnoteScroll] = useState<{ chapterId: string; footnoteId: string } | null>(null);
+  const handleJumpToFootnote = useCallback((targetChapterId: string, footnoteId: string) => {
+    setIsBibleOpen(false);
+    if (targetChapterId !== chapterIdRef.current) navigate(`/editor/${projectId}/${targetChapterId}`);
+    setPendingFootnoteScroll({ chapterId: targetChapterId, footnoteId });
+  }, [projectId, navigate]);
+
+  useEffect(() => {
+    if (!pendingFootnoteScroll || !editor) return;
+    if (chapterId !== pendingFootnoteScroll.chapterId || isLoadingContent) return;
+    const t = setTimeout(() => {
+      try {
+        const el = editor.view.dom.querySelector(`.footnote-ref[data-footnote-id="${pendingFootnoteScroll.footnoteId}"]`) as HTMLElement | null;
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } catch { /* view не готов */ }
+      setPendingFootnoteScroll(null);
+    }, 150);
+    return () => clearTimeout(t);
+  }, [pendingFootnoteScroll, chapterId, isLoadingContent, editor]);
 
   const handleEditorFontChange = useCallback((font: EditorFontName) => {
     setEditorFont(font);
@@ -1327,6 +1770,8 @@ export default function Editor() {
       run: () => handleBibleMenuClick('inbox') },
     { id: 'world', label: 'Мир — каталог, линзы', icon: BookOpen, keywords: 'библия персонажи локации присутствие связи линза',
       run: () => handleBibleMenuClick('characters') },
+    { id: 'notes', label: 'Заметки — идеи по книге', icon: StickyNote, keywords: 'идеи заметки записать набросок',
+      run: () => { if (!isNotesOpen) handleOpenNotes(); } },
     { id: 'ask', label: 'Перо — спросить про историю', icon: Feather, keywords: 'чат вопрос аналитик суммируй',
       run: () => { if (!isCoauthoring) handleToggleCoauthor(); } },
     { id: 'scan', label: 'Проверить всю книгу на нестыковки', icon: AlertTriangle, keywords: 'скан проверка противоречия нестыковки вся книга',
@@ -1347,7 +1792,7 @@ export default function Editor() {
       run: () => handleToggleFocusMode() },
     { id: 'settings', label: 'Настройки', icon: SettingsIcon, keywords: 'настройки аккаунт профиль',
       run: () => setIsSettingsOpen(true) },
-  ], [currentChapterFreshness, isCoauthoring, isReferenceOpen, isRevisionOpen, isStatsOpen, isFocusMode,
+  ], [currentChapterFreshness, isCoauthoring, isReferenceOpen, isRevisionOpen, isStatsOpen, isFocusMode, isNotesOpen,
       handleRecheckChapter, handleExtract, handleRecheckAllStale, handleToggleCoauthor, handleToggleReference, handleToggleRevision, handleToggleStats, handleToggleFocusMode, runContradictionScan]);
 
   return (
@@ -1369,6 +1814,29 @@ export default function Editor() {
           text-decoration-skip-ink: none;
           text-underline-offset: 3px;
         }
+        /* Разнопись имени (B1) — мягкий охра-пунктир: «похоже на известное имя», не ошибка.
+           Тише красной волны нестыковки; сигнал-подсказка, решает автор (title-тултип). */
+        .name-nudge {
+          text-decoration: underline dotted #B8862B;
+          text-decoration-skip-ink: none;
+          text-underline-offset: 3px;
+          cursor: help;
+        }
+        /* Комментарий — приклеенная к фразе авторская пометка. Мягкая охра-подложка +
+           тонкое подчёркивание (отлично от красной волны нестыковки). author / pero. */
+        .comment-mark {
+          background: rgba(145, 104, 46, 0.12);
+          border-bottom: 1.5px solid rgba(145, 104, 46, 0.5);
+          border-radius: 2px 2px 0 0;
+          cursor: pointer;
+          transition: background 0.12s ease;
+        }
+        .comment-mark:hover { background: rgba(145, 104, 46, 0.2); }
+        .comment-mark[data-comment-source="pero"] {
+          background: rgba(161, 79, 68, 0.1);
+          border-bottom-color: rgba(161, 79, 68, 0.5);
+        }
+        .comment-mark[data-comment-source="pero"]:hover { background: rgba(161, 79, 68, 0.18); }
         /* Живая диктовка — призрачный текст прямо у курсора (DictationGhostExtension).
            Наследует шрифт/размер абзаца, поэтому льётся в строку как настоящий текст. */
         .dictation-ghost {
@@ -1402,9 +1870,12 @@ export default function Editor() {
           />
         )}
         {!isFocusMode && (
-          <div className={`flex h-full max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-50 max-lg:transition-transform max-lg:duration-300 max-lg:ease-in-out ${
+          <div className={`shrink-0 overflow-hidden max-lg:overflow-visible max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-50 max-lg:transition-transform lg:transition-[width] duration-300 ease-in-out ${
             isChaptersDrawerOpen ? 'max-lg:translate-x-0 max-lg:shadow-2xl' : 'max-lg:-translate-x-full'
-          } ${isChaptersCollapsed ? 'lg:hidden' : ''}`}>
+          } ${isChaptersCollapsed ? 'lg:w-0' : 'lg:w-[220px]'}`}>
+          {/* Внутренний блок фиксированной ширины — содержимое не переверстывается во время
+              анимации ширины внешней обёртки (как у правого спутника). */}
+          <div className="flex h-full w-[220px]">
           <ChapterSidebar
             projectId={projectId!}
             chapterId={chapterId}
@@ -1422,71 +1893,90 @@ export default function Editor() {
             saveError={saveError}
             editorFont={editorFont}
             onOpenBible={() => handleBibleMenuClick('characters')}
+            onOpenPlot={() => handleOpenPlot()}
             bibleBadge={
               suggestions.length
               + updateSuggestions.filter(u => u.status === 'pending').length
               + contradictions.size
             }
             onCollapse={() => setIsChaptersCollapsed(true)}
+            onOpenSettings={() => { setIsSettingsOpen(true); setIsChaptersDrawerOpen(false); }}
           />
+          </div>
           </div>
         )}
 
         <div
           className="flex-1 min-w-0 flex flex-col relative"
           onClick={(e) => {
+            // Клик по подсветке комментария → активировать карточку на полях (или поповер, если поля нет).
+            const cm = (e.target as HTMLElement).closest('.comment-mark') as HTMLElement | null;
+            if (cm) {
+              const id = cm.getAttribute('data-comment-id');
+              const found = id ? comments.find(c => c.id === id) : null;
+              if (found) {
+                setContradictionPopover(null);
+                // спутник свёрнут + широкий → карточка на полях; иначе поповер (спутник не трогаем)
+                if (window.matchMedia('(min-width: 1024px)').matches && companionCollapsedRef.current) {
+                  setActiveCommentId(found.id);
+                } else { const r = cm.getBoundingClientRect(); setCommentPopover({ comment: found, x: r.left + r.width / 2, y: r.bottom }); }
+                return;
+              }
+              // Марка-сирота (строки комментария в БД нет — напр. удалён извне): самолечение —
+              // снимаем мёртвую подсветку, чтобы не оставалась «висячая» без карточки.
+              if (id && editorRef.current) {
+                editorRef.current.commands.removeCommentById(id);
+                forceSave(editorRef.current.getHTML()).catch(() => {});
+                return;
+              }
+            }
+            // Клик вне подсветки — свернуть активную карточку на полях.
+            if (activeCommentId) setActiveCommentId(null);
             const mark = (e.target as HTMLElement).closest('.contradiction-mark');
-            if (mark) {
-              const r = mark.getBoundingClientRect();
-              const text = (mark.textContent || '').trim();
-              const hit = contradictionIssues.find(i => i.quote && i.quote.trim().toLowerCase() === text.toLowerCase());
-              setContradictionHover(null);
-              setContradictionPopover({
-                name: hit?.entityName || text,
-                x: r.left, y: r.bottom,
-                issue: hit?.issue,
-                issueChapterId: hit?.chapterId ?? null,
-              });
+            if (mark && editor) {
+              // Клик по нестыковке = ТИХАЯ подсветка фразы. Ноль плашек поверх текста; находка живёт в правом рельсе.
+              try {
+                const from = editor.view.posAtDOM(mark, 0);
+                const to = from + (mark.textContent?.length ?? 0);
+                if (from >= 0 && to > from) applySearchHighlight(editor, from, to);
+              } catch { /* позиция не нашлась — игнорируем */ }
             }
           }}
-          onMouseOver={(e) => {
-            const mark = (e.target as HTMLElement).closest('.contradiction-mark');
-            if (!mark || contradictionPopover) return;
-            const r = mark.getBoundingClientRect();
-            const text = (mark.textContent || '').trim();
-            const hit = contradictionIssues.find(i => i.quote && i.quote.trim().toLowerCase() === text.toLowerCase());
-            setContradictionHover({ issue: hit?.issue, name: hit?.entityName || text, x: r.left + r.width / 2, y: r.top });
-          }}
-          onMouseOut={(e) => {
-            const mark = (e.target as HTMLElement).closest('.contradiction-mark');
-            const to = (e.relatedTarget as HTMLElement | null)?.closest?.('.contradiction-mark');
-            if (mark && !to) setContradictionHover(null);
-          }}
         >
-          {/* №3 — навигация по главам: пред/след без захода в список */}
-          {!isFocusMode && (() => {
-            const sorted = [...chapters].sort((a, b) => a.order - b.order);
-            const idx = sorted.findIndex(c => c.id === chapterId);
-            const prev = idx > 0 ? sorted[idx - 1] : null;
-            const next = idx >= 0 && idx < sorted.length - 1 ? sorted[idx + 1] : null;
-            const go = (id: string) => navigate(`/editor/${projectId}/${id}`);
+          {/* Ось ЗУМА как сегмент-контрол: уровни двигают грань панелей (Глава·Книга·Серия),
+              активный = залитая пилюля. Рядом — имя активного уровня (тихий ориентир, без хлебных стрелок). */}
+          {(() => {
+            const applyZoom = (z: 'scene' | 'book' | 'series') => {
+              if (z === 'scene') { setBibleScope('chapter'); setChatScope('chapter'); }
+              else if (z === 'series') { setBibleScope('series'); setChatScope('series'); }
+              else { setBibleScope('project'); setChatScope('book'); }
+            };
+            const segCls = (active: boolean) =>
+              `rounded-md px-2.5 py-1 text-[12px] cursor-pointer transition-all ${active
+                ? 'bg-white text-[#A14F44] font-semibold shadow-sm'
+                : 'text-[#1e2d1f]/55 hover:text-[#1e2d1f] hover:bg-white/50'}`;
+            const ch = chapters.find(c => c.id === chapterId);
+            const chapterLabel = ch ? splitChapterTitle(ch.title, ch.order, ch.chapterType).prefix : 'Глава';
+            const activeName = bibleScope === 'series'
+              ? (seriesInfo?.title ?? 'Серия')
+              : bibleScope === 'project' ? (projectTitle || 'Книга') : chapterLabel;
             return (
-              <>
-                {prev && (
-                  <button onClick={() => go(prev.id)} title={`← ${prev.title}`} aria-label="Предыдущая глава"
-                    className="absolute left-1 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full flex items-center justify-center text-[#1e2d1f]/30 hover:text-[#1e2d1f] hover:bg-white/80 transition-colors">
-                    <ChevronLeft size={20} />
-                  </button>
-                )}
-                {next && (
-                  <button onClick={() => go(next.id)} title={`${next.title} →`} aria-label="Следующая глава"
-                    className="absolute right-1 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full flex items-center justify-center text-[#1e2d1f]/30 hover:text-[#1e2d1f] hover:bg-white/80 transition-colors">
-                    <ChevronRight size={20} />
-                  </button>
-                )}
-              </>
+              <nav className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 border-b border-[#1e2d1f]/5 overflow-x-auto whitespace-nowrap">
+                <span className="flex items-center gap-1 text-[10.5px] font-medium uppercase tracking-wider text-[#1e2d1f]/35 flex-shrink-0">
+                  <Maximize2 size={11} /> масштаб
+                </span>
+                <div className="inline-flex items-center gap-0.5 rounded-lg bg-[#1e2d1f]/[0.05] p-0.5 flex-shrink-0">
+                  <button onClick={() => applyZoom('scene')} className={segCls(bibleScope === 'chapter')} title="Панели по этой главе">Глава</button>
+                  <button onClick={() => applyZoom('book')} className={segCls(bibleScope === 'project')} title="Панели по всей книге">Книга</button>
+                  {projectSeriesId && (
+                    <button onClick={() => applyZoom('series')} className={segCls(bibleScope === 'series')} title="Панели по всей серии">Серия</button>
+                  )}
+                </div>
+                <span className="min-w-0 truncate text-[12px] text-[#1e2d1f]/40" title={activeName}>{activeName}</span>
+              </nav>
             );
           })()}
+
           {/* №1 — живой статус скана нестыковок */}
           {scanState && (
             <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#1e2d1f] text-[#f5f0e8] text-[12.5px] shadow-lg">
@@ -1513,17 +2003,20 @@ export default function Editor() {
             chapterPrefix={currentChapterPrefix}
             chapterTitleSuffix={currentChapterTitleSuffix}
             onChapterTitleSuffixChange={handleChapterTitleSuffixChange}
+            chapterType={currentChapterType}
+            onChapterTypeChange={handleChapterTypeChange}
             indentParagraphs={indentParagraphs}
             onIndentParagraphsChange={setIndentParagraphs}
             editorFont={editorFont}
             onEditorFontChange={handleEditorFontChange}
             isFocusMode={isFocusMode}
+            reserveCommentGutter={gutterItems.length > 0 && companionCollapsed && wideNow}
             isDictating={isDictating || isDictationProcessing}
             interimTranscript={
               isDictationProcessing ? 'Обрабатываю диктовку…'
               : (isDictating && !interimTranscript ? 'Слушаю…' : '')
             }
-            onOpenSettings={() => setIsSettingsOpen(true)}
+            onOpenSettings={() => { setIsSettingsOpen(true); setIsChaptersDrawerOpen(false); }}
             onOpenSearch={() => setIsSearchOpen(true)}
             onOpenExport={() => setIsExportOpen(true)}
             onOpenChapters={() => {
@@ -1532,6 +2025,8 @@ export default function Editor() {
               else setIsChaptersDrawerOpen(true);
             }}
             isChaptersCollapsed={isChaptersCollapsed}
+            isCompanionOpen={!companionCollapsed}
+            onToggleCompanion={() => toggleCompanion()}
             projectId={projectId}
           />
 
@@ -1546,12 +2041,19 @@ export default function Editor() {
             onToggleDictation={toggleListening}
             isFocusMode={isFocusMode}
             onToggleFocusMode={handleToggleFocusMode}
-            isCompanionOpen={!isCompanionCollapsed}
-            onToggleCompanion={() => setIsCompanionCollapsed(v => !v)}
+            isCompanionOpen={!companionCollapsed}
+            companionMode={companionMode}
+            onToggleCompanion={handlePeroButton}
             companionCount={
               suggestions.filter(s => s.chapterId === chapterId).length
               + [...chapterLinkedEntities, ...chapterMentionedEntities].filter(e => contradictions.has(e.id)).length
             }
+            onOpenWorld={handleOpenWorldChapter}
+            isWorldOpen={isBibleOpen}
+            worldCount={suggestions.filter(s => s.chapterId === chapterId).length}
+            onOpenInFrame={handleOpenInFrame}
+            onOpenNotes={handleOpenNotes}
+            isNotesOpen={isNotesOpen}
           />
 
           {/* ── Match navigation bar ── */}
@@ -1656,15 +2158,15 @@ export default function Editor() {
           className={`bg-[#f5f0e8] border-[#1e2d1f]/10 transition-all duration-300 ease-in-out overflow-hidden absolute shadow-2xl ${
             !(!isFocusMode && isAnySidePanelOpen)
               ? 'top-14 bottom-0 right-12 w-[min(92vw,360px)] border-l opacity-0 translate-x-full pointer-events-none z-40'
-              : isBibleOpen
-              ? `z-40 top-16 bottom-24 max-md:top-12 max-md:bottom-24 left-[232px] max-lg:left-3 ${isCompanionCollapsed ? 'right-4' : 'md:right-[300px] right-4'} rounded-2xl border opacity-100 translate-x-0 pointer-events-auto`
+              : (isBibleOpen || detailEntity || isSettingsOpen || isNotesOpen || isPlotOpen)
+              ? `z-40 top-16 bottom-24 max-md:top-12 max-md:bottom-24 ${isChaptersCollapsed ? 'left-3' : 'left-3 lg:left-[232px]'} ${companionCollapsed ? "right-4" : "right-4 lg:right-[300px]"} rounded-2xl border opacity-100 translate-x-0 pointer-events-auto`
               : isInspectorExpanded
               ? `z-40 top-16 bottom-6 max-md:top-12 max-md:bottom-3 right-[68px] max-md:right-3 left-6 max-md:left-3 ${isChaptersCollapsed ? '' : 'lg:left-[244px]'} rounded-2xl border opacity-100 translate-x-0 pointer-events-auto`
               : 'z-40 top-14 bottom-0 right-12 max-md:right-0 max-md:top-0 w-[min(92vw,360px)] border-l border-t max-md:border-t-0 opacity-100 translate-x-0 pointer-events-auto'
           }`}
         >
           {/* Развернуть / свернуть — рядом с крестиком (для узких панелей; «Мир» и так на весь экран) */}
-          {(!isFocusMode && isAnySidePanelOpen && !isBibleOpen) && (
+          {(!isFocusMode && isAnySidePanelOpen && !isBibleOpen && !detailEntity && !isSettingsOpen && !isNotesOpen && !isPlotOpen) && (
             <button
               onClick={() => setIsInspectorExpanded(v => !v)}
               className="absolute top-3.5 right-[54px] z-50 p-1.5 rounded-md text-[#1e2d1f]/45 hover:text-[#1e2d1f] hover:bg-[#1e2d1f]/5 transition-colors"
@@ -1677,6 +2179,10 @@ export default function Editor() {
           <div className="w-full h-full flex flex-col absolute top-0 left-0">
           {isBibleOpen && (
             <StoryBiblePanel
+              projectId={projectId ?? ''}
+              initialLens={worldInitialLens as never}
+              initialLensNonce={worldLensNonce}
+              echoInitialQuery={echoQuery}
               activeBibleTab={activeBibleTab}
               onTabChange={setActiveBibleTab}
               isExtracting={isExtracting}
@@ -1691,11 +2197,17 @@ export default function Editor() {
               onRecheck={handleRecheckChapter}
               onApproveSuggestion={approveSuggestion}
               onRejectSuggestion={rejectSuggestion}
+              onMergeSuggestionInto={(suggestionId, targetId) => { mergeSuggestionInto(suggestionId, targetId); loadBibleData(); }}
               onAcceptUpdate={acceptUpdate}
               onRejectUpdate={rejectUpdate}
               onDismissUpdate={dismissUpdate}
               onBulkDismissChapter={bulkDismissChapter}
               onBulkRejectChapter={bulkRejectChapter}
+              onFindSemanticDuplicates={async () => {
+                if (!projectId) return [];
+                const r = await api.post<{ pairs: import('../components/editor/StoryBiblePanel').SemanticPair[] }>(`/bible/${projectId}/semantic-duplicates`, {});
+                return r.pairs ?? [];
+              }}
               onMergeDuplicates={async (ids, survivorId) => {
                 if (!projectId || ids.length < 2) return;
                 try {
@@ -1718,9 +2230,27 @@ export default function Editor() {
                   setEntityEvents(data.events ?? []);
                 } catch { /* ошибка слияния — тихо */ }
               }}
+              onLinksChanged={loadBibleData}
               onOpenInEditor={handleOpenInEditor}
               contradictions={contradictions}
+              footnotes={bookFootnotes}
+              onJumpToFootnote={handleJumpToFootnote}
               currentChapterId={chapterId}
+              seriesId={projectSeriesId}
+              scope={bibleScope}
+              onScopeChange={setBibleScope}
+              seriesPremise={seriesInfo?.premise ?? null}
+              seriesThreads={seriesInfo?.franchiseThreads ?? []}
+              onOpenSeriesCanvas={() => projectSeriesId && navigate(`/series/${projectSeriesId}`)}
+              chapterEntityIds={new Set([...chapterLinkedEntities, ...chapterMentionedEntities].map(e => e.id))}
+              contradictionIssues={contradictionIssues}
+              scanState={scanState}
+              onScanContradictions={runContradictionScan}
+              onDismissContradiction={dismissContradictionIssue}
+              onOpenEntityDetail={(name) => {
+                const e = allApprovedEntities.find(x => (x.name ?? '').trim().toLowerCase() === name.trim().toLowerCase());
+                if (e) { setIsBibleOpen(false); setDetailEntity(e); }
+              }}
               isExpanded={isInspectorExpanded || isBibleOpen}
               onClose={() => setIsBibleOpen(false)}
             />
@@ -1767,6 +2297,90 @@ export default function Editor() {
               totalProjectWords={totalProjectWords}
               chapterWords={editor?.storage.characterCount?.words?.() ?? 0}
               onClose={() => setIsStatsOpen(false)}
+            />
+          )}
+
+          {detailEntity && (
+            <EntityDetailPanel
+              entity={detailEntity}
+              links={entityLinks}
+              events={entityEvents}
+              allEntities={allApprovedEntities}
+              chaptersRef={chapters.map(c => ({ id: c.id, title: c.title, order: c.order }))}
+              onClose={() => setDetailEntity(null)}
+              onSelectEntity={setDetailEntity}
+              onOpenInWorld={() => { setDetailEntity(null); handleBibleMenuClick('characters'); }}
+              threads={plotThreads}
+              onOpenThreads={() => handleOpenPlot('threads')}
+            />
+          )}
+
+          {isSettingsOpen && (
+            <Settings
+              onClose={() => setIsSettingsOpen(false)}
+              showWordCount={showWordCount}
+              setShowWordCount={setShowWordCount}
+              indentParagraphs={indentParagraphs}
+              setIndentParagraphs={setIndentParagraphs}
+              editorFont={editorFont}
+              setEditorFont={handleEditorFontChange}
+            />
+          )}
+
+          {isNotesOpen && (
+            <div className="flex flex-col h-full w-full">
+              <div className="px-5 py-4 border-b border-[#1e2d1f]/5 flex justify-between items-center bg-white/40 flex-shrink-0">
+                <div>
+                  <h2 className="font-sans text-base font-semibold text-[#1e2d1f]">Заметки</h2>
+                  <p className="text-[11px] text-[#1e2d1f]/45 leading-tight">идеи и заметки по книге; новые привязываются к этой главе</p>
+                </div>
+                <button onClick={() => setIsNotesOpen(false)} className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/50 transition-colors">
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-5">
+                {projectId && (
+                  <NotesBoard
+                    projectId={projectId}
+                    chapterId={chapterId}
+                    onEntityCreated={loadBibleData}
+                    onNotesChanged={() => setNotesVersion(v => v + 1)}
+                    onOpenEntity={(id) => { const e = allApprovedEntities.find(x => x.id === id); if (e) { setIsNotesOpen(false); setDetailEntity(e); } }}
+                    onJumpToChapter={(id) => { setIsNotesOpen(false); if (id !== chapterId) navigate(`/editor/${projectId}/${id}`); }}
+                    onChapterCreated={(id) => {
+                      api.get<{ chapters: Chapter[] }>(`/projects/${projectId}/chapters`).then(d => setChapters(d.chapters || [])).catch(() => {});
+                      setIsNotesOpen(false);
+                      navigate(`/editor/${projectId}/${id}`);
+                    }}
+                  />
+                )}
+              </div>
+            </div>
+          )}
+
+          {isPlotOpen && (
+            <PlotPanel
+              projectId={projectId!}
+              initialLens={plotInitialLens}
+              chapters={chapters}
+              entities={allApprovedEntities}
+              events={entityEvents}
+              links={entityLinks}
+              threads={plotThreads}
+              scanningThreads={scanningThreads}
+              onScanThreads={scanThreads}
+              onDismissThread={dismissThread}
+              onToggleThreadResolved={toggleThreadResolved}
+              onAddThread={addThread}
+              onEditThread={editThread}
+              onSaveChapterPlan={saveChapterPlan}
+              onAddChapter={addPlannedChapter}
+              onClose={() => setIsPlotOpen(false)}
+              onJumpToChapter={(id) => { setIsPlotOpen(false); if (id !== chapterId) navigate(`/editor/${projectId}/${id}`); }}
+              onOpenEntity={(name) => {
+                const e = allApprovedEntities.find(x => (x.name ?? '').trim().toLowerCase() === name.trim().toLowerCase());
+                if (e) { setIsPlotOpen(false); setDetailEntity(e); }
+              }}
             />
           )}
 
@@ -1900,13 +2514,29 @@ export default function Editor() {
         {/* Правый спутник «Перо» — память сцены + находки/нестыковки + чат (скрыт в фокусе) */}
         {!isFocusMode && (
           <WorldCompanion
-            collapsed={isCompanionCollapsed}
-            onToggleCollapse={() => setIsCompanionCollapsed(v => !v)}
+            collapsed={companionCollapsed}
+            onToggleCollapse={() => toggleCompanion()}
+            scenePlan={chapters.find(c => c.id === chapterId)?.plan ?? null}
+            onOpenPlan={() => handleOpenPlot('skeleton')}
+            seriesHandoff={seriesHandoff}
+            onOpenSeriesWorld={() => projectSeriesId && navigate(`/series/${projectSeriesId}/world`)}
+            summaryFindings={suggestions.length}
+            summaryContradictions={contradictionIssues.filter(i => i.status !== 'dismissed').length}
+            summaryDangling={danglingCount}
+            onOpenSummaryLens={openWorldAtLens}
+            projectId={projectId}
+            chapterId={chapterId}
+            sverkaScope={bibleScope}
+            onJumpToQuote={(cid, quote) => handleOpenInEditor(cid, quote, quote)}
+            onOpenThreads={() => handleOpenPlot('threads')}
+            onSverkaChanged={loadBibleData}
+            chapterNotes={chapterNotes}
+            onOpenNotes={handleOpenNotes}
             freshness={currentChapterFreshness}
             isExtracting={isExtracting}
             onRead={currentChapterFreshness === 'stale' ? handleRecheckChapter : handleExtract}
-            sceneEntities={[...chapterLinkedEntities, ...chapterMentionedEntities]}
-            inSceneIds={inSceneIds}
+            sceneEntities={chapterEntitiesByAppearance}
+            isServiceChapter={isServiceChapterType(currentChapterType)}
             povCharacter={chapters.find(c => c.id === chapterId)?.povCharacter ?? null}
             chapterSynopsis={chapters.find(c => c.id === chapterId)?.summary ?? null}
             povOptions={[...new Set(allApprovedEntities.filter(e => e.type === 'character').map(e => e.name.trim()))].sort((a, b) => a.localeCompare(b, 'ru'))}
@@ -1921,7 +2551,7 @@ export default function Editor() {
             onApproveFinding={approveSuggestion}
             onRejectFinding={rejectSuggestion}
             contradictionIds={contradictions}
-            onOpenEntity={() => { handleBibleMenuClick('characters'); setIsCompanionCollapsed(true); }}
+            onOpenEntity={setDetailEntity}
             onOpenWorld={() => { handleBibleMenuClick('characters'); setIsCompanionCollapsed(true); }}
             mode={companionMode}
             onModeChange={setCompanionMode}
@@ -1936,15 +2566,39 @@ export default function Editor() {
                 isExtracting={isExtracting}
                 chatEndRef={chatEndRef}
                 selectedText={selectedText}
+                pinnedSelection={pinnedSelection}
+                onPinSelection={() => setPinnedSelection(selectedText.trim())}
+                onClearPinnedSelection={() => setPinnedSelection('')}
                 onSendMessage={handleSendMessage}
                 onSendPrompt={handleSendPrompt}
                 onCheckConsistency={handleCheckConsistency}
                 onExtractBible={async () => {
-                  await handleExtract();
+                  // Не жжём агента, если глава не менялась с последнего чтения:
+                  // fresh → просто открываем мир главы; stale → перечитываем; unknown → первое чтение.
+                  if (currentChapterFreshness === 'fresh') {
+                    if (chapterId) setBibleScope('chapter');
+                    handleBibleMenuClick('characters');
+                    return;
+                  }
+                  if (currentChapterFreshness === 'stale') await handleRecheckChapter();
+                  else await handleExtract();
                   setIsBibleOpen(true);
                   setActiveBibleTab('inbox');
                 }}
-                onInsertText={handleInsertText}
+                chapterCount={chapters.length}
+                entityCount={allApprovedEntities.length}
+                extractFreshness={currentChapterFreshness}
+                scope={chatScope}
+                onScopeChange={setChatScope}
+                inSeries={!!projectSeriesId}
+                entities={allApprovedEntities}
+                onOpenEntity={setDetailEntity}
+                onJumpToChapter={(n) => {
+                  const byTitle = chapters.find(c => new RegExp(`(^|\\s)глава\\s*${n}(\\b|\\D|$)`, 'i').test(c.title || ''));
+                  const nonService = chapters.filter(c => !isServiceChapterType(c.chapterType));
+                  const target = byTitle ?? nonService[n - 1] ?? chapters[n - 1];
+                  if (target && target.id !== chapterId) navigate(`/editor/${projectId}/${target.id}`);
+                }}
                 onClose={() => setCompanionMode('scene')}
               />
             }
@@ -1958,63 +2612,57 @@ export default function Editor() {
         commands={commands}
       />
 
-      <EntitySelectionMenu
-        editor={editor}
-        entities={allApprovedEntities}
-        onShowInWorld={(entity) => {
-          const tab = { character: 'characters', location: 'locations', item: 'items', rule: 'rules' }[entity.type] ?? 'characters';
-          handleBibleMenuClick(tab);
-        }}
-        onWhereUsed={(entity) => {
-          if (!isRevisionOpen) handleToggleRevision();
-          handleTrace(entity.name);
-        }}
-      />
+      {editor && (
+        <SelectionBar
+          editor={editor}
+          projectId={projectId}
+          entities={allApprovedEntities}
+          onShowInWorld={(entity) => setDetailEntity(entity)}
+          onWhereUsed={(entity) => {
+            if (!isRevisionOpen) handleToggleRevision();
+            handleTrace(entity.name);
+          }}
+          onEntityCreated={() => loadBibleData()}
+          onAskPero={handleAskPero}
+          onFindSimilar={projectId ? handleFindSimilar : undefined}
+          onComment={projectId ? handleCreateComment : undefined}
+        />
+      )}
 
       {/* Превью нестыковки по наведению — peek без клика (как тултип проверки орфографии).
           Не перехватывает мышь; клик по подчёркиванию открывает полный поповер с действиями. */}
-      {contradictionHover && !contradictionPopover && (
-        <div
-          className="fixed z-[120] -translate-x-1/2 -translate-y-full pointer-events-none"
-          style={{ left: contradictionHover.x, top: contradictionHover.y - 8 }}
-        >
-          <div className="max-w-[280px] rounded-xl bg-[#1e2d1f] text-[#f5f0e8] shadow-xl px-3 py-2">
-            <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#e0a89e] mb-1">
-              <AlertTriangle size={11} /> Возможная нестыковка
-            </div>
-            <div className="text-[12px] leading-snug">
-              {contradictionHover.issue || `«${contradictionHover.name}» — Перо нашло расхождение.`}
-            </div>
-            <div className="text-[10.5px] text-[#f5f0e8]/55 mt-1.5">Нажмите, чтобы разрешить →</div>
-          </div>
-        </div>
+      {/* Плашки нестыковки поверх текста убраны (ховер-подсказка + поповер). Маркер = подчёркивание; находка = правый рельс. */}
+
+      {editor && gutterItems.length > 0 && (
+        <CommentsGutter
+          editor={editor}
+          items={gutterItems}
+          activeId={activeCommentId}
+          onActivate={setActiveCommentId}
+          onSave={handleSaveComment}
+          onResolve={handleResolveComment}
+          onDelete={handleDeleteComment}
+          onToNote={handleCommentToNote}
+          onReply={handleReplyComment}
+          onDismissPero={dismissContradictionIssue}
+          onOpenEntity={(name) => {
+            const e = allApprovedEntities.find(x => x.name.trim().toLowerCase() === name.trim().toLowerCase());
+            if (e) { setIsBibleOpen(false); setDetailEntity(e); }
+          }}
+        />
       )}
 
-      {contradictionPopover && (
-        <ContradictionPopover
-          name={contradictionPopover.name}
-          group={allApprovedEntities.filter(e => e.name.trim().toLowerCase() === contradictionPopover.name.toLowerCase())}
-          issueText={contradictionPopover.issue}
-          issueChapterId={contradictionPopover.issueChapterId}
-          chapters={chapters.map(c => ({ id: c.id, title: c.title, order: c.order }))}
-          x={contradictionPopover.x}
-          y={contradictionPopover.y}
-          onClose={() => setContradictionPopover(null)}
-          onJump={(chapterId, name) => { setContradictionPopover(null); handleOpenInEditor(chapterId, name, name); }}
-          onOpenWorld={() => { setContradictionPopover(null); handleBibleMenuClick('characters'); }}
-          onDismiss={() => { dismissContradiction(contradictionPopover.name); setContradictionPopover(null); }}
-          onMerge={async () => {
-            const name = contradictionPopover.name;
-            setContradictionPopover(null);
-            if (!projectId) return;
-            try {
-              await api.post(`/bible/${projectId}/merge`, { name });
-              const data = await api.get<{ entities: Entity[]; links?: EntityLink[]; events?: EntityEvent[] }>(`/bible/${projectId}`);
-              setBibleEntities((data.entities ?? []).filter(e => e.status === 'approved'));
-              setEntityLinks(data.links ?? []);
-              setEntityEvents(data.events ?? []);
-            } catch { /* ошибка слияния — тихо */ }
-          }}
+      {commentPopover && (
+        <CommentPopover
+          comment={commentPopover.comment}
+          x={commentPopover.x}
+          y={commentPopover.y}
+          startEditing={commentPopover.startEditing}
+          onSave={(body) => handleSaveComment(commentPopover.comment.id, body)}
+          onResolve={() => handleResolveComment(commentPopover.comment.id)}
+          onDelete={() => handleDeleteComment(commentPopover.comment.id)}
+          onToNote={() => handleCommentToNote(commentPopover.comment.id)}
+          onClose={() => setCommentPopover(null)}
         />
       )}
 
@@ -2039,25 +2687,6 @@ export default function Editor() {
         />
       )}
 
-      {isSettingsOpen && (
-        <div 
-          className="fixed inset-0 z-[100] bg-[#1e2d1f]/20 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8"
-          onClick={() => setIsSettingsOpen(false)}
-        >
-          <div 
-            className="bg-[#f5f0e8] rounded-3xl shadow-2xl w-full max-w-5xl max-h-full overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Settings
-              onClose={() => setIsSettingsOpen(false)}
-              showWordCount={showWordCount}
-              setShowWordCount={setShowWordCount}
-              indentParagraphs={indentParagraphs}
-              setIndentParagraphs={setIndentParagraphs}
-            />
-          </div>
-        </div>
-      )}
     </>
   );
 }

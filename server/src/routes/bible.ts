@@ -1,18 +1,21 @@
 import express from 'express';
 import { createHash } from 'crypto';
-import { eq, and, ne, inArray, desc } from 'drizzle-orm';
+import { eq, and, ne, inArray, desc, sql } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import { db } from '../db/client.js';
+import { retrieveCrossChapterPassages, searchBookPassages, searchSeriesPassages } from '../lib/semanticRetrieval.js';
+import { refreshEntityEmbeddings } from '../lib/entityEmbeddings.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rateLimiter.js';
 import { guardChat } from '../lib/aiGuard.js';
 import { stripHtml } from '../lib/html.js';
-import { getAIProvider } from '../lib/aiProvider.js';
+import { getAIProvider, getEmbeddingProvider } from '../lib/aiProvider.js';
 import { aiQuota } from '../lib/quota.js';
 import { enqueueJob } from '../jobs/queue.js';
 import {
   isValidUUID, cleanJsonResponse,
-  BASE_EXTRACTION_PROMPT, processExtractionResults, sanitizePov, sanitizeSynopsis, isLowInfoChapterTitle,
+  BASE_EXTRACTION_PROMPT, EXTRACTION_SCHEMA, processExtractionResults, sanitizePov, sanitizeSynopsis, isLowInfoChapterTitle,
+  buildStoryBibleContext, buildContradictionPrompt,
   type AiEntity, type AiRelation,
 } from '../lib/extraction.js';
 
@@ -297,6 +300,8 @@ router.post('/extract',
         () => ai.generate({
           contents: `${BASE_EXTRACTION_PROMPT}\n\nТекст главы:\n"""\n${plainText}\n"""`,
           temperature: 0.15,
+          responseSchema: EXTRACTION_SCHEMA,
+          responseSchemaName: 'entity_extraction',
         }),
         { userId: req.user.userId, projectId: projectId ?? null, route: 'bible:extract' }
       );
@@ -443,6 +448,8 @@ router.post('/recheck/chapter/:chapterId',
         () => ai.generate({
           contents: `${prompt}\n\nТекст главы:\n"""\n${plainText}\n"""`,
           temperature: 0.15,
+          responseSchema: EXTRACTION_SCHEMA,
+          responseSchemaName: 'entity_extraction',
         }),
         { userId: req.user.userId, projectId, route: 'bible:recheck' }
       );
@@ -759,7 +766,8 @@ router.post('/updates/:updateId/accept', authenticateToken, async (req: any, res
     }
 
     await db.update(schema.storyEntities)
-      .set({ description: update.proposedDescription })
+      // description меняется → сбрасываем кэш эмбеддинга карточки
+      .set({ description: update.proposedDescription, embedding: null, embeddingText: null })
       .where(eq(schema.storyEntities.id, update.entityId));
 
     const [accepted] = await db
@@ -962,6 +970,118 @@ router.get('/:projectId', authenticateToken, async (req: any, res) => {
 // Body: { name?, description?, significance?, attributes? }
 // Авторская правка — источник истины: перезаписывает поля целиком.
 
+// ── POST /api/bible/:projectId/entities — ручное создание сущности из выделения ──
+// Автор сам отметил имя в тексте → запись авторитетная, сразу 'approved'
+// (в отличие от ИИ-находок, что идут в pending-инбокс). Дедуп по имени: если такая
+// уже есть — возвращаем её, нового дубля не плодим.
+const ALLOWED_ENTITY_TYPES = ['character', 'location', 'item', 'rule'];
+
+router.post('/:projectId/entities', authenticateToken, async (req: any, res) => {
+  try {
+    const { projectId } = req.params;
+    if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
+
+    const isOwner = await assertProjectOwnership(projectId, req.user.userId);
+    if (!isOwner) return res.status(403).json({ error: 'Access denied' });
+
+    const { type, name, description } = req.body ?? {};
+    if (!ALLOWED_ENTITY_TYPES.includes(type)) {
+      return res.status(400).json({ error: 'Invalid entity type' });
+    }
+    const cleanName = typeof name === 'string' ? name.trim().slice(0, 200) : '';
+    if (!cleanName) return res.status(400).json({ error: 'Name is required' });
+
+    // Дедуп: точное совпадение имени (без регистра) в этом проекте
+    const existing = await db
+      .select()
+      .from(schema.storyEntities)
+      .where(and(
+        eq(schema.storyEntities.projectId, projectId),
+        eq(schema.storyEntities.type, type),
+      ));
+    const dup = existing.find(e => e.name.trim().toLowerCase() === cleanName.toLowerCase());
+    if (dup) return res.json(dup);
+
+    const [created] = await db
+      .insert(schema.storyEntities)
+      .values({
+        projectId,
+        type,
+        name: cleanName,
+        description: typeof description === 'string' ? description.slice(0, 4000) : null,
+        status: 'approved',
+      })
+      .returning();
+
+    res.status(201).json(created);
+  } catch (error) {
+    console.error('Error creating entity:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * Глобальный пересчёт significance по ПРИСУТСТВИЮ.
+ * Значимость, выставленная ИИ по-главно, всегда «major» (важный-в-главе ⇒ major).
+ * Здесь судим по охвату: в скольких РАЗНЫХ главах сущность фигурирует (chapterId сущности +
+ * её события + её связи). Пороги адаптивны к длине книги. Возвращает распределение.
+ */
+export async function recomputeSignificance(projectId: string): Promise<{ updated: number; dist: Record<string, number> }> {
+  const entities = await db.select({ id: schema.storyEntities.id, chapterId: schema.storyEntities.chapterId, significance: schema.storyEntities.significance })
+    .from(schema.storyEntities)
+    .where(and(eq(schema.storyEntities.projectId, projectId), eq(schema.storyEntities.status, 'approved')));
+  if (entities.length === 0) return { updated: 0, dist: {} };
+
+  const events = await db.select({ entityId: schema.entityEvents.entityId, chapterId: schema.entityEvents.chapterId })
+    .from(schema.entityEvents).where(eq(schema.entityEvents.projectId, projectId));
+  const links = await db.select({ s: schema.entityLinks.sourceEntityId, t: schema.entityLinks.targetEntityId, chapterId: schema.entityLinks.chapterId })
+    .from(schema.entityLinks).where(eq(schema.entityLinks.projectId, projectId));
+
+  const presence = new Map<string, Set<string>>();
+  const add = (eid: string | null, cid: string | null) => {
+    if (!eid || !cid) return;
+    if (!presence.has(eid)) presence.set(eid, new Set());
+    presence.get(eid)!.add(cid);
+  };
+  entities.forEach(e => add(e.id, e.chapterId));
+  events.forEach(ev => add(ev.entityId, ev.chapterId));
+  links.forEach(l => { add(l.s, l.chapterId); add(l.t, l.chapterId); });
+
+  // Сколько всего глав в проекте (для адаптивных порогов).
+  const [{ total }] = await db.select({ total: sql<number>`count(*)`.mapWith(Number) })
+    .from(schema.chapters).where(eq(schema.chapters.projectId, projectId));
+  const majorT = Math.max(5, Math.round(total * 0.1));   // ~ в 10% глав и больше → major
+  const modT = Math.max(2, Math.round(total * 0.035));   // ~3.5% → moderate, иначе minor
+  const tier = (n: number) => (n >= majorT ? 'major' : n >= modT ? 'moderate' : 'minor');
+
+  const dist: Record<string, number> = { major: 0, moderate: 0, minor: 0 };
+  let updated = 0;
+  for (const e of entities) {
+    const n = presence.get(e.id)?.size ?? 0;
+    const sig = tier(n);
+    dist[sig]++;
+    if (e.significance !== sig) {
+      await db.update(schema.storyEntities).set({ significance: sig }).where(eq(schema.storyEntities.id, e.id));
+      updated++;
+    }
+  }
+  return { updated, dist };
+}
+
+// POST /api/bible/:projectId/recompute-significance — пересчитать значимость по присутствию
+router.post('/:projectId/recompute-significance', authenticateToken, async (req: any, res) => {
+  try {
+    const { projectId } = req.params;
+    if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
+    if (!(await assertProjectOwnership(projectId, req.user.userId))) return res.status(403).json({ error: 'Access denied' });
+    const result = await recomputeSignificance(projectId);
+    res.json(result);
+  } catch (error) {
+    console.error('Error recomputing significance:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.patch('/:entityId', authenticateToken, async (req: any, res) => {
   try {
     const { entityId } = req.params;
@@ -987,6 +1107,13 @@ router.patch('/:entityId', authenticateToken, async (req: any, res) => {
 
     if (Object.keys(patch).length === 0) {
       return res.status(400).json({ error: 'Nothing to update' });
+    }
+
+    // Изменились имя/описание → семантический эмбеддинг карточки устарел: сбрасываем
+    // кэш, refreshEntityEmbeddings пересчитает его при следующем использовании.
+    if (patch.name !== undefined || patch.description !== undefined) {
+      patch.embedding = null;
+      patch.embeddingText = null;
     }
 
     const updated = await db
@@ -1066,6 +1193,163 @@ router.post('/:projectId/merge', authenticateToken, async (req: any, res) => {
     res.json({ merged: otherIds.length, survivorId: survivor.id, aliases });
   } catch (error) {
     console.error('Error merging entities:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── POST /api/bible/:projectId/semantic-duplicates — дубли ПО СМЫСЛУ (эмбеддинги) ──
+// Лексический детектор (StoryBiblePanel) ловит варианты написания (Ласэн/Ласён). Этот —
+// семантические дубли с РАЗНЫМИ именами («Король» ↔ «Король Сонного королевства»): эмбеддит
+// имя+описание и сравнивает косинусом внутри типа. Локальный Ollama → без API-токенов.
+function cosineSim(a: number[], b: number[]): number {
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) { dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
+  return dot / (Math.sqrt(na) * Math.sqrt(nb) || 1);
+}
+
+// ── POST /api/bible/:projectId/semantic-search — линза «Эхо»: поиск по смыслу ──
+// Эмбеддит запрос локально (Ollama), косинус по чанкам книги, отдаёт фрагменты с главой.
+// Без API-токенов. НЕ под aiQuota (это локальный эмбеддинг, не интерактивный AI-вызов).
+router.post('/:projectId/semantic-search', authenticateToken, async (req: any, res) => {
+  try {
+    const { projectId } = req.params;
+    if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
+    if (!(await assertProjectOwnership(projectId, req.user.userId))) return res.status(403).json({ error: 'Access denied' });
+
+    const query = typeof req.body?.query === 'string' ? req.body.query.trim() : '';
+    if (!query) return res.json({ results: [] });
+    const topK = Math.min(30, Math.max(1, Number(req.body?.topK) || 12));
+
+    // scope:'series' — искать по всем книгам серии (Эхо · Вся серия). Иначе — по текущей книге.
+    if (req.body?.scope === 'series') {
+      const [proj] = await db.select({ seriesId: schema.projects.seriesId }).from(schema.projects)
+        .where(eq(schema.projects.id, projectId));
+      if (proj?.seriesId) {
+        const results = await searchSeriesPassages(proj.seriesId, query, topK);
+        return res.json({ results, scope: 'series' });
+      }
+    }
+    const results = await searchBookPassages(projectId, query, topK);
+    res.json({ results, scope: 'book' });
+  } catch (error) {
+    console.error('Error in semantic-search:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/:projectId/semantic-duplicates', authenticateToken, async (req: any, res) => {
+  try {
+    const { projectId } = req.params;
+    if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
+    if (!(await assertProjectOwnership(projectId, req.user.userId))) return res.status(403).json({ error: 'Access denied' });
+
+    const embedder = getEmbeddingProvider();
+    if (!embedder) return res.json({ pairs: [], note: 'embeddings not configured' });
+
+    const threshold = Math.min(0.99, Math.max(0.7, Number(req.body?.threshold) || 0.85));
+    const typeFilter = typeof req.body?.type === 'string' ? req.body.type : null;
+
+    // Кэшированные эмбеддинги: пересчитываются только изменившиеся карточки (см.
+    // refreshEntityEmbeddings) — первый клик прогревает, дальше мгновенно.
+    const refreshed = await refreshEntityEmbeddings(projectId);
+    const vecs = (typeFilter ? refreshed.filter(e => e.type === typeFilter) : refreshed)
+      .map(e => ({ id: e.id, name: e.name, type: e.type, v: e.embedding }));
+
+    const pairs: any[] = [];
+    for (let i = 0; i < vecs.length; i++) {
+      for (let j = i + 1; j < vecs.length; j++) {
+        if (vecs[i].type !== vecs[j].type) continue;
+        if (vecs[i].name.trim().toLowerCase() === vecs[j].name.trim().toLowerCase()) continue; // точные имена — лексический детектор/merge-by-name
+        const sim = cosineSim(vecs[i].v, vecs[j].v);
+        if (sim >= threshold) pairs.push({
+          type: vecs[i].type,
+          similarity: Math.round(sim * 1000) / 1000,
+          a: { id: vecs[i].id, name: vecs[i].name },
+          b: { id: vecs[j].id, name: vecs[j].name },
+        });
+      }
+    }
+    pairs.sort((x, y) => y.similarity - x.similarity);
+    res.json({ pairs: pairs.slice(0, 50), embedded: vecs.length, total: vecs.length });
+  } catch (error) {
+    console.error('Error finding semantic duplicates:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── POST /api/bible/:projectId/suggested-links — «вероятные связи по смыслу» ──
+// Пары approved-сущностей, близкие по эмбеддингу карточки (роль/описание), у которых
+// связь ЕЩЁ не отмечена. Это подсказка «между ними, возможно, есть отношение» — не
+// гарантия. Исключаем: уже связанные пары, точные совпадения имён (это дедуп, не связь),
+// и почти-идентичные (>0.9 — вероятный дубль). Эмбеддинги из кэша (refreshEntityEmbeddings).
+router.post('/:projectId/suggested-links', authenticateToken, async (req: any, res) => {
+  try {
+    const { projectId } = req.params;
+    if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
+    if (!(await assertProjectOwnership(projectId, req.user.userId))) return res.status(403).json({ error: 'Access denied' });
+
+    const threshold = Math.min(0.9, Math.max(0.45, Number(req.body?.threshold) || 0.58));
+    const vecs = await refreshEntityEmbeddings(projectId);
+    if (vecs.length < 2) return res.json({ pairs: [], note: 'недостаточно эмбеддингов' });
+
+    // уже существующие связи (в обе стороны) — ключ "id<id"
+    const linkRows = await db
+      .select({ s: schema.entityLinks.sourceEntityId, t: schema.entityLinks.targetEntityId })
+      .from(schema.entityLinks)
+      .where(eq(schema.entityLinks.projectId, projectId));
+    const linked = new Set(linkRows.map(l => [l.s, l.t].sort().join('<')));
+
+    const byId = new Map(vecs.map(v => [v.id, v]));
+    const pairs: any[] = [];
+    for (let i = 0; i < vecs.length; i++) {
+      for (let j = i + 1; j < vecs.length; j++) {
+        const a = vecs[i], b = vecs[j];
+        if (linked.has([a.id, b.id].sort().join('<'))) continue;       // связь уже есть
+        if (a.name.trim().toLowerCase() === b.name.trim().toLowerCase()) continue; // одно имя → дедуп
+        const sim = cosineSim(a.embedding, b.embedding);
+        if (sim >= threshold && sim < 0.9) {
+          pairs.push({
+            similarity: Math.round(sim * 1000) / 1000,
+            a: { id: a.id, name: a.name, type: a.type },
+            b: { id: b.id, name: b.name, type: b.type },
+          });
+        }
+      }
+    }
+    pairs.sort((x, y) => y.similarity - x.similarity);
+    res.json({ pairs: pairs.slice(0, 25), considered: vecs.length });
+  } catch (error) {
+    console.error('Error suggesting links:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── POST /api/bible/:projectId/links — создать связь (подтверждение вероятной) ──
+router.post('/:projectId/links', authenticateToken, async (req: any, res) => {
+  try {
+    const { projectId } = req.params;
+    if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
+    if (!(await assertProjectOwnership(projectId, req.user.userId))) return res.status(403).json({ error: 'Access denied' });
+
+    const { sourceEntityId, targetEntityId } = req.body ?? {};
+    const relation = (typeof req.body?.relation === 'string' && req.body.relation.trim())
+      ? req.body.relation.trim().slice(0, 80) : 'связан с';
+    if (!isValidUUID(sourceEntityId) || !isValidUUID(targetEntityId) || sourceEntityId === targetEntityId)
+      return res.status(400).json({ error: 'Valid distinct sourceEntityId/targetEntityId required' });
+
+    // обе сущности принадлежат проекту
+    const ents = await db.select({ id: schema.storyEntities.id })
+      .from(schema.storyEntities)
+      .where(and(eq(schema.storyEntities.projectId, projectId),
+        inArray(schema.storyEntities.id, [sourceEntityId, targetEntityId])));
+    if (ents.length !== 2) return res.status(400).json({ error: 'Entities not in project' });
+
+    const [link] = await db.insert(schema.entityLinks)
+      .values({ projectId, sourceEntityId, targetEntityId, relation })
+      .returning();
+    res.json({ link });
+  } catch (error) {
+    console.error('Error creating entity link:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -1164,6 +1448,51 @@ router.patch('/:entityId/reject', authenticateToken, async (req: any, res) => {
   }
 });
 
+// ── POST /api/bible/:projectId/suggestions/:id/merge-into — «это тот же X» ─────
+// Находка-вариант (опечатка/склонение) → объединить с существующей сущностью: имя находки
+// (и её алиасы) уходят в алиасы цели, связи/события переносятся, находка удаляется.
+// Рукопись НЕ трогаем — это слияние КАРТОЧЕК, не правка текста.
+router.post('/:projectId/suggestions/:id/merge-into', authenticateToken, async (req: any, res) => {
+  try {
+    const { projectId, id } = req.params;
+    const { targetId } = req.body ?? {};
+    if (!isValidUUID(projectId) || !isValidUUID(id) || !isValidUUID(targetId) || id === targetId)
+      return res.status(400).json({ error: 'Valid distinct ids required' });
+    if (!(await assertProjectOwnership(projectId, req.user.userId))) return res.status(403).json({ error: 'Access denied' });
+
+    const rows = await db.select().from(schema.storyEntities)
+      .where(and(eq(schema.storyEntities.projectId, projectId), inArray(schema.storyEntities.id, [id, targetId])));
+    const sug = rows.find(r => r.id === id), target = rows.find(r => r.id === targetId);
+    if (!sug || !target) return res.status(404).json({ error: 'Not found in project' });
+
+    // имя находки + её алиасы → в алиасы цели (без дублей, не считая само имя цели)
+    const tAttrs = (target.attributes ?? {}) as Record<string, unknown>;
+    const curAliases = Array.isArray(tAttrs.aliases) ? (tAttrs.aliases as string[]) : [];
+    const sAttrs = (sug.attributes ?? {}) as Record<string, unknown>;
+    const incoming = [sug.name, ...(Array.isArray(sAttrs.aliases) ? (sAttrs.aliases as string[]) : [])];
+    const merged = [...curAliases];
+    for (const a of incoming) {
+      const t = (a ?? '').trim();
+      if (t && t.toLowerCase() !== target.name.trim().toLowerCase()
+          && !merged.some(x => x.trim().toLowerCase() === t.toLowerCase())) merged.push(t);
+    }
+    await db.update(schema.storyEntities)
+      .set({ attributes: { ...tAttrs, aliases: merged }, embedding: null, embeddingText: null })
+      .where(eq(schema.storyEntities.id, targetId));
+
+    // перенос связей/событий находки на цель (на случай если успели привязаться)
+    await db.update(schema.entityLinks).set({ sourceEntityId: targetId }).where(eq(schema.entityLinks.sourceEntityId, id));
+    await db.update(schema.entityLinks).set({ targetEntityId: targetId }).where(eq(schema.entityLinks.targetEntityId, id));
+    await db.update(schema.entityEvents).set({ entityId: targetId }).where(eq(schema.entityEvents.entityId, id));
+
+    await db.delete(schema.storyEntities).where(eq(schema.storyEntities.id, id));
+    res.json({ ok: true, target: { id: target.id, name: target.name } });
+  } catch (error) {
+    console.error('Error merging suggestion:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // ── Contradiction report (PRD P1.2, full-book) ────────────────────────────────
 
 /** Отчёт «завис» — running, но не двигался дольше этого срока (воркер умер/таймаут). */
@@ -1211,6 +1540,77 @@ router.post('/:projectId/contradictions/scan',
     }
   }
 );
+
+// ── POST /:projectId/contradictions/scan-chapter — проактивная пер-главная проверка ──
+// Тихо обновляет отчёт после «Прочитать»: проверяет ОДНУ главу против Мира и заменяет
+// её противоречия в последнем отчёте (создаёт отчёт, если его ещё нет). Дёшево — 1 глава.
+const VALID_SEV = new Set(['low', 'medium', 'high']);
+router.post('/:projectId/contradictions/scan-chapter',
+  authenticateToken, rateLimit('ai:scan-chapter', 60, 60 * 60 * 1000), aiQuota,
+  async (req: any, res) => {
+  try {
+    if (!ai) return res.status(503).json({ error: 'AI service is not configured' });
+    const { projectId } = req.params;
+    const { chapterId } = req.body ?? {};
+    if (!isValidUUID(projectId) || !isValidUUID(chapterId)) return res.status(400).json({ error: 'Invalid id' });
+    if (!(await assertProjectOwnership(projectId, req.user.userId))) return res.status(403).json({ error: 'Access denied' });
+
+    const [chapter] = await db.select().from(schema.chapters)
+      .where(and(eq(schema.chapters.id, chapterId), eq(schema.chapters.projectId, projectId)));
+    if (!chapter) return res.status(404).json({ error: 'Chapter not found' });
+
+    const entities = await db.select().from(schema.storyEntities)
+      .where(and(eq(schema.storyEntities.projectId, projectId), eq(schema.storyEntities.status, 'approved')));
+    if (entities.length === 0) return res.json({ issues: [] }); // нечего сверять
+
+    const plainText = stripHtml(chapter.content ?? '');
+    if (plainText.split(/\s+/).filter(Boolean).length < 50) return res.json({ issues: [] });
+
+    const links = await db.select().from(schema.entityLinks).where(eq(schema.entityLinks.projectId, projectId));
+    const storyBible = buildStoryBibleContext(entities, links);
+    // RAG: подтягиваем близкие по смыслу места из ДРУГИХ глав (синопсис как запрос, иначе текст).
+    const related = await retrieveCrossChapterPassages(projectId, chapterId, chapter.summary || plainText, 6);
+    const prompt = buildContradictionPrompt(storyBible, chapter.title, plainText.slice(0, 12000), related);
+
+    const response = await guardChat(
+      () => ai.generate({ contents: prompt, temperature: 0.1 }),
+      { userId: req.user.userId, projectId, route: 'report:contradictions-chapter' },
+    );
+    let parsed: any[] = [];
+    try { const p = JSON.parse(cleanJsonResponse(response.text ?? '[]')); if (Array.isArray(p)) parsed = p; } catch { /* кривой JSON — считаем «без противоречий» */ }
+
+    // Последний отчёт или новый.
+    let [report] = await db.select().from(schema.contradictionReports)
+      .where(eq(schema.contradictionReports.projectId, projectId))
+      .orderBy(desc(schema.contradictionReports.createdAt)).limit(1);
+    if (!report) {
+      [report] = await db.insert(schema.contradictionReports)
+        .values({ projectId, status: 'done', totalChapters: 0, scannedChapters: 0 }).returning();
+    }
+
+    // Заменяем противоречия именно этой главы (остальные не трогаем).
+    await db.delete(schema.contradictionIssues)
+      .where(and(eq(schema.contradictionIssues.reportId, report.id), eq(schema.contradictionIssues.chapterId, chapterId)));
+
+    const rows = parsed
+      .filter(it => it && typeof it.issue === 'string' && it.issue.trim())
+      .map(it => ({
+        reportId: report.id, projectId, chapterId, chapterTitle: chapter.title,
+        entityName: (typeof it.entity === 'string' ? it.entity : '').slice(0, 200) || null,
+        issue: (it.issue.trim() + (typeof it.canon === 'string' && it.canon.trim() ? ` · Канон: ${it.canon.trim()}` : '')).slice(0, 1000),
+        quote: (typeof it.quote === 'string' ? it.quote.trim().slice(0, 300) : '') || null,
+        severity: VALID_SEV.has(it.severity) ? it.severity : 'medium',
+        status: 'open' as const,
+      }));
+    if (rows.length > 0) await db.insert(schema.contradictionIssues).values(rows);
+    await db.update(schema.contradictionReports).set({ updatedAt: new Date() }).where(eq(schema.contradictionReports.id, report.id));
+
+    res.json({ issues: rows.length });
+  } catch (error) {
+    console.error('Error scanning chapter for contradictions:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 // GET /api/bible/:projectId/contradictions — последний отчёт + открытые противоречия
 router.get('/:projectId/contradictions', authenticateToken, async (req: any, res) => {

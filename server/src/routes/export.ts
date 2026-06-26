@@ -28,6 +28,30 @@ function filterChapters(chapters: any[], filter: 'all' | 'draft' | 'done'): any[
 }
 
 /** Build a Bible appendix section in Markdown */
+/** Декодирует HTML-сущности из значения атрибута data-content. */
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+}
+
+/**
+ * Заменяет маркеры сносок в HTML главы на текстовые [N] со СКВОЗНЫМ счётчиком (по всей книге)
+ * и собирает содержимое сносок. startNum — сколько сносок уже пронумеровано в предыдущих главах.
+ */
+function processFootnotes(html: string, startNum: number): { html: string; notes: { n: number; text: string }[]; next: number } {
+  let n = startNum;
+  const notes: { n: number; text: string }[] = [];
+  const out = (html || '').replace(/<(sup|span)\b[^>]*\bdata-footnote-id\b[^>]*>[\s\S]*?<\/\1>/gi, (m) => {
+    const cm = m.match(/data-content="([^"]*)"/i);
+    const text = cm ? decodeEntities(cm[1]) : '';
+    n += 1;
+    notes.push({ n, text });
+    return `[${n}]`;
+  });
+  return { html: out, notes, next: n };
+}
+
 function buildBibleMarkdown(entities: any[]): string {
   if (entities.length === 0) return '';
   const sections: Record<string, string[]> = { character: [], location: [], item: [], rule: [] };
@@ -54,9 +78,16 @@ function buildMarkdown(project: any, chapters: any[], entities: any[] = [], incl
   lines.push(`\n*Экспортировано: ${new Date().toLocaleDateString('ru-RU')}*\n`);
   lines.push('---\n');
 
+  let fnCounter = 0;
   for (const ch of chapters) {
     lines.push(`## ${ch.title}\n`);
-    lines.push(htmlToMarkdown(ch.content || ''));
+    const fn = processFootnotes(ch.content || '', fnCounter);
+    fnCounter = fn.next;
+    lines.push(htmlToMarkdown(fn.html));
+    if (fn.notes.length > 0) {
+      lines.push('\n**Примечания**\n');
+      for (const note of fn.notes) lines.push(`${note.n}. ${note.text}`);
+    }
     lines.push('\n---\n');
   }
 
@@ -101,6 +132,7 @@ function buildDocx(project: any, chapters: any[], entities: any[] = [], includeB
   );
 
   // Chapters
+  let fnCounter = 0;
   for (let i = 0; i < chapters.length; i++) {
     const ch = chapters[i];
 
@@ -118,8 +150,10 @@ function buildDocx(project: any, chapters: any[], entities: any[] = [], includeB
       })
     );
 
-    // Chapter body — split by paragraphs
-    const text = htmlToText(ch.content || '');
+    // Chapter body — split by paragraphs (со сквозными маркерами сносок [N])
+    const fn = processFootnotes(ch.content || '', fnCounter);
+    fnCounter = fn.next;
+    const text = htmlToText(fn.html);
     const paragraphs = text.split('\n\n').filter(Boolean);
 
     for (const para of paragraphs) {
@@ -129,6 +163,20 @@ function buildDocx(project: any, chapters: any[], entities: any[] = [], includeB
           spacing: { after: 200, line: 360 }, // 1.5× line spacing
         })
       );
+    }
+
+    // Сноски этой главы — списком внизу (нумерация сквозная по книге).
+    if (fn.notes.length > 0) {
+      children.push(new Paragraph({
+        children: [new TextRun({ text: 'Примечания', bold: true, size: 20, color: '666666' })],
+        spacing: { before: 300, after: 120 },
+      }));
+      for (const note of fn.notes) {
+        children.push(new Paragraph({
+          children: [new TextRun({ text: `${note.n}. ${note.text}`, size: 20, color: '444444' })],
+          spacing: { after: 80 },
+        }));
+      }
     }
   }
 
@@ -248,9 +296,16 @@ router.get('/:projectId/txt', authenticateToken, async (req: any, res) => {
   const { filter } = parseExportParams(req.query);
   const chapters = filterChapters(data.chapters, filter);
   const lines: string[] = [`${data.project.title}\n${'─'.repeat(50)}\n`];
+  let fnCounter = 0;
   for (const ch of chapters) {
     lines.push(`\n${ch.title}\n${'─'.repeat(30)}\n`);
-    lines.push(htmlToText(ch.content || ''));
+    const fn = processFootnotes(ch.content || '', fnCounter);
+    fnCounter = fn.next;
+    lines.push(htmlToText(fn.html));
+    if (fn.notes.length > 0) {
+      lines.push('\nПримечания:');
+      for (const note of fn.notes) lines.push(`${note.n}. ${note.text}`);
+    }
   }
 
   const txt = lines.join('\n');

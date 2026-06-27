@@ -55,6 +55,7 @@ import Settings from './Settings';
 
 import { Chapter, Entity, EntityLink, EntityEvent } from '../components/editor/types';
 import { russianStemMatch, entityMatch, splitChapterTitle, composeChapterTitle, sanitizeChapterContent, fallbackNormalizeDictation, jumpToMatch, findAllMatches, applySearchHighlight, clearSearchHighlight, ENTITY_SECTIONS, EntityCard } from '../components/editor/editorUtils';
+import { useContradictions } from '../components/editor/useContradictions';
 import { AhaCelebration } from '../components/AhaCelebration';
 import { Bookmark, X, AlertTriangle, ChevronUp, ChevronDown,
   Eye, Bell, BookOpen, Feather, Telescope, BarChart2, Search, FolderSearch, Download, Maximize2, Minimize2, Settings as SettingsIcon,
@@ -430,11 +431,8 @@ export default function Editor() {
   }, [projectId]);
 
   // Отчёт о противоречиях (полный скан P1.2) — для подсветки конкретных фраз в тексте (B2).
-  type ScanIssue = { id: string; chapterId: string | null; entityName: string | null; issue: string; quote: string | null; severity: string; status: string; kind?: string };
-  const [contradictionIssues, setContradictionIssues] = useState<ScanIssue[]>([]);
-  // Два потока классификатора: алярм (нестыковки) vs спокойное «развитие». Развитие НЕ тревожит
-  // (не красит героя конфликтным, не идёт в гаттер/бейдж/подсветку); видно отдельным потоком в линзе.
-  const realContradictions = useMemo(() => contradictionIssues.filter(i => i.kind !== 'development'), [contradictionIssues]);
+  // Кластер нестыковок (загрузка/классификатор/скан/отклонение) вынесен в useContradictions.
+  const { contradictionIssues, realContradictions, dismissContradictionIssue, scanChapterContradictions, scanState, runContradictionScan } = useContradictions(projectId, chapterId);
   // Счётчик «провисают» для Сводки: значимые сущности с 0–1 связью (как в линзе «Связи»).
   const danglingCount = useMemo(() => {
     const deg = new Map<string, number>();
@@ -445,14 +443,6 @@ export default function Editor() {
     });
     return bibleEntities.filter(e => (e.significance ?? 'minor') !== 'minor' && (deg.get(e.id) ?? 0) <= 1).length;
   }, [bibleEntities, entityLinks]);
-  const loadContradictions = useCallback(() => {
-    if (!projectId) return;
-    api.get<{ issues: ScanIssue[] }>(`/bible/${projectId}/contradictions`)
-      .then(d => setContradictionIssues((d.issues ?? []).filter(i => i.status === 'open')))
-      .catch(() => { /* отчёта ещё нет — подсвечиваем по именам (эвристика) */ });
-  }, [projectId]);
-  useEffect(() => { loadContradictions(); }, [loadContradictions]);
-
   // Комментарии текущей главы — грузим при смене главы.
   const loadComments = useCallback(() => {
     if (!projectId || !chapterId) { setComments([]); return; }
@@ -559,11 +549,6 @@ export default function Editor() {
     return [...mine, ...pero];
   }, [comments, realContradictions, chapterId]);
 
-  // Отклонить одну нестыковку по id (ложное срабатывание) — для линзы «Нестыковки».
-  const dismissContradictionIssue = useCallback(async (issueId: string) => {
-    setContradictionIssues(prev => prev.filter(i => i.id !== issueId));
-    try { await api.post(`/bible/contradictions/${issueId}/dismiss`, {}); } catch { loadContradictions(); }
-  }, [loadContradictions]);
 
   // Сюжетные линии (столб «Сюжет» → «Линии»).
   const [plotThreads, setPlotThreads] = useState<PlotThread[]>([]);
@@ -612,15 +597,6 @@ export default function Editor() {
   // Линии нужны и карточке героя («Сюжетные линии») — грузим при входе в проект.
   useEffect(() => { loadThreads(); }, [loadThreads]);
 
-  // Проактивно: после «Прочитать» тихо проверяем эту главу и обновляем отчёт нестыковок.
-  const scanChapterContradictions = useCallback((chId?: string | null) => {
-    const id = chId ?? chapterId;
-    if (!projectId || !id) return;
-    api.post(`/bible/${projectId}/contradictions/scan-chapter`, { chapterId: id })
-      .then(() => loadContradictions())
-      .catch(() => { /* квота/ошибка — тихо, отчёт остаётся прежним */ });
-  }, [projectId, chapterId, loadContradictions]);
-
   // Пересчёт значимости по присутствию (без ИИ) + перезагрузка Мира со свежими тирами.
   const recomputeSignificance = useCallback(() => {
     if (!projectId) { loadBibleData(); return; }
@@ -629,37 +605,6 @@ export default function Editor() {
       .finally(() => loadBibleData());
   }, [projectId, loadBibleData]);
 
-  // Живой статус скана (№1 — обратная связь ИИ): прогресс по главам + результат.
-  const [scanState, setScanState] = useState<{ status: 'running' | 'done' | 'failed'; scanned: number; total: number; found: number } | null>(null);
-  const scanPollRef = useRef<number | null>(null);
-
-  /** Запустить полный скан книги на нестыковки (worker) с поллингом прогресса. */
-  const runContradictionScan = useCallback(async () => {
-    if (!projectId) return;
-    if (scanPollRef.current) window.clearTimeout(scanPollRef.current);
-    try {
-      await api.post(`/bible/${projectId}/contradictions/scan`, {});
-      setScanState({ status: 'running', scanned: 0, total: 0, found: 0 });
-      let tries = 0;
-      const poll = async () => {
-        tries++;
-        try {
-          const d = await api.get<{ report: { status: string; totalChapters: number; scannedChapters: number } | null; issues: ScanIssue[] }>(`/bible/${projectId}/contradictions`);
-          const open = (d.issues ?? []).filter(i => i.status === 'open');
-          setContradictionIssues(open);
-          const rep = d.report;
-          if (rep && rep.status === 'running' && tries < 40) {
-            setScanState({ status: 'running', scanned: rep.scannedChapters ?? 0, total: rep.totalChapters ?? 0, found: open.length });
-            scanPollRef.current = window.setTimeout(poll, 3000);
-          } else {
-            setScanState({ status: rep?.status === 'failed' ? 'failed' : 'done', scanned: rep?.scannedChapters ?? 0, total: rep?.totalChapters ?? 0, found: open.length });
-            window.setTimeout(() => setScanState(null), 5000);
-          }
-        } catch { setScanState(null); }
-      };
-      scanPollRef.current = window.setTimeout(poll, 2500);
-    } catch { setScanState(null); /* квота/ошибка */ }
-  }, [projectId]);
 
   // Wrap rawHandleExtract to also optimistically mark the chapter as freshly extracted.
   const handleExtract = useCallback(async () => {

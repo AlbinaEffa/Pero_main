@@ -244,8 +244,8 @@ function Book({ project, onOpen, onDelete, onEdit, onBible, onExport, onArchive,
           backgroundColor: project.color,
           borderRadius: '3px 6px 6px 3px',
           boxShadow: hovered
-            ? `4px 4px 20px ${project.color}55, -2px 0 0 rgba(30,45,31,0.2)`
-            : `-2px 0 0 rgba(30,45,31,0.15), 2px 2px 8px rgba(30,45,31,0.2)`,
+            ? `4px 4px 20px ${project.color}55, -2px 0 0 ${ink(0.2)}`
+            : `-2px 0 0 ${ink(0.15)}, 2px 2px 8px ${ink(0.2)}`,
           transform: hovered ? 'translateY(-12px) rotate(-1deg)' : 'translateY(0) rotate(0deg)',
           transition: 'all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
           display: 'flex',
@@ -393,7 +393,7 @@ function Shelf({ projects, label, onLabelClick, onOpen, onDelete, onEdit, onBibl
             <div style={{
               height: '120px',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              border: '2px dashed rgba(30,45,31,0.08)', borderRadius: '12px',
+              border: `2px dashed ${ink(0.08)}`, borderRadius: '12px',
               margin: '16px 0 0',
               color: ink(0.55), fontSize: '13px', gap: '8px',
             }}>
@@ -427,7 +427,7 @@ function Shelf({ projects, label, onLabelClick, onOpen, onDelete, onEdit, onBibl
               height: '14px',
               background: 'linear-gradient(to bottom, #9B7A3A 0%, #7A5E28 100%)',
               borderRadius: '0 0 3px 3px',
-              boxShadow: '0 3px 8px rgba(30,45,31,0.25), inset 0 1px 0 rgba(255,255,255,0.15)',
+              boxShadow: `0 3px 8px ${ink(0.25)}, inset 0 1px 0 rgba(255,255,255,0.15)`,
               position: 'relative',
             }}>
               {/* Wood grain lines */}
@@ -438,7 +438,7 @@ function Shelf({ projects, label, onLabelClick, onOpen, onDelete, onEdit, onBibl
               height: '6px',
               background: '#5C4220',
               borderRadius: '0 0 4px 4px',
-              boxShadow: '0 4px 12px rgba(30,45,31,0.55)',
+              boxShadow: `0 4px 12px ${ink(0.55)}`,
             }} />
           </>
         )}
@@ -513,13 +513,13 @@ function NewProjectModal({ onClose, onCreate, onImport }: { onClose: () => void;
       <div
         style={{
           background: PALETTE.parchment, borderRadius: '24px', width: '100%',
-          maxWidth: '480px', boxShadow: '0 24px 60px rgba(30,45,31,0.55)',
+          maxWidth: '480px', boxShadow: `0 24px 60px ${ink(0.55)}`,
           overflow: 'hidden', animation: 'slideUp 0.2s cubic-bezier(0.34,1.56,0.64,1)',
         }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={{ background: '#fff', padding: '20px 24px', borderBottom: '1px solid rgba(30,45,31,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ background: '#fff', padding: '20px 24px', borderBottom: `1px solid ${ink(0.06)}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h2 style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: '22px', fontWeight: 700, margin: 0 }}>
               Новая книга
@@ -580,7 +580,7 @@ function NewProjectModal({ onClose, onCreate, onImport }: { onClose: () => void;
               placeholder="Название вашей книги"
               style={{
                 width: '100%', padding: '10px 14px', borderRadius: '12px',
-                border: '1.5px solid rgba(30,45,31,0.1)', background: '#fff',
+                border: `1.5px solid ${ink(0.1)}`, background: '#fff',
                 fontSize: '14px', outline: 'none', boxSizing: 'border-box',
                 fontFamily: 'inherit', transition: 'border-color 0.15s',
               }}
@@ -616,7 +616,7 @@ function NewProjectModal({ onClose, onCreate, onImport }: { onClose: () => void;
                 />
               ))}
               <input type="color" value={color} onChange={e => setColor(e.target.value)}
-                style={{ width: '28px', height: '28px', borderRadius: '8px', border: '1.5px solid rgba(30,45,31,0.1)', cursor: 'pointer', padding: '2px' }}
+                style={{ width: '28px', height: '28px', borderRadius: '8px', border: `1.5px solid ${ink(0.1)}`, cursor: 'pointer', padding: '2px' }}
               />
             </div>
           </div>
@@ -625,7 +625,7 @@ function NewProjectModal({ onClose, onCreate, onImport }: { onClose: () => void;
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', background: ink(0.03), borderRadius: '12px' }}>
             <div style={{
               width: '28px', height: '44px', background: color, borderRadius: '2px 4px 4px 2px',
-              boxShadow: '-1px 0 0 rgba(30,45,31,0.2), 1px 1px 4px rgba(30,45,31,0.2)',
+              boxShadow: `-1px 0 0 ${ink(0.2)}, 1px 1px 4px ${ink(0.2)}`,
               flexShrink: 0,
             }} />
             <div>
@@ -640,7 +640,7 @@ function NewProjectModal({ onClose, onCreate, onImport }: { onClose: () => void;
         </div>
 
         {/* Footer */}
-        <div style={{ background: '#fff', padding: '16px 24px', borderTop: '1px solid rgba(30,45,31,0.06)', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+        <div style={{ background: '#fff', padding: '16px 24px', borderTop: `1px solid ${ink(0.06)}`, display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
           <button onClick={onClose} style={{ padding: '10px 18px', borderRadius: '12px', border: 'none', background: 'transparent', fontSize: '14px', cursor: 'pointer', color: ink(0.5), fontWeight: 500 }}>
             Отмена
           </button>
@@ -680,10 +680,10 @@ function RenameModal({ project, onClose, onRename }: {
       onClick={onClose}
     >
       <div
-        style={{ background: PALETTE.parchment, borderRadius: '20px', width: '100%', maxWidth: '380px', overflow: 'hidden', boxShadow: '0 24px 60px rgba(30,45,31,0.55)', animation: 'slideUp 0.2s cubic-bezier(0.34,1.56,0.64,1)' }}
+        style={{ background: PALETTE.parchment, borderRadius: '20px', width: '100%', maxWidth: '380px', overflow: 'hidden', boxShadow: `0 24px 60px ${ink(0.55)}`, animation: 'slideUp 0.2s cubic-bezier(0.34,1.56,0.64,1)' }}
         onClick={e => e.stopPropagation()}
       >
-        <div style={{ background: '#fff', padding: '18px 22px', borderBottom: '1px solid rgba(30,45,31,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ background: '#fff', padding: '18px 22px', borderBottom: `1px solid ${ink(0.06)}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: '20px', fontWeight: 700, margin: 0 }}>
             Переименовать
           </h2>
@@ -698,12 +698,12 @@ function RenameModal({ project, onClose, onRename }: {
             value={title}
             onChange={e => setTitle(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') confirm(); if (e.key === 'Escape') onClose(); }}
-            style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: '1.5px solid rgba(30,45,31,0.1)', background: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
+            style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: `1.5px solid ${ink(0.1)}`, background: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
             onFocus={e => (e.target.style.borderColor = PALETTE.pine)}
             onBlur={e => (e.target.style.borderColor = ink(0.1))}
           />
         </div>
-        <div style={{ background: '#fff', padding: '14px 22px', borderTop: '1px solid rgba(30,45,31,0.06)', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+        <div style={{ background: '#fff', padding: '14px 22px', borderTop: `1px solid ${ink(0.06)}`, display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
           <button onClick={onClose} style={{ padding: '9px 16px', borderRadius: '12px', border: 'none', background: 'transparent', fontSize: '13px', cursor: 'pointer', color: ink(0.5), fontWeight: 500 }}>
             Отмена
           </button>
@@ -738,14 +738,14 @@ function ConfirmDeleteModal({ title, onClose, onConfirm }: {
       <div
         style={{
           background: PALETTE.parchment, borderRadius: '20px', width: '100%', maxWidth: '400px',
-          overflow: 'hidden', boxShadow: '0 24px 60px rgba(30,45,31,0.28)',
+          overflow: 'hidden', boxShadow: `0 24px 60px ${ink(0.28)}`,
           animation: 'slideUp 0.2s cubic-bezier(0.34,1.56,0.64,1)',
         }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div style={{
-          background: '#fff', padding: '16px 22px', borderBottom: '1px solid rgba(30,45,31,0.06)',
+          background: '#fff', padding: '16px 22px', borderBottom: `1px solid ${ink(0.06)}`,
           display: 'flex', justifyContent: 'space-between', alignItems: 'center'
         }}>
           <h2 style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: '20px', fontWeight: 700, margin: 0, color: PALETTE.ink }}>
@@ -773,7 +773,7 @@ function ConfirmDeleteModal({ title, onClose, onConfirm }: {
 
         {/* Footer */}
         <div style={{
-          background: '#fff', padding: '14px 22px', borderTop: '1px solid rgba(30,45,31,0.06)',
+          background: '#fff', padding: '14px 22px', borderTop: `1px solid ${ink(0.06)}`,
           display: 'flex', gap: '10px', justifyContent: 'flex-end', alignItems: 'center'
         }}>
           <button
@@ -1096,7 +1096,7 @@ export default function Dashboard() {
                 <div key={i} style={{
                   display: 'flex', alignItems: 'center', gap: '9px',
                   padding: '9px 18px', background: 'rgba(255,255,255,0.6)',
-                  borderRadius: '50px', border: '1px solid rgba(30,45,31,0.06)',
+                  borderRadius: '50px', border: `1px solid ${ink(0.06)}`,
                   fontSize: '13px',
                 }}>
                   <span style={{ color: ink(0.58) }}>{stat.icon}</span>
@@ -1155,7 +1155,7 @@ export default function Dashboard() {
                     paddingLeft: '14px', paddingRight: '34px',
                     paddingTop: '7px', paddingBottom: '7px',
                     borderRadius: '50px', fontSize: '13px',
-                    border: '1.5px solid rgba(30,45,31,0.1)', background: 'transparent',
+                    border: `1.5px solid ${ink(0.1)}`, background: 'transparent',
                     color: ink(0.5), cursor: 'pointer', outline: 'none',
                     fontFamily: 'inherit',
                   }}
@@ -1176,7 +1176,7 @@ export default function Dashboard() {
 
           {isLoading ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
-              <div style={{ width: '28px', height: '28px', border: '3px solid rgba(30,45,31,0.1)', borderTopColor: PALETTE.pine, borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+              <div style={{ width: '28px', height: '28px', border: `3px solid ${ink(0.1)}`, borderTopColor: PALETTE.pine, borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
             </div>
           ) : projects.length === 0 ? (
             <EmptyState onNew={() => setIsModalOpen(true)} />
@@ -1339,7 +1339,7 @@ export default function Dashboard() {
           position: 'fixed', bottom: '28px', left: '50%', transform: 'translateX(-50%)',
           background: PALETTE.ink, color: '#fff', borderRadius: '50px',
           padding: '10px 22px', fontSize: '13px', fontWeight: 500,
-          boxShadow: '0 4px 20px rgba(30,45,31,0.58)', zIndex: 9999,
+          boxShadow: `0 4px 20px ${ink(0.58)}`, zIndex: 9999,
           animation: 'fadeInUp 0.2s ease', whiteSpace: 'nowrap',
           pointerEvents: 'none',
         }}>

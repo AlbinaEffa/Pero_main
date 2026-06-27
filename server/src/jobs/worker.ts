@@ -531,9 +531,27 @@ export function startWorker(connectionString: string): void {
   setTimeout(() => drainQueue(), 3_000);
 
   // Steady-state polling
-  setInterval(() => drainQueue(), POLL_INTERVAL_MS);
+  pollHandle = setInterval(() => drainQueue(), POLL_INTERVAL_MS);
 
   console.log('[worker] Started — polling every', POLL_INTERVAL_MS / 1000, 's');
+}
+
+let pollHandle: ReturnType<typeof setInterval> | null = null;
+let shuttingDown = false;
+
+/**
+ * Graceful shutdown воркера: останавливаем поллинг (новые проходы не стартуют) и ждём,
+ * пока завершится текущий drainQueue (in-flight джобы дописываются). Зовётся из index.ts
+ * на SIGTERM/SIGINT ДО закрытия пула — иначе джоба могла оборваться на записи.
+ */
+export async function stopWorker(timeoutMs = 8_000): Promise<void> {
+  shuttingDown = true;
+  if (pollHandle) { clearInterval(pollHandle); pollHandle = null; }
+  const deadline = Date.now() + timeoutMs;
+  while (draining && Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 100));
+  }
+  console.log('[worker] Stopped — in-flight drain', draining ? 'timed out' : 'finished');
 }
 
 /**
@@ -549,7 +567,7 @@ let draining = false;
 
 /** Run jobs until the queue is empty, then return. Non-reentrant + bounded concurrency. */
 async function drainQueue(): Promise<void> {
-  if (draining) return; // не даём setInterval наслаивать параллельные проходы
+  if (draining || shuttingDown) return; // не наслаиваем проходы; не стартуем при остановке
   draining = true;
   try {
     let anyRan = true;

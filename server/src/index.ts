@@ -1,5 +1,5 @@
 import { runMigrations } from './db/migrate.js';
-import { startWorker } from './jobs/worker.js';
+import { startWorker, stopWorker } from './jobs/worker.js';
 import { app } from './app.js';
 import { pool } from './db/client.js';
 
@@ -66,11 +66,15 @@ const server = app.listen(port, () => {
 // requests to finish (up to 10s), then exit cleanly.
 function shutdown(signal: string) {
   console.log(`[server] ${signal} received — shutting down gracefully`);
+  // Останавливаем воркер ПЕРВЫМ: поллинг не плодит новые джобы, in-flight дописывается
+  // до закрытия пула (иначе джоба могла оборваться на записи; recoverStuckJobs — лишь страховка).
+  void stopWorker();
   server.close(async err => {
     if (err) {
       console.error('[server] Error during shutdown:', err);
     }
-    // Drain the DB connection pool cleanly
+    // Wait for in-flight worker jobs to finish, then drain the DB pool cleanly
+    await stopWorker();
     try {
       await pool.end();
       console.log('[server] DB pool closed.');

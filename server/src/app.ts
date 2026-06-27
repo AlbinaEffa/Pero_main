@@ -129,7 +129,7 @@ app.get('/health', (_req, res) => {
 // ── Global error handler ──────────────────────────────────────────────────────
 // Catches anything thrown from route handlers (incl. CORS errors above).
 app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
-  const reqId  = (req as any).reqId ?? '-';
+  const reqId  = req.reqId ?? '-';
   const status = err.status ?? err.statusCode ?? 500;
   const msg    = status < 500 ? err.message : 'Internal server error';
 

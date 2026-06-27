@@ -99,8 +99,7 @@ router.post('/login', authRateLimit, async (req, res) => {
     }
 
     const user = userRecords[0];
-    
-    // @ts-ignore - passwordHash will be added to schema
+
     const match = await bcrypt.compare(password, user.passwordHash || '');
     
     if (!match) {
@@ -130,7 +129,8 @@ router.get('/me', authenticateToken, async (req: AuthedRequest, res) => {
     const userRecords = await db.select().from(users).where(eq(users.id, req.user.userId));
     if (userRecords.length === 0) return res.status(404).json({ error: 'User not found' });
 
-    const { passwordHash, ...userWithoutPassword } = userRecords[0] as any;
+    const { passwordHash: _ph, ...userWithoutPassword } = userRecords[0];
+    void _ph;
     res.json({ user: userWithoutPassword });
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
@@ -151,7 +151,8 @@ router.patch('/me', authenticateToken, async (req: AuthedRequest, res) => {
       .where(eq(users.id, req.user.userId))
       .returning();
 
-    const { passwordHash, ...userWithoutPassword } = updated as any;
+    const { passwordHash: _ph, ...userWithoutPassword } = updated;
+    void _ph;
     res.json({ user: userWithoutPassword });
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });

@@ -1273,7 +1273,7 @@ export default function Dashboard() {
             setIsImportOpen(false);
             track('project_created', { imported: true });
             // 10x-онбординг «Перо читает книгу» (PRD P0.4); флаг — аварийный выключатель
-            const onboardingEnabled = (import.meta as any).env?.VITE_ONBOARDING_ENABLED !== 'false';
+            const onboardingEnabled = import.meta.env?.VITE_ONBOARDING_ENABLED !== 'false';
             if (onboardingEnabled) {
               track('onboarding_import_started', { projectId });
               navigate(`/onboarding/${projectId}`);

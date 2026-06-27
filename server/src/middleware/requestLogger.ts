@@ -22,7 +22,7 @@ export function requestLogger(req: Request, res: Response, next: NextFunction) {
   const start = Date.now();
 
   // Attach to req so route handlers can reference it in their own logs
-  (req as any).reqId = reqId;
+  req.reqId = reqId;
 
   // Echo back so clients / load-balancers can correlate
   res.setHeader('X-Request-ID', reqId);

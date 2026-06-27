@@ -15,7 +15,7 @@ interface WorldCardData {
 
 export async function downloadWorldCard(data: WorldCardData): Promise<void> {
   // Дождаться загрузки фирменных шрифтов, иначе canvas нарисует системным
-  try { await (document as any).fonts?.ready; } catch { /* не критично */ }
+  try { await document.fonts?.ready; } catch { /* не критично */ }
 
   const W = 1200, H = 630;
   const canvas = document.createElement('canvas');

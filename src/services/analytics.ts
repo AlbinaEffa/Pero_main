@@ -24,8 +24,8 @@ function getPosthog(): any {
   if (_phInitialized) return _ph;
   _phInitialized = true;
 
-  const key  = (import.meta as any).env?.VITE_POSTHOG_KEY;
-  const host = (import.meta as any).env?.VITE_POSTHOG_HOST ?? 'https://eu.posthog.com';
+  const key  = import.meta.env?.VITE_POSTHOG_KEY;
+  const host = import.meta.env?.VITE_POSTHOG_HOST ?? 'https://eu.posthog.com';
   if (!key) return null;
 
   // Dynamic import via Function() — bypasses TypeScript module resolution
@@ -51,7 +51,7 @@ function getPosthog(): any {
 // ── Sentry ───────────────────────────────────────────────────────────────────
 
 export function initSentry(): void {
-  const dsn = (import.meta as any).env?.VITE_SENTRY_DSN;
+  const dsn = import.meta.env?.VITE_SENTRY_DSN;
   if (!dsn) return;
   const _import = new Function('s', 'return import(s)');
   _import('@sentry/react')
@@ -59,7 +59,7 @@ export function initSentry(): void {
       Sentry.init({
         dsn,
         tracesSampleRate: 0.1,
-        environment: (import.meta as any).env?.MODE ?? 'development',
+        environment: import.meta.env?.MODE ?? 'development',
       });
     })
     .catch(() => {
@@ -107,7 +107,7 @@ export function track(event: string, props?: Record<string, unknown>): void {
       setTimeout(() => { _ph?.capture(event, props); }, 1000);
     }
     // Dev logging
-    if ((import.meta as any).env?.DEV) {
+    if (import.meta.env?.DEV) {
       console.debug(`[analytics] ${event}`, props ?? '');
     }
   } catch {

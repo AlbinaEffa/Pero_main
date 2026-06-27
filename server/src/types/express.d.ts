@@ -9,6 +9,8 @@ declare global {
   namespace Express {
     interface Request {
       user?: { userId: string };
+      /** Корреляционный id запроса (ставит requestLogger, читает обработчик ошибок). */
+      reqId?: string;
     }
   }
 }

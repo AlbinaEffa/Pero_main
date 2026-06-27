@@ -136,7 +136,7 @@ function estimateCost(
 }
 
 async function logCost(opts: {
-  userId: string;
+  userId: string | null; // null = аноним (демо без аккаунта) — cost_logs.user_id nullable
   projectId?: string | null;
   model: string;
   route: string;
@@ -168,7 +168,7 @@ async function logCost(opts: {
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export interface GuardOpts {
-  userId: string;
+  userId: string | null; // null = аноним (демо без аккаунта)
   projectId?: string | null;
   route: string;
   timeoutMs?: number;

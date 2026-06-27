@@ -2,6 +2,10 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Editor } from '@tiptap/react';
 import { api } from '../services/api';
 
+// Единый отложенный сейв на всё приложение (в каждый момент открыта одна глава).
+// Модульная переменная вместо хранения на window — без глобал-полюшена и кастов.
+let saveTimeout: ReturnType<typeof setTimeout> | null = null;
+
 export function useAutosave(chapterId: string | undefined) {
   const [isSaving, setIsSaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -21,9 +25,9 @@ export function useAutosave(chapterId: string | undefined) {
     const capturedId = chapterIdRef.current;
 
     setIsSaving(true);
-    if ((window as any)._saveTimeout) clearTimeout((window as any)._saveTimeout);
+    if (saveTimeout) clearTimeout(saveTimeout);
 
-    (window as any)._saveTimeout = setTimeout(async () => {
+    saveTimeout = setTimeout(async () => {
       try {
         if (!capturedId) return;
         await api.put(`/chapters/${capturedId}`, { content });
@@ -47,9 +51,9 @@ export function useAutosave(chapterId: string | undefined) {
     if (!id) return;
 
     // Cancel any pending debounced save
-    if ((window as any)._saveTimeout) {
-      clearTimeout((window as any)._saveTimeout);
-      delete (window as any)._saveTimeout;
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
+      saveTimeout = null;
     }
 
     setIsSaving(true);

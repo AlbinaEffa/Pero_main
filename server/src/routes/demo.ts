@@ -264,7 +264,7 @@ router.post('/extract-first', upload.single('file'), async (req: AuthedRequest, 
           temperature: 0.15,
         }),
         // userId=null → cost_logs пишется без привязки к пользователю, ничью квоту не тратит
-        { userId: null as any, projectId: null, route: 'demo:extract_first', circuit: 'extract', timeoutMs: 60_000 },
+        { userId: null, projectId: null, route: 'demo:extract_first', circuit: 'extract', timeoutMs: 60_000 },
       );
     } catch (err: any) {
       refundIpSlot(ip);

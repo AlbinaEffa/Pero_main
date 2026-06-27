@@ -58,6 +58,11 @@ jobs:
       - name: Typecheck (client + server)
         run: npm run typecheck
 
+      # Базовая миграция 0000 создаёт таблицы с колонками vector — расширение нужно ДО неё
+      # (в *.sql оно включается позже). На pgvector-образе оно доступно, просто создаём.
+      - name: Enable pgvector extension
+        run: PGPASSWORD=pero_pass psql -h localhost -U pero_admin -d pero_db -c "CREATE EXTENSION IF NOT EXISTS vector"
+
       - name: Migrate DB
         working-directory: server
         run: npm run migrate

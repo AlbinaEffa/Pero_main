@@ -14,7 +14,7 @@ import { findDuplicateGroups } from './StoryBiblePanel';
 interface Issue { id: string; projectId?: string; chapterId: string | null; issue: string; quote: string | null; severity: string; status: string; kind?: string; bookTitle?: string | null; bookOrder?: number | null }
 interface Thread { id: string; title: string; resolved: boolean; chapterIds: string[] }
 
-export function SverkaPeek({ projectId, chapterId, scope, seriesId, onJumpToQuote, onJumpToBook, onOpenThreads, onChanged }: {
+export function SverkaPeek({ projectId, chapterId, scope, seriesId, onJumpToQuote, onJumpToBook, onOpenThreads, onOpenReport, onChanged }: {
   projectId: string;
   chapterId: string | null;
   scope: 'chapter' | 'project' | 'series';
@@ -24,6 +24,8 @@ export function SverkaPeek({ projectId, chapterId, scope, seriesId, onJumpToQuot
   /** Прыжок в ДРУГУЮ книгу серии (cross-book находка). */
   onJumpToBook?: (projectId: string, chapterId: string, quote: string) => void;
   onOpenThreads: () => void;
+  /** Открыть полный отчёт нестыковок (линза с фильтрами/группировкой + поток «Развитие»). */
+  onOpenReport?: () => void;
   onChanged?: () => void;
 }) {
   const [issues, setIssues] = useState<Issue[]>([]);
@@ -77,6 +79,11 @@ export function SverkaPeek({ projectId, chapterId, scope, seriesId, onJumpToQuot
     <div className="rounded-xl bg-[#A14F44]/[0.06] border border-[#A14F44]/15 p-2.5">
       <div className="flex items-center gap-1.5 mb-2 text-[#A14F44] font-semibold text-[12px]">
         <Sparkles size={14} /> Перо заметило {chapterMode ? 'в этой главе' : seriesMode ? 'по серии' : 'по книге'}
+        {onOpenReport && here.length > 0 && (
+          <button onClick={onOpenReport} title="Полный отчёт нестыковок: фильтры, группировка, развитие" className="ml-auto flex items-center gap-0.5 text-[11px] font-medium text-[#A14F44]/70 hover:text-[#A14F44]">
+            Подробнее <ChevronRight size={12} />
+          </button>
+        )}
       </div>
       <div className="flex flex-col gap-1.5">
         {here.map(i => {

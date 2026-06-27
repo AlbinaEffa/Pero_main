@@ -2535,6 +2535,7 @@ export default function Editor() {
             onJumpToQuote={(cid, quote) => handleOpenInEditor(cid, quote, quote)}
             onJumpToBook={(pid, cid) => navigate(`/editor/${pid}/${cid}`)}
             onOpenThreads={() => handleOpenPlot('threads')}
+            onOpenReport={() => openWorldAtLens('contradictions')}
             onSverkaChanged={loadBibleData}
             chapterNotes={chapterNotes}
             onOpenNotes={handleOpenNotes}

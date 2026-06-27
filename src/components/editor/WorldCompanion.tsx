@@ -63,6 +63,7 @@ interface Props {
   onJumpToQuote?: (chapterId: string, quote: string) => void;
   onJumpToBook?: (projectId: string, chapterId: string, quote: string) => void;
   onOpenThreads?: () => void;
+  onOpenReport?: () => void;
   onSverkaChanged?: () => void;
 
   freshness: 'fresh' | 'stale' | 'unknown';
@@ -196,7 +197,7 @@ export function WorldCompanion({
   scenePlan, onOpenPlan,
   seriesHandoff, onOpenSeriesWorld,
   summaryFindings = 0, summaryContradictions = 0, summaryDangling = 0, onOpenSummaryLens,
-  projectId, chapterId, sverkaScope = 'chapter', sverkaSeriesId, onJumpToQuote, onJumpToBook, onOpenThreads, onSverkaChanged,
+  projectId, chapterId, sverkaScope = 'chapter', sverkaSeriesId, onJumpToQuote, onJumpToBook, onOpenThreads, onOpenReport, onSverkaChanged,
   freshness, isExtracting, onRead,
   sceneEntities, isServiceChapter,
   povCharacter, povOptions, onSetPov, chapterSynopsis,
@@ -277,7 +278,7 @@ export function WorldCompanion({
 
           {/* Канал «Сверка»: находки приходят к автору — отдельный режим рельса, не мешают памяти сцены. */}
           {showSverka && projectId && onJumpToQuote && onOpenThreads && (
-            <SverkaPeek projectId={projectId} chapterId={chapterId ?? null} scope={sverkaScope} seriesId={sverkaSeriesId} onJumpToQuote={onJumpToQuote} onJumpToBook={onJumpToBook} onOpenThreads={onOpenThreads} onChanged={onSverkaChanged} />
+            <SverkaPeek projectId={projectId} chapterId={chapterId ?? null} scope={sverkaScope} seriesId={sverkaSeriesId} onJumpToQuote={onJumpToQuote} onJumpToBook={onJumpToBook} onOpenThreads={onOpenThreads} onOpenReport={onOpenReport} onChanged={onSverkaChanged} />
           )}
 
           {/* Инбокс «на подтверждение» — отдельный поток (новые сущности на одобрение), НЕ Сверка.

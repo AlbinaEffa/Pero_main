@@ -17,11 +17,17 @@ import { htmlToText, htmlToMarkdown } from '../lib/html.js';
 
 const router = express.Router();
 
+// Узкие view-типы под поля, которые реально читают билдеры экспорта. Строки приходят
+// сырым pool.query<…> из `SELECT *`, поэтому имена — snake_case как в БД (created_at).
+interface ExportProject { id: string; title: string; genre: string | null; created_at: Date | null }
+interface ExportChapter { title: string; content: string | null; status: string | null }
+interface ExportEntity  { type: string; name: string; description: string | null }
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 // htmlToText, htmlToMarkdown imported from ../lib/html.js
 
 /** Filter chapters by export mode */
-function filterChapters(chapters: any[], filter: 'all' | 'draft' | 'done'): any[] {
+function filterChapters(chapters: ExportChapter[], filter: 'all' | 'draft' | 'done'): ExportChapter[] {
   if (filter === 'draft') return chapters.filter(c => c.status === 'draft');
   if (filter === 'done')  return chapters.filter(c => c.status === 'done');
   return chapters;
@@ -52,7 +58,7 @@ function processFootnotes(html: string, startNum: number): { html: string; notes
   return { html: out, notes, next: n };
 }
 
-function buildBibleMarkdown(entities: any[]): string {
+function buildBibleMarkdown(entities: ExportEntity[]): string {
   if (entities.length === 0) return '';
   const sections: Record<string, string[]> = { character: [], location: [], item: [], rule: [] };
   const labels: Record<string, string> = { character: 'Персонажи', location: 'Локации', item: 'Предметы', rule: 'Правила мира' };
@@ -71,7 +77,7 @@ function buildBibleMarkdown(entities: any[]): string {
 }
 
 /** Build a Markdown string for the full project */
-function buildMarkdown(project: any, chapters: any[], entities: any[] = [], includeBible = false): string {
+function buildMarkdown(project: ExportProject, chapters: ExportChapter[], entities: ExportEntity[] = [], includeBible = false): string {
   const lines: string[] = [];
   lines.push(`# ${project.title}`);
   if (project.genre) lines.push(`\n*Жанр: ${project.genre}*`);
@@ -99,7 +105,7 @@ function buildMarkdown(project: any, chapters: any[], entities: any[] = [], incl
 }
 
 /** Build a DOCX Document from the project */
-function buildDocx(project: any, chapters: any[], entities: any[] = [], includeBible = false): Document {
+function buildDocx(project: ExportProject, chapters: ExportChapter[], entities: ExportEntity[] = [], includeBible = false): Document {
   const children: Paragraph[] = [];
 
   // Title page
@@ -189,7 +195,7 @@ function buildDocx(project: any, chapters: any[], entities: any[] = [], includeB
       spacing: { before: 400, after: 400 },
     }));
     const labels: Record<string, string> = { character: 'Персонажи', location: 'Локации', item: 'Предметы', rule: 'Правила мира' };
-    const grouped: Record<string, any[]> = {};
+    const grouped: Record<string, ExportEntity[]> = {};
     for (const e of entities) { (grouped[e.type] = grouped[e.type] ?? []).push(e); }
     for (const [type, label] of Object.entries(labels)) {
       const group = grouped[type] ?? [];
@@ -232,16 +238,16 @@ function buildDocx(project: any, chapters: any[], entities: any[] = [], includeB
 // ── DB helpers ────────────────────────────────────────────────────────────────
 
 async function getProjectWithChapters(projectId: string, userId: string) {
-  const { rows: projects } = await pool.query<any>(
+  const { rows: projects } = await pool.query<ExportProject>(
     'SELECT * FROM projects WHERE id=$1 AND user_id=$2', [projectId, userId]
   );
   if (!projects[0]) return null;
 
-  const { rows: chapters } = await pool.query<any>(
+  const { rows: chapters } = await pool.query<ExportChapter>(
     'SELECT * FROM chapters WHERE project_id=$1 ORDER BY "order" ASC', [projectId]
   );
 
-  const { rows: entities } = await pool.query<any>(
+  const { rows: entities } = await pool.query<ExportEntity>(
     `SELECT * FROM story_entities WHERE project_id=$1 AND status='approved' ORDER BY type, name`,
     [projectId]
   );
@@ -254,8 +260,9 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // ── Routes ────────────────────────────────────────────────────────────────────
 
 /** Shared query-param parsing for export routes */
-function parseExportParams(query: any): { filter: 'all' | 'draft' | 'done'; includeBible: boolean } {
-  const filter = ['draft', 'done'].includes(query.filter) ? query.filter as 'draft' | 'done' : 'all';
+function parseExportParams(query: Record<string, unknown>): { filter: 'all' | 'draft' | 'done'; includeBible: boolean } {
+  const f = query.filter;
+  const filter: 'all' | 'draft' | 'done' = f === 'draft' || f === 'done' ? f : 'all';
   const includeBible = query.bible === '1' || query.bible === 'true';
   return { filter, includeBible };
 }
@@ -355,7 +362,7 @@ router.get('/:projectId/backup', authenticateToken, async (req: AuthedRequest, r
   zip.file('manuscript.docx', docBuffer);
 
   // Story Bible
-  const bibleByType: Record<string, any[]> = {};
+  const bibleByType: Record<string, { name: string; description: string | null }[]> = {};
   for (const e of entities) {
     (bibleByType[e.type] = bibleByType[e.type] ?? []).push({
       name: e.name, description: e.description,
@@ -410,7 +417,7 @@ router.get('/:projectId/backup', authenticateToken, async (req: AuthedRequest, r
 
 /** GET /api/export/all — all user projects as one mega-ZIP */
 router.get('/all', authenticateToken, async (req: AuthedRequest, res) => {
-  const { rows: projects } = await pool.query<any>(
+  const { rows: projects } = await pool.query<{ id: string; title: string }>(
     `SELECT id, title FROM projects WHERE user_id=$1 AND status='active' ORDER BY created_at DESC`,
     [req.user.userId]
   );

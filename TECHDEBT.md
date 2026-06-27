@@ -44,12 +44,18 @@
 - **Подход:** оппортунистически — выносить кластер, когда правишь область. Не самоцель (P3), но bible.ts/extraction.ts стоит разнести по доменам. **Priority:** P3 (фон).
 
 ## 🟡 Типобезопасность (`: any`)
-- **109 `: any`** аннотаций, из них:
-  - `catch (e: any)` — **38**. Идиоматично, низкий приоритет (TS-catch по умолчанию `unknown`; `any` прагматичен).
-  - API-парсинг (`(data: any) =>`, `: any[]`) — **~82**. Концентрация: `plot.ts` (14), `ai.ts` (9), `import.ts` (8), `aiProvider.ts` (6), `worker.ts` (6), `export.ts` (5). **Чинибельно:** ввести типы ответов/строк БД (Drizzle `$inferSelect`) и `(row: SomeType)`.
-  - props `(p: any)` (напр. `fromApiProject`) — **6**. Типизировать DTO.
+- **39 `: any`** (без `catch`, без тестов) — после чистки 27.06 (было 45). Что осталось — почти всё
+  **граница доверия / внешнее** (там `any` защитим, как `catch`):
+  - LLM-JSON парсинг с рантайм-гардами: `plot.ts` (14), `bible.ts` (3), `series.ts` (1).
+  - XML/EPUB/FB2 парсинг: `import.ts` (6, вкл. catch).
+  - SDK/внешние API: `aiProvider.ts` (6), `yookassa.ts` (2), jwt-callback `auth.ts` (2).
+  - Скрипты/фреймворк: `testLocal.ts`, `backfillPov.ts`, `worker.ts payload`, `app.ts err-handler`.
+- **✅ Сделано 27.06:** `export.ts` (5→0) — билдеры markdown/docx/bible принимали DB-строки как `any[]`,
+  теперь узкие view-типы `ExportProject/Chapter/Entity` (ловят опечатки полей; экспорт покрыт тестами);
+  `getCircuitStates()` аннотирован → `app.ts` health-check без `any`.
 - **7 `as any`** — внешние/неизбежные (SDK Gemini ×3, `pdf-parse` CJS-интероп, Sentry-глобал, guarded jsonb в SelectionBar ×2). Документированы, оставлены.
-- **Priority:** P3. Самое полезное — типы строк БД в роутах (ловит реальные опечатки полей).
+- **Priority:** P3. Самое ценное (DB-строки в билдерах) закрыто; остальное — защитимый идиом, не трогаем
+  без нужды (рефактор LLM-парсинга рискован — нельзя верифицировать без токенов на AI).
 
 ## 🟢 Мелочи / осознанное
 - **19 `console.log`** в app-коде (не scripts/tests) — стоит свести к структурному логгеру или убрать шум. S.

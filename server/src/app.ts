@@ -117,7 +117,7 @@ app.use('/api/billing',  billingRoutes);
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
   const circuits = getCircuitStates();
-  const anyOpen  = Object.values(circuits).some((c: any) => c.state === 'OPEN');
+  const anyOpen  = Object.values(circuits).some((c) => c.state === 'OPEN');
   res.status(anyOpen ? 503 : 200).json({
     status:   anyOpen ? 'degraded' : 'ok',
     circuits,

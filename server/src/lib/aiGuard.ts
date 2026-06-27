@@ -245,7 +245,7 @@ export async function guardEmbed<T>(
 }
 
 /** Expose circuit states for the /health endpoint */
-export function getCircuitStates() {
+export function getCircuitStates(): Record<string, { state: string; failures: number }> {
   return Object.fromEntries(
     Object.entries(circuits).map(([k, cb]) => [k, { state: cb.getState(), failures: cb.getFailures() }])
   );

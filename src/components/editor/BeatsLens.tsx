@@ -127,7 +127,7 @@ export function BeatsLens({ projectId, chapters, onJump }: Props) {
           {templates.map(t => (
             <span key={t.id} className={`inline-flex items-center rounded-md transition-colors ${template === t.id ? 'bg-white shadow-sm' : 'hover:bg-white/40'}`}>
               <button onClick={() => setTemplate(t.id)}
-                className={`text-[11.5px] px-2.5 py-1 ${template === t.id ? 'text-[#1e2d1f] font-medium' : 'text-[#1e2d1f]/50'}`}>
+                className={`text-[11.5px] px-2.5 py-1 ${template === t.id ? 'text-[#1e2d1f] font-medium' : 'text-[#1e2d1f]/60'}`}>
                 {t.name}
               </button>
               {t.custom && (
@@ -166,7 +166,7 @@ export function BeatsLens({ projectId, chapters, onJump }: Props) {
           <div className="flex items-center gap-2">
             <button onClick={() => setNewBeats(prev => [...prev, { label: '', pct: 50 }])} className="inline-flex items-center gap-1 text-[11.5px] text-[#71597F] hover:underline"><Plus size={12} /> бит</button>
             <button onClick={createTemplate} disabled={!newName.trim() || !newBeats.some(b => b.label.trim())} className="ml-auto text-[12px] font-semibold text-white bg-[#1e2d1f] rounded-lg px-3 py-1.5 disabled:opacity-40 hover:bg-[#2a3f2b] transition-colors">Создать схему</button>
-            <button onClick={() => setBuilding(false)} className="text-[12px] text-[#1e2d1f]/50 hover:text-[#1e2d1f]">Отмена</button>
+            <button onClick={() => setBuilding(false)} className="text-[12px] text-[#1e2d1f]/60 hover:text-[#1e2d1f]">Отмена</button>
           </div>
         </div>
       )}

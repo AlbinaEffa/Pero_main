@@ -42,7 +42,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <p className="text-[#1e2d1f]/55 text-sm mb-6 leading-relaxed">
             Приложение столкнулось с ошибкой. Ваши тексты в безопасности — они сохраняются автоматически.
           </p>
-          <pre className="text-left text-xs bg-[#f5f0e8] rounded-xl p-3 mb-6 text-[#1e2d1f]/50 overflow-auto max-h-32">
+          <pre className="text-left text-xs bg-[#f5f0e8] rounded-xl p-3 mb-6 text-[#1e2d1f]/60 overflow-auto max-h-32">
             {this.state.error.message}
           </pre>
           <button

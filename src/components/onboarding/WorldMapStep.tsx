@@ -113,7 +113,7 @@ export function WorldMapStep({ projectId, projectTitle, firstChapterId, world }:
       </div>
 
       {(links.length > 0 || events.length > 0) && (
-        <p className="flex items-center gap-4 text-xs text-[#1e2d1f]/50 mb-10">
+        <p className="flex items-center gap-4 text-xs text-[#1e2d1f]/60 mb-10">
           {links.length > 0 && <span className="flex items-center gap-1.5"><Link2 size={12} />{links.length} связей</span>}
           {events.length > 0 && <span className="flex items-center gap-1.5"><Activity size={12} />{events.length} событий на таймлайнах</span>}
         </p>
@@ -171,7 +171,7 @@ export function WorldMapStep({ projectId, projectTitle, firstChapterId, world }:
             majorNames: majors.map(m => m.name),
           });
         }}
-        className="mt-3 flex items-center gap-1.5 text-xs text-[#1e2d1f]/50 hover:text-[#1e2d1f]/80 transition-colors py-2"
+        className="mt-3 flex items-center gap-1.5 text-xs text-[#1e2d1f]/60 hover:text-[#1e2d1f]/80 transition-colors py-2"
       >
         <Download size={12} />
         Скачать карточку мира — поделиться в писательском чате

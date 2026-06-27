@@ -1537,7 +1537,7 @@ export function EditorCanvas({
                 className="group inline-flex items-baseline gap-1.5 text-[2.35rem] leading-tight tracking-[-0.02em] font-medium rounded-lg px-1.5 -mx-1.5 hover:bg-[#1e2d1f]/[0.04] transition-colors"
               >
                 {chapterPrefix}
-                <ChevronDown size={20} className="self-center text-[#1e2d1f]/25 group-hover:text-[#1e2d1f]/50 transition-colors" />
+                <ChevronDown size={20} className="self-center text-[#1e2d1f]/25 group-hover:text-[#1e2d1f]/60 transition-colors" />
               </button>
               {isChapterTypeMenuOpen && (
                 <>

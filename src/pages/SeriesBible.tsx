@@ -92,7 +92,7 @@ export default function SeriesBible() {
           <p className="text-[11px] text-[#1e2d1f]/45 mt-2">Снимок замораживает значимых героев и их финальный статус — следующая книга серии сверяется с ним.</p>
         </header>
 
-        {grouped.length === 0 && <p className="text-sm text-[#1e2d1f]/50">В книгах серии пока нет сущностей.</p>}
+        {grouped.length === 0 && <p className="text-sm text-[#1e2d1f]/60">В книгах серии пока нет сущностей.</p>}
 
         {grouped.map(([type, list]) => {
           const meta = TYPE_META[type] ?? { label: type, icon: Box, pigment: '#54627F' };

@@ -77,7 +77,7 @@ export function PlotPanel({ projectId, initialLens, chapters, entities, events, 
             <h2 className="font-sans text-base font-semibold text-[#1e2d1f]">Сюжет</h2>
             <span className="text-[11px] text-[#1e2d1f]/40 truncate">{SUBTITLE[lens]}</span>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/50 transition-colors"><X size={18} /></button>
+          <button onClick={onClose} className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/60 transition-colors"><X size={18} /></button>
         </div>
       </div>
 

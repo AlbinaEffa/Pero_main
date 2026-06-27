@@ -135,7 +135,7 @@ export function ThreadsLens({ threads, orderedChapterIds, scanning, onScan, onJu
           ) : (
             <>
               <div className="text-[13px] font-semibold text-[#1e2d1f]">{threads.length ? `${open.length} открытых · ${resolved.length} закрытых` : 'Линии ещё не найдены'}</div>
-              <div className="text-[11px] text-[#1e2d1f]/50">сквозные линии по синопсисам глав</div>
+              <div className="text-[11px] text-[#1e2d1f]/60">сквозные линии по синопсисам глав</div>
             </>
           )}
         </div>
@@ -164,7 +164,7 @@ export function ThreadsLens({ threads, orderedChapterIds, scanning, onScan, onJu
               onClick={() => { if (draft.title.trim()) { onAddThread({ title: draft.title.trim(), kind: draft.kind, summary: draft.summary.trim() }); setDraft({ title: '', kind: 'subplot', summary: '' }); setAdding(false); } }}
               disabled={!draft.title.trim()}
               className="ml-auto text-[12px] font-semibold text-white bg-[#1e2d1f] rounded-lg px-3 py-1.5 disabled:opacity-40 hover:bg-[#2a3f2b] transition-colors">Добавить</button>
-            <button onClick={() => setAdding(false)} className="text-[12px] text-[#1e2d1f]/50 hover:text-[#1e2d1f]">Отмена</button>
+            <button onClick={() => setAdding(false)} className="text-[12px] text-[#1e2d1f]/60 hover:text-[#1e2d1f]">Отмена</button>
           </div>
         </div>
       )}

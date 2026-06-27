@@ -216,7 +216,7 @@ export default function SeriesWorkspace() {
             </button>
           )}
         </div>
-        {xrayReason && <p className="text-[12px] text-[#1e2d1f]/50 bg-[#1e2d1f]/[0.03] rounded-lg px-3 py-2 mb-2">{xrayReason}</p>}
+        {xrayReason && <p className="text-[12px] text-[#1e2d1f]/60 bg-[#1e2d1f]/[0.03] rounded-lg px-3 py-2 mb-2">{xrayReason}</p>}
         <div className="flex flex-col gap-2">
           {threads.map(t => (
             <div key={t.id} className="bg-white rounded-xl px-4 py-3 border border-[#1e2d1f]/5">

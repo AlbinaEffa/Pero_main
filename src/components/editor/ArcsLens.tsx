@@ -61,7 +61,7 @@ export function ArcsLens({ projectId, onOpenEntity }: { projectId: string; onOpe
       <div className="flex items-center gap-2 pb-3 mb-3 border-b border-[#1e2d1f]/8 flex-shrink-0 flex-wrap">
         <div className="flex-1 min-w-0">
           <div className="text-[13px] font-semibold text-[#1e2d1f]">{arcs.length ? `${arcs.length} арок героев` : 'Арки ещё не выведены'}</div>
-          <div className="text-[11px] text-[#1e2d1f]/50">Хочет · Нужно · Травма · Ложь · Истина — задумай или выведи по тексту</div>
+          <div className="text-[11px] text-[#1e2d1f]/60">Хочет · Нужно · Травма · Ложь · Истина — задумай или выведи по тексту</div>
         </div>
         <button onClick={() => setAdding(v => !v)} title="Добавить героя вручную" className="inline-flex items-center gap-1 text-[12px] font-medium text-[#71597F] bg-[#71597F]/10 rounded-lg px-2.5 py-2 hover:bg-[#71597F]/20 transition-colors flex-shrink-0">
           <Plus size={13} /> Герой
@@ -76,7 +76,7 @@ export function ArcsLens({ projectId, onOpenEntity }: { projectId: string; onOpe
           <input value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addArc(); }} placeholder="Имя героя"
             className="flex-1 text-[13px] bg-white/60 rounded-md px-2.5 py-1.5 outline-none border border-transparent focus:border-[#71597F]/40" />
           <button onClick={addArc} disabled={!newName.trim()} className="text-[12px] font-semibold text-white bg-[#1e2d1f] rounded-lg px-3 py-1.5 disabled:opacity-40 hover:bg-[#2a3f2b] transition-colors">Добавить</button>
-          <button onClick={() => setAdding(false)} className="text-[12px] text-[#1e2d1f]/50 hover:text-[#1e2d1f]">Отмена</button>
+          <button onClick={() => setAdding(false)} className="text-[12px] text-[#1e2d1f]/60 hover:text-[#1e2d1f]">Отмена</button>
         </div>
       )}
 

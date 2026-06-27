@@ -155,7 +155,7 @@ export function TimelineLens({ entities, events, chapters, focusEntityId, onSetF
         {arcEntities.length > ARC_CAP && (
           <button
             onClick={() => setShowAllArcs(v => !v)}
-            className="flex items-center gap-0.5 text-[11px] px-2 py-0.5 rounded-full text-[#1e2d1f]/50 hover:bg-[#1e2d1f]/[0.06] transition-colors"
+            className="flex items-center gap-0.5 text-[11px] px-2 py-0.5 rounded-full text-[#1e2d1f]/60 hover:bg-[#1e2d1f]/[0.06] transition-colors"
           >
             {showAllArcs ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
             {showAllArcs ? 'свернуть' : `+${arcEntities.length - ARC_CAP} арок`}

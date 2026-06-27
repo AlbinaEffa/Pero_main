@@ -73,7 +73,7 @@ export function WritingStatsPanel({
         </div>
         <button
           onClick={onClose}
-          className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/50 transition-colors"
+          className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/60 transition-colors"
         >
           <X size={18} />
         </button>

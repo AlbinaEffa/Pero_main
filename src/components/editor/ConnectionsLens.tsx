@@ -564,7 +564,7 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
           <button
             onClick={() => setShowMinor(v => !v)}
             className={`text-[10.5px] px-2 py-0.5 rounded-md transition-colors ${
-              showMinor ? 'bg-[#1e2d1f] text-[#f5f0e8]' : 'text-[#1e2d1f]/50 hover:bg-[#1e2d1f]/[0.06]'
+              showMinor ? 'bg-[#1e2d1f] text-[#f5f0e8]' : 'text-[#1e2d1f]/60 hover:bg-[#1e2d1f]/[0.06]'
             }`}
             title="Показывать эпизодические сущности"
           >
@@ -773,7 +773,7 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
         </div>
       )}
 
-      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-4 pt-3 border-t border-[#1e2d1f]/5 text-[10px] text-[#1e2d1f]/50">
+      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-4 pt-3 border-t border-[#1e2d1f]/5 text-[10px] text-[#1e2d1f]/60">
         {[['character', 'Персонажи'], ['location', 'Локации'], ['item', 'Предметы'], ['rule', 'Правила']].map(([t, label]) => (
           <span key={t} className="flex items-center gap-1">
             <span className="w-2.5 h-2.5 rounded-full" style={{ background: TYPE_PIGMENT[t] }} />{label}

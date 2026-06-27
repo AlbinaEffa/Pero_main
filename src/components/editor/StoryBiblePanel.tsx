@@ -274,7 +274,7 @@ function EntityTileGrid({ type, items, onSelect }: {
       {hiddenEpisodic.length > 0 && (
         <button
           onClick={() => setShowEpisodic(v => !v)}
-          className="flex items-center gap-1 self-start mt-0.5 text-[11px] font-medium text-[#1e2d1f]/50 hover:text-[#1e2d1f] transition-colors"
+          className="flex items-center gap-1 self-start mt-0.5 text-[11px] font-medium text-[#1e2d1f]/60 hover:text-[#1e2d1f] transition-colors"
         >
           {showEpisodic ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
           {showEpisodic ? 'свернуть эпизодических' : `показать ещё ${hiddenEpisodic.length} эпизодических`}
@@ -482,7 +482,7 @@ export function StoryBiblePanel({
             <ShareBibleButton projectId={projectId} />
             <button
               onClick={onClose}
-              className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/50 transition-colors"
+              className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/60 transition-colors"
             >
               <X size={18} />
             </button>
@@ -674,7 +674,7 @@ export function StoryBiblePanel({
                   <Sparkles size={24} />
                 </div>
                 <h3 className="font-medium text-[#1e2d1f]/80 mb-2">Нет новых фактов</h3>
-                <p className="text-xs text-[#1e2d1f]/50 mb-6 leading-relaxed">
+                <p className="text-xs text-[#1e2d1f]/60 mb-6 leading-relaxed">
                   Нажмите кнопку ниже, чтобы Перо прочитало текущую главу и нашло новые детали для Мира.
                 </p>
                 <button
@@ -759,7 +759,7 @@ export function StoryBiblePanel({
                   <Check size={24} />
                 </div>
                 <h3 className="font-medium text-[#1e2d1f]/80 mb-2">Обновлений нет</h3>
-                <p className="text-xs text-[#1e2d1f]/50 leading-relaxed">
+                <p className="text-xs text-[#1e2d1f]/60 leading-relaxed">
                   Когда ИИ найдёт новые детали о уже известных сущностях, они появятся здесь.
                 </p>
               </div>
@@ -806,7 +806,7 @@ export function StoryBiblePanel({
           if (visibleEntities.length === 0) return (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <MargOpenBook size={60} className="text-[#1e2d1f]/30 mb-4" />
-              <p className="text-sm text-[#1e2d1f]/50">
+              <p className="text-sm text-[#1e2d1f]/60">
                 {scope === 'chapter' ? 'В этой главе пока нет сущностей.' : 'Мир пуст. Нажмите «Прочитать» на главе — Перо извлечёт сущности.'}
               </p>
             </div>
@@ -1010,7 +1010,7 @@ function DiffView({ prev, next }: DiffViewProps) {
       {longContent && (
         <button
           onClick={() => setExpanded(v => !v)}
-          className="text-[10px] text-[#1e2d1f]/50 font-medium flex items-center gap-0.5 hover:text-[#1e2d1f]/80 transition-colors mt-0.5"
+          className="text-[10px] text-[#1e2d1f]/60 font-medium flex items-center gap-0.5 hover:text-[#1e2d1f]/80 transition-colors mt-0.5"
         >
           {expanded ? 'Свернуть' : 'Показать полностью'}
           <ChevronRight size={10} className={`transition-transform ${expanded ? 'rotate-90' : ''}`} />
@@ -1069,7 +1069,7 @@ function UpdateCard({ update, onAccept, onReject, onDismiss, onOpenInEditor }: U
       <div className="flex border-t border-[#1e2d1f]/5">
         <button
           onClick={onReject}
-          className="flex-1 py-2 text-[11px] font-medium text-[#1e2d1f]/50 hover:text-[#1e2d1f] hover:bg-[#f5f0e8]/60 transition-colors flex items-center justify-center gap-1 border-r border-[#1e2d1f]/5"
+          className="flex-1 py-2 text-[11px] font-medium text-[#1e2d1f]/60 hover:text-[#1e2d1f] hover:bg-[#f5f0e8]/60 transition-colors flex items-center justify-center gap-1 border-r border-[#1e2d1f]/5"
           title="Оставить текущее описание"
         >
           <RotateCcw size={10} />

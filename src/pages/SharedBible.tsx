@@ -79,7 +79,7 @@ export default function SharedBible() {
         </header>
 
         {grouped.length === 0 && (
-          <p className="text-sm text-[#1e2d1f]/50">В этой библии пока нет записей.</p>
+          <p className="text-sm text-[#1e2d1f]/60">В этой библии пока нет записей.</p>
         )}
 
         {grouped.map(([type, list]) => {

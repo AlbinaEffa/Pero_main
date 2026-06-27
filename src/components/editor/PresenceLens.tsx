@@ -395,7 +395,7 @@ export function PresenceLens({ entities, events, links, chapters, contradictions
       )}
 
       {/* Легенда */}
-      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-4 pt-3 border-t border-[#1e2d1f]/5 text-[10px] text-[#1e2d1f]/50">
+      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-4 pt-3 border-t border-[#1e2d1f]/5 text-[10px] text-[#1e2d1f]/60">
         {[['character', 'Персонажи'], ['location', 'Локации'], ['item', 'Предметы'], ['rule', 'Правила']].map(([t, label]) => (
           <span key={t} className="flex items-center gap-1">
             <span className="w-2.5 h-2.5 rounded-[2px]" style={{ background: TYPE_PIGMENT[t] }} />

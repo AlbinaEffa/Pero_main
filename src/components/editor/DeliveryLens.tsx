@@ -75,7 +75,7 @@ export function DeliveryLens({ projectId, onJump }: { projectId: string; onJump:
         </div>
       )}
 
-      {reason && <p className="text-[12px] text-[#1e2d1f]/50 bg-[#1e2d1f]/[0.03] rounded-lg px-3 py-2.5">{reason}</p>}
+      {reason && <p className="text-[12px] text-[#1e2d1f]/60 bg-[#1e2d1f]/[0.03] rounded-lg px-3 py-2.5">{reason}</p>}
 
       {!items && !reason && !scanning && (
         <p className="text-[12.5px] text-[#1e2d1f]/40 text-center py-8 leading-relaxed">

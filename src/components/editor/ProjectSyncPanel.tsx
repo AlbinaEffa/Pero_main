@@ -17,7 +17,7 @@ function getChapterFreshness(chapter: Chapter): FreshnessStatus {
 const FRESHNESS_META: Record<FreshnessStatus, { label: string; dot: string; textColor: string; bgColor: string; Icon: React.ElementType }> = {
   fresh:   { label: 'Актуальна',    dot: 'bg-[#4D6B4D]', textColor: 'text-[#4D6B4D]', bgColor: 'bg-[#E5EBE0]',  Icon: CheckCircle2  },
   stale:   { label: 'Устарела',     dot: 'bg-[#91682E]',   textColor: 'text-[#91682E]',   bgColor: 'bg-[#F2E9D8]',    Icon: AlertTriangle },
-  unknown: { label: 'Не проверена', dot: 'bg-[#1e2d1f]/20', textColor: 'text-[#1e2d1f]/50', bgColor: 'bg-[#1e2d1f]/4', Icon: HelpCircle  },
+  unknown: { label: 'Не проверена', dot: 'bg-[#1e2d1f]/20', textColor: 'text-[#1e2d1f]/60', bgColor: 'bg-[#1e2d1f]/4', Icon: HelpCircle  },
 };
 
 interface Props {
@@ -67,7 +67,7 @@ export function ProjectSyncPanel({
         </div>
         <button
           onClick={onClose}
-          className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/50 transition-colors"
+          className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/60 transition-colors"
         >
           <X size={18} />
         </button>
@@ -99,7 +99,7 @@ export function ProjectSyncPanel({
             <SummaryTile
               count={statusCounts.unknown}
               label="Непроверенных"
-              colorClass="text-[#1e2d1f]/50"
+              colorClass="text-[#1e2d1f]/60"
               bgClass="bg-[#1e2d1f]/4 border-[#1e2d1f]/8"
             />
             <SummaryTile
@@ -235,7 +235,7 @@ function SummaryTile({
       className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-colors ${bgClass} ${onClick ? 'cursor-pointer hover:opacity-80' : ''}`}
     >
       <span className={`text-2xl font-bold ${colorClass}`}>{count}</span>
-      <span className="text-[10px] text-[#1e2d1f]/50 font-medium mt-0.5 leading-tight">{label}</span>
+      <span className="text-[10px] text-[#1e2d1f]/60 font-medium mt-0.5 leading-tight">{label}</span>
     </Tag>
   );
 }

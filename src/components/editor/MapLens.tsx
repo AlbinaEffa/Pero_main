@@ -127,7 +127,7 @@ export function MapLens({ entities, links, onJumpToChapter }: Props) {
           <div className="mt-1.5 pt-1.5 border-t border-[#1e2d1f]/5">
             <button
               onClick={() => setShowFlat(v => !v)}
-              className="flex items-center gap-1 px-1.5 py-1 text-[11px] font-medium text-[#1e2d1f]/50 hover:text-[#1e2d1f] transition-colors"
+              className="flex items-center gap-1 px-1.5 py-1 text-[11px] font-medium text-[#1e2d1f]/60 hover:text-[#1e2d1f] transition-colors"
             >
               {showFlat ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
               {showFlat ? 'свернуть' : `показать ещё ${flatRoots.length} отдельных мест`}

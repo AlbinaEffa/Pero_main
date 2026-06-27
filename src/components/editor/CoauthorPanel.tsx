@@ -282,7 +282,7 @@ export function CoauthorPanel({
                     ? 'text-[#9E4338]'
                     : quota.remaining <= Math.ceil(quota.limit * 0.15)
                       ? 'text-[#91682E]'
-                      : 'text-[#1e2d1f]/50'
+                      : 'text-[#1e2d1f]/60'
                 }`}
                 title={`Тариф: ${quota.plan === 'pro' ? 'Pro' : 'Бесплатный'}. Лимит обновится в полночь по UTC.`}
               >
@@ -294,13 +294,13 @@ export function CoauthorPanel({
                   : `Сегодня осталось ${quota.remaining} из ${quota.limit}`}
               </p>
             ) : (
-              <p className="text-[11px] leading-tight mt-1 text-[#1e2d1f]/50">читает твою книгу</p>
+              <p className="text-[11px] leading-tight mt-1 text-[#1e2d1f]/60">читает твою книгу</p>
             )}
           </div>
         </div>
         <button
           onClick={onClose}
-          className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/50 transition-colors"
+          className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/60 transition-colors"
         >
           <X size={18} />
         </button>

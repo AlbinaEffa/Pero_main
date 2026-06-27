@@ -2338,7 +2338,7 @@ export default function Editor() {
                   <h2 className="font-sans text-base font-semibold text-[#1e2d1f]">Заметки</h2>
                   <p className="text-[11px] text-[#1e2d1f]/45 leading-tight">идеи и заметки по книге; новые привязываются к этой главе</p>
                 </div>
-                <button onClick={() => setIsNotesOpen(false)} className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/50 transition-colors">
+                <button onClick={() => setIsNotesOpen(false)} className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/60 transition-colors">
                   <X size={18} />
                 </button>
               </div>
@@ -2396,7 +2396,7 @@ export default function Editor() {
                   <Bookmark size={18} className="text-[#1e2d1f]" />
                   <h2 className="font-serif font-bold text-lg text-[#1e2d1f] uppercase tracking-wider">Справочник</h2>
                 </div>
-                <button onClick={() => setIsReferenceOpen(false)} className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/50 transition-colors">
+                <button onClick={() => setIsReferenceOpen(false)} className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/60 transition-colors">
                   <X size={18} />
                 </button>
               </div>
@@ -2493,7 +2493,7 @@ export default function Editor() {
                         if (items.length === 0) return null;
                         return (
                           <div key={type}>
-                            <div className="flex items-center gap-2 text-[#1e2d1f]/50 font-bold text-[10px] uppercase tracking-widest mb-2">
+                            <div className="flex items-center gap-2 text-[#1e2d1f]/60 font-bold text-[10px] uppercase tracking-widest mb-2">
                               <Icon size={13} />
                               <span>{label}</span>
                               <span className="bg-[#1e2d1f]/8 rounded-full px-1.5 py-0.5 text-[10px]">{items.length}</span>

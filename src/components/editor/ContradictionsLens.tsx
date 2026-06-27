@@ -83,12 +83,12 @@ export function ContradictionsLens({ issues, chapters, entities, scanState, onSc
           {running ? (
             <>
               <div className="text-[13px] font-semibold text-[#1e2d1f] flex items-center gap-1.5"><Loader2 size={13} className="animate-spin text-[#71597F]" /> Перо проверяет книгу…</div>
-              <div className="text-[11px] text-[#1e2d1f]/50">{scanState!.total ? `${scanState!.scanned} из ${scanState!.total} глав` : 'запуск…'} · найдено: {scanState!.found}</div>
+              <div className="text-[11px] text-[#1e2d1f]/60">{scanState!.total ? `${scanState!.scanned} из ${scanState!.total} глав` : 'запуск…'} · найдено: {scanState!.found}</div>
             </>
           ) : (
             <>
               <div className="text-[13px] font-semibold text-[#1e2d1f]">{issues.length ? `${issues.length} ${plural(issues.length)}` : 'Нестыковок не найдено'}</div>
-              <div className="text-[11px] text-[#1e2d1f]/50">{scanState?.status === 'failed' ? 'проверка прервалась — запусти заново' : 'отчёт по всей книге'}</div>
+              <div className="text-[11px] text-[#1e2d1f]/60">{scanState?.status === 'failed' ? 'проверка прервалась — запусти заново' : 'отчёт по всей книге'}</div>
             </>
           )}
         </div>

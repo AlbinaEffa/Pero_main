@@ -87,7 +87,7 @@ export function RevisionPanel({
         </div>
         <button
           onClick={onClose}
-          className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/50 transition-colors"
+          className="p-1.5 rounded-md hover:bg-[#1e2d1f]/5 text-[#1e2d1f]/60 transition-colors"
         >
           <X size={18} />
         </button>
@@ -141,7 +141,7 @@ export function RevisionPanel({
                     <div key={ch.id} className="rounded-xl bg-white/60 border border-[#1e2d1f]/5 p-3">
                       <p className="text-[13px] font-semibold text-[#1e2d1f] mb-1">{ch.title}</p>
                       {ch.snippets.map((s, i) => (
-                        <p key={i} className="text-[11px] text-[#1e2d1f]/50 leading-relaxed line-clamp-3 mt-1">
+                        <p key={i} className="text-[11px] text-[#1e2d1f]/60 leading-relaxed line-clamp-3 mt-1">
                           «{s}»
                         </p>
                       ))}
@@ -226,7 +226,7 @@ export function RevisionPanel({
                     </div>
                     <button
                       onClick={() => onDismissBibleSuggestion(i)}
-                      className="text-[#1e2d1f]/25 hover:text-[#1e2d1f]/50 transition-colors"
+                      className="text-[#1e2d1f]/25 hover:text-[#1e2d1f]/60 transition-colors"
                     >
                       <X size={13} />
                     </button>

@@ -86,7 +86,7 @@ export function EchoLens({ projectId, onJump, initialQuery, seriesId }: {
             <button
               key={s}
               onClick={() => { setScope(s); if (query.trim()) run(undefined, s); }}
-              className={`px-2.5 py-1 rounded-md font-medium transition-colors ${scope === s ? 'bg-white text-[#1e2d1f] shadow-sm' : 'text-[#1e2d1f]/50 hover:text-[#1e2d1f]/75'}`}
+              className={`px-2.5 py-1 rounded-md font-medium transition-colors ${scope === s ? 'bg-white text-[#1e2d1f] shadow-sm' : 'text-[#1e2d1f]/60 hover:text-[#1e2d1f]/75'}`}
             >
               {s === 'book' ? 'Эта книга' : 'Вся серия'}
             </button>

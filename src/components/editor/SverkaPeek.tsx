@@ -11,14 +11,18 @@ import { api } from '../../services/api';
 import { Entity } from './types';
 import { findDuplicateGroups } from './StoryBiblePanel';
 
-interface Issue { id: string; chapterId: string | null; issue: string; quote: string | null; severity: string; status: string; kind?: string }
+interface Issue { id: string; projectId?: string; chapterId: string | null; issue: string; quote: string | null; severity: string; status: string; kind?: string; bookTitle?: string | null; bookOrder?: number | null }
 interface Thread { id: string; title: string; resolved: boolean; chapterIds: string[] }
 
-export function SverkaPeek({ projectId, chapterId, scope, onJumpToQuote, onOpenThreads, onChanged }: {
+export function SverkaPeek({ projectId, chapterId, scope, seriesId, onJumpToQuote, onJumpToBook, onOpenThreads, onChanged }: {
   projectId: string;
   chapterId: string | null;
   scope: 'chapter' | 'project' | 'series';
+  /** id серии — на грани зума «Серия» рельс показывает нестыковки по всем книгам. */
+  seriesId?: string | null;
   onJumpToQuote: (chapterId: string, quote: string) => void;
+  /** Прыжок в ДРУГУЮ книгу серии (cross-book находка). */
+  onJumpToBook?: (projectId: string, chapterId: string, quote: string) => void;
   onOpenThreads: () => void;
   onChanged?: () => void;
 }) {
@@ -30,14 +34,18 @@ export function SverkaPeek({ projectId, chapterId, scope, onJumpToQuote, onOpenT
   const [dupsOpen, setDupsOpen] = useState(false); // дубли свёрнуты по умолчанию — рельс не стена
   const [devsOpen, setDevsOpen] = useState(false); // «развитие» свёрнуто — спокойный поток, не алярм
 
+  const seriesMode = scope === 'series' && !!seriesId;
   const reload = () => {
+    const issuesP = seriesMode
+      ? api.get<{ issues: Issue[] }>(`/series/${seriesId}/contradictions`).then(d => d.issues ?? []).catch(() => [])
+      : api.get<{ issues: Issue[] }>(`/bible/${projectId}/contradictions`).then(d => d.issues ?? []).catch(() => []);
     Promise.all([
-      api.get<{ issues: Issue[] }>(`/bible/${projectId}/contradictions`).then(d => d.issues ?? []).catch(() => []),
+      issuesP,
       api.get<{ threads: Thread[] }>(`/plot/${projectId}/threads`).then(d => d.threads ?? []).catch(() => []),
       api.get<{ entities: Entity[] }>(`/bible/${projectId}`).then(d => d.entities ?? []).catch(() => []),
     ]).then(([is, th, en]) => { setIssues(is); setThreads(th); setEntities(en.filter(e => e.status === 'approved')); });
   };
-  useEffect(() => { if (projectId) reload(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [projectId, chapterId, scope]);
+  useEffect(() => { if (projectId) reload(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [projectId, chapterId, scope, seriesId]);
 
   const chapterMode = scope === 'chapter';
   // Два потока классификатора: нестыковки (алярм, красный) vs «развитие» (спокойный, серо-синий).
@@ -68,18 +76,28 @@ export function SverkaPeek({ projectId, chapterId, scope, onJumpToQuote, onOpenT
   return (
     <div className="rounded-xl bg-[#A14F44]/[0.06] border border-[#A14F44]/15 p-2.5">
       <div className="flex items-center gap-1.5 mb-2 text-[#A14F44] font-semibold text-[12px]">
-        <Sparkles size={14} /> Перо заметило {chapterMode ? 'в этой главе' : 'по книге'}
+        <Sparkles size={14} /> Перо заметило {chapterMode ? 'в этой главе' : seriesMode ? 'по серии' : 'по книге'}
       </div>
       <div className="flex flex-col gap-1.5">
-        {here.map(i => (
+        {here.map(i => {
+          const otherBook = seriesMode && !!i.projectId && i.projectId !== projectId;
+          const jump = () => {
+            if (!i.quote || !i.chapterId) return;
+            if (otherBook && onJumpToBook) onJumpToBook(i.projectId!, i.chapterId, i.quote);
+            else onJumpToQuote(i.chapterId, i.quote);
+          };
+          return (
           <div key={i.id} className="bg-white rounded-lg px-2.5 py-1.5 flex items-start gap-2">
             <AlertTriangle size={13} className="text-[#A14F44] flex-shrink-0 mt-0.5" />
             <button
-              onClick={() => i.quote && i.chapterId && onJumpToQuote(i.chapterId, i.quote)}
+              onClick={jump}
               className="min-w-0 flex-1 text-left text-[12px] text-[#1e2d1f]/80 leading-snug hover:text-[#A14F44] transition-colors"
-              title={i.quote ? 'Показать в тексте' : undefined}
+              title={i.quote ? (otherBook ? `Открыть в книге «${i.bookTitle}»` : 'Показать в тексте') : undefined}
             >
               {i.issue}
+              {otherBook && i.bookTitle && (
+                <span className="ml-1.5 inline-block align-middle text-[10px] font-medium text-[#54627F] bg-[#54627F]/10 rounded px-1.5 py-px">кн. «{i.bookTitle}»</span>
+              )}
             </button>
             <button
               onClick={() => dismissIssue(i.id)}
@@ -89,7 +107,8 @@ export function SverkaPeek({ projectId, chapterId, scope, onJumpToQuote, onOpenT
               Отклонить
             </button>
           </div>
-        ))}
+          );
+        })}
         {guns.map(t => (
           <button
             key={t.id}

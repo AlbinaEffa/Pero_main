@@ -243,6 +243,31 @@ router.get('/:seriesId/bible', authenticateToken, async (req: any, res) => {
   } catch (e) { console.error('series bible', e); res.status(500).json({ error: 'Internal server error' }); }
 });
 
+// GET /:seriesId/contradictions — нестыковки по ВСЕЙ серии (грань зума «Серия» в рельсе «Сверка»).
+// Открытые issues из ПОСЛЕДНЕГО отчёта каждой книги серии + метка книги (cross-book ров).
+router.get('/:seriesId/contradictions', authenticateToken, async (req: any, res) => {
+  try {
+    const s = await ownsSeries(req.params.seriesId, req.user.userId);
+    if (!s) return res.status(403).json({ error: 'Access denied' });
+    const books = await db.select({ id: schema.projects.id }).from(schema.projects).where(eq(schema.projects.seriesId, s.id));
+    if (books.length === 0) return res.json({ issues: [] });
+    const { rows } = await pool.query(
+      `SELECT ci.id, ci.project_id AS "projectId", ci.chapter_id AS "chapterId", ci.entity_name AS "entityName",
+              ci.issue, ci.quote, ci.severity, ci.kind, ci.status,
+              p.title AS "bookTitle", p.series_order AS "bookOrder"
+         FROM contradiction_issues ci
+         JOIN projects p ON p.id = ci.project_id
+        WHERE ci.project_id = ANY($1) AND ci.status = 'open'
+          AND ci.report_id = (
+            SELECT r.id FROM contradiction_reports r
+             WHERE r.project_id = ci.project_id ORDER BY r.created_at DESC LIMIT 1)
+        ORDER BY p.series_order NULLS LAST, ci.created_at DESC`,
+      [books.map(b => b.id)],
+    );
+    res.json({ issues: rows });
+  } catch (e) { console.error('series contradictions', e); res.status(500).json({ error: 'Internal server error' }); }
+});
+
 // POST /:seriesId/books/:projectId/snapshot — заморозить «состояние мира на конец книги» (Этап E4).
 // Снимок выводится из Мира ДЕТЕРМИНИРОВАННО (без AI): значимые сущности + их финальный статус
 // (последнее событие типа 'status' по порядку глав). Старт-канон для следующей книги серии.

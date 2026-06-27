@@ -2531,7 +2531,9 @@ export default function Editor() {
             projectId={projectId}
             chapterId={chapterId}
             sverkaScope={bibleScope}
+            sverkaSeriesId={projectSeriesId}
             onJumpToQuote={(cid, quote) => handleOpenInEditor(cid, quote, quote)}
+            onJumpToBook={(pid, cid) => navigate(`/editor/${pid}/${cid}`)}
             onOpenThreads={() => handleOpenPlot('threads')}
             onSverkaChanged={loadBibleData}
             chapterNotes={chapterNotes}

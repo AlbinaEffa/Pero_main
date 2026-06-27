@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+# Отменяем устаревшие прогоны на той же ветке (экономия раннеров).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: typecheck + tests
+    runs-on: ubuntu-latest
+
+    # Postgres с pgvector — серверные интеграционные тесты бьют в реальную БД.
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: pero_admin
+          POSTGRES_PASSWORD: pero_pass
+          POSTGRES_DB: pero_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pero_admin -d pero_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://pero_admin:pero_pass@localhost:5432/pero_db
+      JWT_SECRET: ci-only-not-a-real-secret
+      # AI-ключи НЕ задаём: тесты спроектированы не звать AI (гейты до AI, ранние возвраты).
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+
+      - name: Install deps (root)
+        run: npm ci
+
+      - name: Install deps (server)
+        working-directory: server
+        run: npm ci
+
+      - name: Typecheck (client + server)
+        run: npm run typecheck
+
+      - name: Migrate DB
+        working-directory: server
+        run: npm run migrate
+
+      - name: Server tests (unit + integration)
+        working-directory: server
+        run: npm test
+
+      - name: Client tests
+        run: npm test

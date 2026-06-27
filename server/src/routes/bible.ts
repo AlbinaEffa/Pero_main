@@ -11,6 +11,7 @@ import { guardChat } from '../lib/aiGuard.js';
 import { stripHtml } from '../lib/html.js';
 import { getAIProvider, getEmbeddingProvider } from '../lib/aiProvider.js';
 import { aiQuota } from '../lib/quota.js';
+import { checkBibleChapterLimit } from '../lib/planLimits.js';
 import { enqueueJob } from '../jobs/queue.js';
 import {
   isValidUUID, cleanJsonResponse,
@@ -292,6 +293,11 @@ router.post('/extract',
       if (hasProject) {
         const isOwner = await assertProjectOwnership(projectId, req.user.userId);
         if (!isOwner) return res.status(403).json({ error: 'Access denied to this project' });
+        // Лимит Free: Мир анализирует первые 30 глав (гейт ДО AI — токены не жжём)
+        if (chapterId && isValidUUID(chapterId)) {
+          const denial = await checkBibleChapterLimit(req.user.userId, projectId, chapterId);
+          if (denial) return res.status(402).json(denial);
+        }
       }
 
       const plainText = stripHtml(chapterContent);
@@ -416,6 +422,10 @@ router.post('/recheck/chapter/:chapterId',
       if (storedHash && storedHash === currentHash) {
         return res.json({ entities: [], updates: [], total: 0, note: 'no_changes' });
       }
+
+      // Лимит Free: Мир анализирует первые 30 глав (гейт ДО AI — токены не жжём)
+      const denial = await checkBibleChapterLimit(req.user.userId, projectId, chapterId);
+      if (denial) return res.status(402).json(denial);
 
       // ── Step 2: Determine extraction strategy ────────────────────────────────
       const approvedEntities = await db

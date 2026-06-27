@@ -11,6 +11,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { X, Upload, FileText, CheckCircle, ChevronDown, ChevronUp, AlertCircle, AlertTriangle } from 'lucide-react';
 import { getApiBaseUrl } from '../services/api';
+import { paywall } from '../store/paywall';
 import GenrePicker from './GenrePicker';
 
 const API = getApiBaseUrl();
@@ -180,6 +181,12 @@ export default function ImportModal({ onClose, onSuccess, initialFile }: ImportM
 
       const data = await res.json();
       if (!res.ok) {
+        // Лимит Free-тарифа → мягкий пейволл вместо инлайн-ошибки
+        if (res.status === 402 && typeof data?.code === 'string' && data.code.startsWith('PLAN_LIMIT')) {
+          paywall.show(data);
+          setStep('preview');
+          return;
+        }
         setCreateError(data.error ?? 'Ошибка при создании проекта');
         setStep('preview');
         return;

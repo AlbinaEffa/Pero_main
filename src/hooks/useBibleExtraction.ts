@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { api } from '../services/api';
+import { api, PlanLimitError } from '../services/api';
 import { track } from '../services/analytics';
 import { registerApproval } from '../components/AhaCelebration';
 import { Entity, BibleUpdateSuggestion } from '../components/editor/types';
@@ -99,7 +99,7 @@ export function useBibleExtraction(
       track('entities_extracted', { projectId, chapterId, count: entities.length });
       return { chapterSummary: data.chapterSummary };
     } catch (e) {
-      console.error('Extract failed:', e);
+      if (!(e instanceof PlanLimitError)) console.error('Extract failed:', e); // пейволл уже показан
       return {};
     } finally {
       setIsExtracting(false);
@@ -136,7 +136,7 @@ export function useBibleExtraction(
       });
       return { hasNew: entities.length > 0 || updates.length > 0, chapterSummary: data.chapterSummary };
     } catch (e) {
-      console.error('Recheck failed:', e);
+      if (!(e instanceof PlanLimitError)) console.error('Recheck failed:', e); // пейволл уже показан
       return { hasNew: false };
     } finally {
       setIsExtracting(false);

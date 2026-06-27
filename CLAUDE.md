@@ -134,6 +134,30 @@ Roadmap 90 дней: ~~лимиты AI~~ ✓ → биллинг (ЮKassa) → о
 - Фронтенд: `src/hooks/useAiQuota.ts`, индикатор остатка в CoauthorPanel,
   обработка 429 в useAiChat и InlineBubbleMenu.
 
+### Лимиты Free-тарифа — мягкий пейволл (P0.5, 27.06.2026)
+Бесплатный тариф ограничен; апселл на Перо Pro — модалкой, не блоком работы.
+- **`server/src/lib/planLimits.ts`** — `FREE_MAX_PROJECTS` (env, дефолт 1), `FREE_BIBLE_CHAPTERS`
+  (env, дефолт 30). План берётся из общего `resolveUserPlan(userId)` (вынесен из `quota.getQuotaStatus`:
+  pro/free + просроченный pro → free; деградирует к 'free' при ошибке БД). `checkProjectCreateLimit`
+  (считает АКТИВНЫЕ проекты — archived освобождают слот) и `checkBibleChapterLimit` (ранг главы по
+  `order`: число глав проекта с order ≤ этой; >30 → блок). Pro → всегда null (без лимита).
+- **Гейты возвращают 402 + machine-код ДО любого AI-вызова** (токены не жжём): создание проекта
+  (`projects.ts POST /` + `import.ts POST /create`) → `PLAN_LIMIT_PROJECTS`; «Прочитать»
+  (`bible.ts /extract` после ownership + `/recheck/chapter/:id` после no_changes-проверки) →
+  `PLAN_LIMIT_BIBLE_CHAPTERS`. Тело отказа: `{code, error(рус), limit, plan}`.
+- **Фронт — мягкий пейволл**: стор `src/store/paywall.ts` (крошечный `useSyncExternalStore`, БЕЗ
+  zustand — его нет в deps, а `show()` зовётся из api.ts вне дерева React). `services/api.request`
+  на 402 с кодом `PLAN_LIMIT_*` зовёт `paywall.show(denial)` ДО проброса `PlanLimitError` — поэтому
+  любой вызыватель (даже глотающий ошибку) всё равно показывает апселл. `PaywallDialog` смонтирован
+  в App (внутри Router — нужен navigate), бренд-модалка (замок, перки Pro, «Оформить Перо Pro» →
+  `/settings`). Catch-блоки (Dashboard handleCreate, useBibleExtraction extract/recheck) НЕ логируют
+  `PlanLimitError` (не сбой). Голый `fetch` в `ImportModal` обрабатывает 402 вручную (`paywall.show`);
+  `Login` (первый импорт нового аккаунта, 0 проектов) не трогаем — лимит там не сработает.
+- Проверено: бэкенд curl на тестовом free-юзере (3 активных проекта, книга 83 главы) — создание
+  проекта 402 `PLAN_LIMIT_PROJECTS`, extract/recheck главы ранга 41 → 402 `PLAN_LIMIT_BIBLE_CHAPTERS`
+  (AI не вызывался); фронт в preview — «Новая книга» → форма → «Создать проект» → модалка пейволла,
+  CTA увёл на `/settings`. tsc FE+BE зелёный.
+
 ### Биллинг ЮKassa (12.06.2026, код готов — нужны ключи и тест)
 - `server/src/lib/yookassa.ts` — минимальный клиент API v3 (без SDK).
 - `server/src/routes/billing.ts`: POST /checkout (создать платёж 599₽/30дн →
@@ -789,7 +813,7 @@ NB на будущее: Скелет-бит привязан к одному ш�
 ## Следующие шаги (на момент 12.06.2026)
 
 1. ~~Биллинг ЮKassa~~ ✓ код готов — осталось: ключи, вебхук в кабинете, тестовый платёж.
-2. Лимиты Free-тарифа (P0.5): 1 активный проект, библия до 30 глав, мягкий пейволл.
+2. ~~Лимиты Free-тарифа (P0.5): 1 активный проект, библия до 30 глав, мягкий пейволл.~~ ✅ 27.06 — см. раздел «Лимиты Free-тарифа».
 3. ~~Онбординг P0.4 — 10x «Перо читает книгу»~~ ✅ 12.06: маршрут /onboarding/:projectId
    (за флагом VITE_ONBOARDING_ENABLED, по умолчанию вкл), ReadingStep (поллинг jobs+bible
    2.5с, цитаты из рукописи, PARTIAL с ретраем) → WorldMapStep (письмо от Пера

@@ -6,6 +6,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import React, { useEffect, Suspense } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { PaywallDialog } from './components/PaywallDialog';
 
 // ── Eagerly loaded (small, always needed on any route) ────────────────────────
 import Landing  from './pages/Landing';
@@ -103,6 +104,7 @@ export default function App() {
             <Route path="/onboarding/:projectId"        element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           </Routes>
         </Suspense>
+        <PaywallDialog />
       </BrowserRouter>
     </AuthProvider>
   );

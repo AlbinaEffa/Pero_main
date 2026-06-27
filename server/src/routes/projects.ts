@@ -3,6 +3,7 @@ import { eq, and, asc, desc, inArray, sql } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import { db } from '../db/client.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { checkProjectCreateLimit } from '../lib/planLimits.js';
 
 const router = express.Router();
 
@@ -130,6 +131,9 @@ router.post('/', authenticateToken, async (req: any, res) => {
     if (!title || !title.trim()) {
       return res.status(400).json({ error: 'Title is required' });
     }
+
+    const denial = await checkProjectCreateLimit(req.user.userId);
+    if (denial) return res.status(402).json(denial);
 
     const { project, chapter } = await db.transaction(async (tx) => {
       const [project] = await tx

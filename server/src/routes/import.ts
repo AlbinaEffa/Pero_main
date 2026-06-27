@@ -13,6 +13,7 @@ import { parseStringPromise } from 'xml2js';
 import * as schema from '../db/schema.js';
 import { db } from '../db/client.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { checkProjectCreateLimit } from '../lib/planLimits.js';
 import { eq, and } from 'drizzle-orm';
 import { enqueueJobs } from '../jobs/queue.js';
 import { idempotency } from '../middleware/idempotency.js';
@@ -362,6 +363,9 @@ router.post('/create', authenticateToken, idempotency(), async (req: any, res) =
     if (!Array.isArray(chapters) || chapters.length === 0) {
       return res.status(400).json({ error: 'chapters must be a non-empty array' });
     }
+
+    const denial = await checkProjectCreateLimit(req.user.userId);
+    if (denial) return res.status(402).json(denial);
 
     const chaptersToInsert = (chapters as { title: string; content: string }[]).slice(0, 100);
 

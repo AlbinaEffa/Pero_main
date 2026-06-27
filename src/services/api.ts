@@ -1,3 +1,5 @@
+import { paywall, type PlanLimitDenial } from '../store/paywall';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3001/api';
 
 /** Returns the base API URL. Use this instead of hardcoding localhost in components. */
@@ -11,6 +13,16 @@ export class ApiError extends Error {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+  }
+}
+
+/** Отказ по лимиту тарифа (402 PLAN_LIMIT_*). Несёт denial для пейволла. */
+export class PlanLimitError extends ApiError {
+  denial: PlanLimitDenial;
+  constructor(denial: PlanLimitDenial) {
+    super(denial.error, 402);
+    this.name = 'PlanLimitError';
+    this.denial = denial;
   }
 }
 
@@ -36,6 +48,12 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       window.location.href = '/login';
     }
     const data = await res.json().catch(() => ({}));
+    // 402 PLAN_LIMIT_* = мягкий пейволл: показываем модалку ДО проброса ошибки,
+    // чтобы любой вызыватель (даже глотающий ошибку) всё равно показал апселл.
+    if (res.status === 402 && typeof data?.code === 'string' && data.code.startsWith('PLAN_LIMIT')) {
+      paywall.show(data as PlanLimitDenial);
+      throw new PlanLimitError(data as PlanLimitDenial);
+    }
     throw new ApiError(data.error || `HTTP ${res.status}`, res.status);
   }
 

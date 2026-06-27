@@ -16,7 +16,7 @@ import { ExportPanel } from '../components/ExportPanel';
 import GenrePicker from '../components/GenrePicker';
 import { splitGenres } from '../data/genres';
 
-import { api } from '../services/api';
+import { api, PlanLimitError } from '../services/api';
 import { useJobStatus } from '../hooks/useJobStatus';
 import { track } from '../services/analytics';
 
@@ -934,7 +934,8 @@ export default function Dashboard() {
       track('project_created', { genre, imported: false });
       navigate(`/editor/${data.project.id}/${data.chapter.id}`);
     } catch (err) {
-      console.error('Failed to create project:', err);
+      // PlanLimitError уже показал пейволл (services/api) — это не сбой, не шумим в консоль
+      if (!(err instanceof PlanLimitError)) console.error('Failed to create project:', err);
     }
   };
 

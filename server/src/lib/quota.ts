@@ -57,10 +57,13 @@ function nextUtcMidnight(): string {
  * Деградация: при любой ошибке БД (например, миграция ещё не применена)
  * возвращает «всё разрешено», чтобы квоты никогда не роняли продукт.
  */
-export async function getQuotaStatus(userId: string): Promise<QuotaStatus> {
-  const limits = getPlanLimits();
-
-  let plan: Plan = 'free';
+/**
+ * Тариф пользователя на текущий момент. Просроченный pro трактуется как free
+ * (подстраховка на случай, если даунгрейд биллинга не успел примениться).
+ * Деградирует к 'free' при любой ошибке БД — лимиты не должны ронять продукт.
+ * Общий источник для квот AI И лимитов тарифа (см. planLimits.ts).
+ */
+export async function resolveUserPlan(userId: string): Promise<Plan> {
   try {
     const { rows } = await pool.query<{ plan: string; plan_expires_at: Date | null }>(
       `SELECT plan, plan_expires_at FROM users WHERE id = $1`,
@@ -68,11 +71,17 @@ export async function getQuotaStatus(userId: string): Promise<QuotaStatus> {
     );
     const raw = rows[0]?.plan === 'pro' ? 'pro' : 'free';
     const expires = rows[0]?.plan_expires_at;
-    // Просроченный pro считаем free (даунгрейд применит биллинг, это подстраховка)
-    plan = raw === 'pro' && expires && expires.getTime() < Date.now() ? 'free' : raw;
+    return raw === 'pro' && expires && expires.getTime() < Date.now() ? 'free' : raw;
   } catch (e: any) {
     if (e?.code !== '42703') console.warn('[quota] failed to read user plan:', e?.message);
+    return 'free';
   }
+}
+
+export async function getQuotaStatus(userId: string): Promise<QuotaStatus> {
+  const limits = getPlanLimits();
+
+  const plan: Plan = await resolveUserPlan(userId);
 
   let used = 0;
   try {

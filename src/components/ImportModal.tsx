@@ -63,9 +63,13 @@ export default function ImportModal({ onClose, onSuccess, initialFile }: ImportM
   const [suggestedGenres, setSuggestedGenres] = useState<string[]>([]);
   const [genreLoading, setGenreLoading] = useState(false);
   const [color, setColor] = useState('#3A4F41');
+  const [suggestedColor, setSuggestedColor] = useState<string | null>(null); // цвет, подобранный Пером
+  const colorTouched = useRef(false); // автор сам выбрал цвет — не перетираем
   const [showAllChapters, setShowAllChapters] = useState(false);
 
-  /** Перо определяет жанр по первой главе (один дешёвый AI-вызов), предложения пред-выбираются. */
+  const pickColor = (c: string) => { colorTouched.current = true; setColor(c); };
+
+  /** Перо определяет жанр И тональность→цвет обложки по первой главе (один дешёвый AI-вызов). */
   const classifyGenre = async (sample: string, token: string) => {
     if (!sample.trim()) return;
     setGenreLoading(true);
@@ -82,7 +86,12 @@ export default function ImportModal({ onClose, onSuccess, initialFile }: ImportM
         setSuggestedGenres(g);
         setGenres(prev => [...new Set([...prev, ...g])]);
       }
-    } catch { /* жанр необязателен */ } finally {
+      // Цвет обложки по тону — только если автор ещё не выбрал вручную
+      if (typeof data.color === 'string' && PRESET_COLORS.includes(data.color)) {
+        setSuggestedColor(data.color);
+        if (!colorTouched.current) setColor(data.color);
+      }
+    } catch { /* жанр/цвет необязательны */ } finally {
       setGenreLoading(false);
     }
   };
@@ -126,6 +135,8 @@ export default function ImportModal({ onClose, onSuccess, initialFile }: ImportM
       setTitle('');
       setSuggestedGenres([]);
       setGenres([]);
+      setSuggestedColor(null);
+      colorTouched.current = false;
       setStep('preview');
       void classifyGenre(data.chapters?.[0]?.content ?? '', token);
     } catch {
@@ -342,23 +353,27 @@ export default function ImportModal({ onClose, onSuccess, initialFile }: ImportM
 
               {/* Color */}
               <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.6)', marginBottom: '8px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(30,45,31,0.6)', marginBottom: '8px' }}>
                   Цвет обложки
+                  {suggestedColor && color === suggestedColor && !colorTouched.current && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '9.5px', fontWeight: 600, letterSpacing: 0, textTransform: 'none', color: '#A14F44', background: 'rgba(161,79,68,0.1)', borderRadius: '5px', padding: '1px 6px' }}>✦ подобрал Перо</span>
+                  )}
                 </label>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   {PRESET_COLORS.map(c => (
                     <button
                       key={c}
-                      onClick={() => setColor(c)}
+                      onClick={() => pickColor(c)}
+                      title={c === suggestedColor ? 'Перо подобрало этот цвет по тону рукописи' : undefined}
                       style={{
                         width: '26px', height: '26px', borderRadius: '8px', background: c,
-                        border: `2.5px solid ${color === c ? '#1E2D1F' : 'transparent'}`,
+                        border: `2.5px solid ${color === c ? '#1E2D1F' : c === suggestedColor ? 'rgba(161,79,68,0.5)' : 'transparent'}`,
                         cursor: 'pointer', transition: 'transform 0.15s',
                         transform: color === c ? 'scale(1.15)' : 'scale(1)',
                       }}
                     />
                   ))}
-                  <input type="color" value={color} onChange={e => setColor(e.target.value)}
+                  <input type="color" value={color} onChange={e => pickColor(e.target.value)}
                     style={{ width: '26px', height: '26px', borderRadius: '8px', border: '1.5px solid rgba(30,45,31,0.1)', cursor: 'pointer', padding: '2px' }}
                   />
                 </div>

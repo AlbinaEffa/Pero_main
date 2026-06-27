@@ -19,7 +19,7 @@ import { enqueueJobs } from '../jobs/queue.js';
 import { idempotency } from '../middleware/idempotency.js';
 import { getAIProvider } from '../lib/aiProvider.js';
 import { guardChat } from '../lib/aiGuard.js';
-import { buildGenreClassifyPrompt, coerceGenres } from '../lib/extraction.js';
+import { buildGenreClassifyPrompt, coerceGenres, coerceMoodColor, cleanJsonResponse } from '../lib/extraction.js';
 
 const router = express.Router();
 
@@ -467,10 +467,14 @@ router.post('/classify-genre', authenticateToken, async (req: any, res) => {
       () => ai.generate({ contents: buildGenreClassifyPrompt(sample), temperature: 0 }),
       { userId: req.user.userId, route: 'import:classify_genre', circuit: 'extract', timeoutMs: 30_000 },
     );
-    res.json({ genres: coerceGenres(response.text ?? '[]') });
+    let parsed: any = {};
+    try { parsed = JSON.parse(cleanJsonResponse(response.text ?? '{}')); } catch { parsed = {}; }
+    const genres = coerceGenres(Array.isArray(parsed) ? parsed : parsed.genres);
+    const color = coerceMoodColor(parsed.mood);
+    res.json({ genres, color });
   } catch (err) {
-    // Жанр — необязательная подсказка; импорт продолжается без него
-    res.json({ genres: [] });
+    // Жанр/цвет — необязательная подсказка; импорт продолжается без них
+    res.json({ genres: [], color: null });
   }
 });
 

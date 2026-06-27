@@ -13,7 +13,8 @@ import { guardChat } from '../lib/aiGuard.js';
 import { getAIProvider } from '../lib/aiProvider.js';
 import * as schema from '../db/schema.js';
 import { db } from '../db/client.js';
-import { isValidUUID, cleanJsonResponse, buildThreadsPrompt, buildBeatmapPrompt, buildArcsPrompt, buildDeliveryPrompt, BEAT_TEMPLATES } from '../lib/extraction.js';
+import { isValidUUID, cleanJsonResponse } from '../lib/extraction.js';
+import { buildThreadsPrompt, buildBeatmapPrompt, buildArcsPrompt, buildDeliveryPrompt, BEAT_TEMPLATES } from '../lib/plotPrompts.js';
 
 const router = express.Router();
 const ai = getAIProvider();

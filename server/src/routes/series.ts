@@ -20,7 +20,8 @@ import { rateLimit } from '../middleware/rateLimiter.js';
 import { aiQuota } from '../lib/quota.js';
 import { guardChat } from '../lib/aiGuard.js';
 import { getAIProvider } from '../lib/aiProvider.js';
-import { normalizeNameRu, cleanJsonResponse, buildFranchiseXrayPrompt } from '../lib/extraction.js';
+import { normalizeNameRu, cleanJsonResponse } from '../lib/extraction.js';
+import { buildFranchiseXrayPrompt } from '../lib/plotPrompts.js';
 
 const router = express.Router();
 const ai = getAIProvider();

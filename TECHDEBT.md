@@ -41,7 +41,7 @@
 | `server/src/routes/bible.ts` | 1471 | ◐ −209: вынесены `incrementalRecheck` + `recheckPrompts` (чистые); остаток — роут-бог (извлечение+нестыковки+дедуп+merge+RAG) |
 | `src/components/editor/EditorCanvas.tsx` | 1660 | ⬜ тулбар+холст+сноски — кандидат на под-компоненты |
 | `src/pages/Dashboard.tsx` | 1351 | ◐ цвет→токены; инлайн-стили→Tailwind остаётся |
-| `server/src/lib/extraction.ts` | 1206 | ⬜ промпты+резолвер+схемы вперемешку |
+| `server/src/lib/extraction.ts` | 978 | ◐ −228: «сюжетные» промпты → `plotPrompts.ts`; остаток — извлечение-промпты+схема+резолвер |
 | `src/components/editor/StoryBiblePanel.tsx` | 1162 | ⬜ каталог+линзы+дедуп |
 - **Подход:** оппортунистически — выносить кластер, когда правишь область. Не самоцель (P3), но bible.ts/extraction.ts стоит разнести по доменам. **Priority:** P3 (фон).
 

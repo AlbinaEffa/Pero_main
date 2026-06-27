@@ -89,6 +89,11 @@ function diffParagraphs(oldText: string, newText: string): ParagraphDiff {
   return { changedParagraphs, changeRatio };
 }
 
+/** Хеши значимых абзацев текста — базлайн для инкрементального recheck. */
+function paragraphHashes(text: string): string[] {
+  return splitParagraphs(text).map(p => contentHash(p));
+}
+
 // ── AI prompts ────────────────────────────────────────────────────────────────
 
 
@@ -340,6 +345,7 @@ router.post('/extract',
             const updatePayload: Record<string, unknown> = {
               lastExtractedAt: new Date(),
               lastExtractedContentHash: contentHash(plainText),
+              lastExtractedParagraphHashes: paragraphHashes(plainText), // базлайн для инкрементального recheck
             };
             if (parsed.chapterSummary && isLowInfoChapterTitle(chapterTitle)) {
               updatePayload.title = parsed.chapterSummary.substring(0, 100);
@@ -405,6 +411,7 @@ router.post('/recheck/chapter/:chapterId',
           title:                     schema.chapters.title,
           projectId:                 schema.chapters.projectId,
           lastExtractedContentHash:  schema.chapters.lastExtractedContentHash,
+          lastExtractedParagraphHashes: schema.chapters.lastExtractedParagraphHashes,
         })
         .from(schema.chapters)
         .innerJoin(schema.projects, eq(schema.chapters.projectId, schema.projects.id))
@@ -412,7 +419,7 @@ router.post('/recheck/chapter/:chapterId',
 
       if (!chapterRows.length) return res.status(403).json({ error: 'Chapter not found or access denied' });
 
-      const { content, title: chapterTitle, projectId, lastExtractedContentHash: storedHash } = chapterRows[0];
+      const { content, title: chapterTitle, projectId, lastExtractedContentHash: storedHash, lastExtractedParagraphHashes: storedParaHashesRaw } = chapterRows[0];
       const plainText = stripHtml(content ?? '');
 
       if (!plainText) return res.json({ entities: [], updates: [], total: 0, note: 'empty' });
@@ -433,30 +440,28 @@ router.post('/recheck/chapter/:chapterId',
         .from(schema.storyEntities)
         .where(and(eq(schema.storyEntities.projectId, projectId), eq(schema.storyEntities.status, 'approved')));
 
-      let prompt: string;
-      let isIncremental = false;
+      const prompt = (storedHash || approvedEntities.length > 0)
+        ? buildRecheckPrompt(approvedEntities)
+        : BASE_EXTRACTION_PROMPT;
 
-      if (storedHash) {
-        // We have a previous extraction — compute paragraph diff
-        // We don't store the old plain text, but we can reconstruct "what changed"
-        // by diffing the current paragraphs against a hash-only snapshot.
-        // Since we only stored the overall hash (not per-paragraph), we fall back to
-        // full recheck but with the cheaper incremental prompt when change ratio is low.
-        //
-        // For a true paragraph diff we need the old text — use the stored hash as a signal
-        // that extraction was done before, then do a full recheck (with approved entity context).
-        // TODO: for future optimization, store per-paragraph hashes in a separate column.
-        prompt = buildRecheckPrompt(approvedEntities);
-      } else {
-        // First recheck ever — full extraction
-        prompt = approvedEntities.length > 0
-          ? buildRecheckPrompt(approvedEntities)
-          : BASE_EXTRACTION_PROMPT;
+      // Инкрементальный recheck: при наличии базлайна хешей абзацев и изменении МЕНЬШИНСТВА
+      // абзацев шлём модели ТОЛЬКО изменённые (экономия токенов). Иначе — полная глава.
+      const storedParaHashes: string[] = Array.isArray(storedParaHashesRaw) ? (storedParaHashesRaw as string[]) : [];
+      const curParas = splitParagraphs(plainText);
+      let aiText = plainText;
+      let isIncremental = false;
+      if (storedParaHashes.length > 0 && curParas.length >= 3) {
+        const storedSet = new Set(storedParaHashes);
+        const changed = curParas.filter(p => !storedSet.has(contentHash(p)));
+        if (changed.length > 0 && changed.length / curParas.length <= 0.5) {
+          aiText = changed.join('\n\n');
+          isIncremental = true;
+        }
       }
 
       const response = await guardChat(
         () => ai.generate({
-          contents: `${prompt}\n\nТекст главы:\n"""\n${plainText}\n"""`,
+          contents: `${prompt}${isIncremental ? '\n\n[Показаны ТОЛЬКО изменённые фрагменты главы — извлекай новое из них; остальное уже учтено.]' : ''}\n\nТекст главы:\n"""\n${aiText}\n"""`,
           temperature: 0.15,
           responseSchema: EXTRACTION_SCHEMA,
           responseSchemaName: 'entity_extraction',
@@ -483,6 +488,7 @@ router.post('/recheck/chapter/:chapterId',
         const updatePayload: Record<string, unknown> = {
           lastExtractedAt: new Date(),
           lastExtractedContentHash: currentHash,
+          lastExtractedParagraphHashes: curParas.map(p => contentHash(p)), // обновляем базлайн под след. recheck
         };
         if (parsed.chapterSummary && chapterTitle && /^Глава \d+$/.test(chapterTitle.trim())) {
           updatePayload.title = parsed.chapterSummary.substring(0, 100);

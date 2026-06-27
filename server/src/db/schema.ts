@@ -89,6 +89,11 @@ export const chapters = pgTable('chapters', {
    */
   lastExtractedContentHash: text('last_extracted_content_hash'),
   /**
+   * Хеши абзацев на момент последнего извлечения (jsonb-массив строк). Позволяет
+   * инкрементальный recheck: слать модели ТОЛЬКО изменённые абзацы (экономия токенов).
+   */
+  lastExtractedParagraphHashes: jsonb('last_extracted_paragraph_hashes'),
+  /**
    * Имя персонажа, от лица которого ведётся повествование в главе (POV). Определяется
    * при извлечении. null — третье лицо или POV не определён. Первое лицо «я» в главе
    * относится к этому персонажу; местоимения сущностями НЕ становятся.

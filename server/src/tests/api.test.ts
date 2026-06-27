@@ -10,7 +10,7 @@ import request from 'supertest';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pkg from 'pg';
 const { Pool } = pkg;
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 
 import { app } from '../app.js';
 import { users, projects, chapters, storyEntities, entityLinks, entityEvents, contradictionReports, contradictionIssues } from '../db/schema.js';
@@ -55,6 +55,10 @@ beforeAll(async () => {
   expect(resB.status, `Register B failed: ${JSON.stringify(resB.body)}`).toBe(201);
   ctx.tokenB = resB.body.token;
   ctx.userBId = resB.body.user.id;
+
+  // Тестовые юзеры → pro: лимит Free-тарифа (1 активный проект) не должен мешать
+  // многопроектным интеграционным тестам. Сами лимиты проверяются в planLimits.integration.test.ts.
+  await db.update(users).set({ plan: 'pro' }).where(inArray(users.id, [ctx.userAId, ctx.userBId]));
 
   // Create project + first chapter as user A
   const resP = await request(app)

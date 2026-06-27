@@ -14,8 +14,23 @@
   - server интеграция: `api.test.ts` (auth/ownership/bible) + `planLimits.integration.test.ts` (3: пейволл проекта/импорта) — реальная БД.
   - client: `editorUtils.test.tsx` (16) + `storyBibleDedup.test.ts` (9). vitest+jsdom подняты.
   - **Сразу окупилось:** полный прогон вскрыл латентную регрессию (Free-лимит ронял api.test.ts) — починено.
-- **🔴 Тесты не гоняются автоматически** — нет CI. Регрессии утекают (та самая латентная — пример). **Нужен GitHub Actions** на push/PR (vitest + tsc). **Effort:** S. **Priority:** P1 (главный недостающий кусок сетки).
-- **Осталось по покрытию:** quota (DB-мок/интеграция), компоненты-хуки, paragraph-diff recheck; **Playwright e2e** на петлю «импорт→чтение→нестыковка». **Effort:** M→L.
+- **✅ CI поднят (27.06):** `.github/workflows/ci.yml` на push/PR в develop/main — typecheck (client+server)
+  + **76 unit-тестов** (server `test:unit` 51 + client 25), зелёный. Регрессии больше не утекают молча.
+- **Осталось по тестам:** интеграционные (api/planLimits) пока ВНЕ CI — блокирует долг миграций ниже;
+  затем quota, компоненты-хуки, paragraph-diff; **Playwright e2e** на петлю «импорт→чтение→нестыковка».
+
+## 🔴 Миграции не реплеятся с нуля (прод-блокер бутстрапа)
+- **Симптом:** свежая БД через `runMigrations` (то же, что сервер при старте, и CI) падает на
+  `0001_memory_tables.sql`: `column "chapter_id" does not exist`. Корень: `0000`-снапшот (drizzle-kit)
+  создаёт `chat_history` БЕЗ `chapter_id`, а `0001_memory_tables` потом индексирует `chapter_id`
+  (его `CREATE TABLE IF NOT EXISTS` — no-op). dev-БД работает только потому, что строилась
+  инкрементально (исторический порядок ≠ алфавитный replay).
+- **Почему 🔴:** прод бутстрапится этим же `runMigrations` на ПУСТОЙ БД → **чистый деплой упал бы так же**.
+  Плюс блокирует интеграционный CI.
+- **Фикс:** прогнать replay на пустой БД и чинить по одной (минимум: в `0001_memory_tables` добавить
+  `ALTER TABLE chat_history ADD COLUMN IF NOT EXISTS chapter_id …` перед индексом — идемпотентно,
+  no-op на dev), итерировать до чистого прогона. Затем включить интеграционные тесты в CI.
+  **Effort:** M (возможно несколько итераций). **Priority:** P1 (прод-готовность).
 
 ## 🟠 Крупные файлы (дробление)
 | Файл | Строк | Статус |

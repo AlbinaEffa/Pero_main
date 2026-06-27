@@ -857,8 +857,6 @@ router.post('/:projectId/letter',
   rateLimit('bible:letter', 5, 60 * 60 * 1000),
   async (req: AuthedRequest, res) => {
     try {
-      if (!ai) return res.status(503).json({ error: 'AI is not configured' });
-
       const { projectId } = req.params;
       if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
 
@@ -887,6 +885,10 @@ router.post('/:projectId/letter',
       if (entities.length === 0) {
         return res.json({ letter: null, note: 'empty_bible' });
       }
+
+      // Провайдер нужен только для самой генерации — проверяем ПОСЛЕ ownership и пустой
+      // библии (те ветки AI не требуют; иначе среда без ключей даёт 503 на безобидном кейсе).
+      if (!ai) return res.status(503).json({ error: 'AI is not configured' });
 
       const counts = {
         characters: entities.filter(e => e.type === 'character').length,

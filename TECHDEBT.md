@@ -15,22 +15,22 @@
   - client: `editorUtils.test.tsx` (16) + `storyBibleDedup.test.ts` (9). vitest+jsdom подняты.
   - **Сразу окупилось:** полный прогон вскрыл латентную регрессию (Free-лимит ронял api.test.ts) — починено.
 - **✅ CI поднят (27.06):** `.github/workflows/ci.yml` на push/PR в develop/main — typecheck (client+server)
-  + **76 unit-тестов** (server `test:unit` 51 + client 25), зелёный. Регрессии больше не утекают молча.
-- **Осталось по тестам:** интеграционные (api/planLimits) пока ВНЕ CI — блокирует долг миграций ниже;
-  затем quota, компоненты-хуки, paragraph-diff; **Playwright e2e** на петлю «импорт→чтение→нестыковка».
+  + Postgres pgvector + миграции с нуля + **все тесты** (server 85 unit+интеграция, client 25), зелёный.
+  Регрессии больше не утекают молча.
+- **Осталось по тестам:** quota (DB-мок/интеграция), компоненты-хуки, paragraph-diff recheck;
+  **Playwright e2e** на петлю «импорт→чтение→нестыковка».
 
-## 🔴 Миграции не реплеятся с нуля (прод-блокер бутстрапа)
-- **Симптом:** свежая БД через `runMigrations` (то же, что сервер при старте, и CI) падает на
-  `0001_memory_tables.sql`: `column "chapter_id" does not exist`. Корень: `0000`-снапшот (drizzle-kit)
-  создаёт `chat_history` БЕЗ `chapter_id`, а `0001_memory_tables` потом индексирует `chapter_id`
-  (его `CREATE TABLE IF NOT EXISTS` — no-op). dev-БД работает только потому, что строилась
-  инкрементально (исторический порядок ≠ алфавитный replay).
-- **Почему 🔴:** прод бутстрапится этим же `runMigrations` на ПУСТОЙ БД → **чистый деплой упал бы так же**.
-  Плюс блокирует интеграционный CI.
-- **Фикс:** прогнать replay на пустой БД и чинить по одной (минимум: в `0001_memory_tables` добавить
-  `ALTER TABLE chat_history ADD COLUMN IF NOT EXISTS chapter_id …` перед индексом — идемпотентно,
-  no-op на dev), итерировать до чистого прогона. Затем включить интеграционные тесты в CI.
-  **Effort:** M (возможно несколько итераций). **Priority:** P1 (прод-готовность).
+## ✅ Миграции реплеятся с нуля — ПОЧИНЕНО (27.06, был прод-блокер бутстрапа)
+- **Был симптом:** свежая БД через `runMigrations` (= сервер при старте, прод-бутстрап, CI) не строила
+  схему — прод-деплой на пустую БД упал бы. Корень — дрейф `drizzle-kit push` (часть схемы создавалась
+  напрямую из schema.ts, МИМО трекаемых *.sql) + невалидный индекс + ордеринг.
+- **Что починено** (всё идемпотентно, no-op на dev/прод): `0006a` восстанавливает таблицу `story_entities`
+  (создавалась push'ем); `0006b` — колонки `users.password_hash`, `projects.status/color/genre` (push-дрейф);
+  `0005` — `DATE(timestamptz)`-индекс (не IMMUTABLE) → обычный `(user_id, created_at)`; `0001_memory_tables`
+  — guard `ADD COLUMN IF NOT EXISTS chapter_id` перед индексом.
+- **Проверка:** чистая БД → `runMigrations` → схема **колонка-в-колонку идентична dev**; все 85 серверных
+  тестов (вкл. api/planLimits) зелёные на свежей БД. CLI `npm run migrate` (`src/scripts/migrate.ts`).
+- **Правило на будущее:** новые миграции — replay-safe (`IF NOT EXISTS`), не пушить схему мимо *.sql.
 
 ## 🟠 Крупные файлы (дробление)
 | Файл | Строк | Статус |

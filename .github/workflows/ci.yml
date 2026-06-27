@@ -13,8 +13,29 @@ concurrency:
 
 jobs:
   test:
-    name: typecheck + unit tests
+    name: typecheck + tests
     runs-on: ubuntu-latest
+
+    # Postgres с pgvector — серверные интеграционные тесты (api/planLimits) бьют в реальную БД.
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: pero_admin
+          POSTGRES_PASSWORD: pero_pass
+          POSTGRES_DB: pero_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pero_admin -d pero_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://pero_admin:pero_pass@localhost:5432/pero_db
+      JWT_SECRET: ci-only-not-a-real-secret
+      # AI-ключи НЕ задаём: тесты спроектированы не звать AI (гейты до AI, ранние возвраты).
 
     steps:
       - uses: actions/checkout@v4
@@ -37,14 +58,18 @@ jobs:
       - name: Typecheck (client + server)
         run: npm run typecheck
 
-      - name: Server unit tests (без БД)
+      # Базовая миграция 0000 создаёт vector-колонки — расширение нужно ДО неё.
+      - name: Enable pgvector extension
+        run: PGPASSWORD=pero_pass psql -h localhost -U pero_admin -d pero_db -c "CREATE EXTENSION IF NOT EXISTS vector"
+
+      # Применяем миграции с нуля (тот же runMigrations, что сервер при старте и прод-бутстрап).
+      - name: Migrate DB
         working-directory: server
-        run: npm run test:unit
+        run: npm run migrate
+
+      - name: Server tests (unit + integration)
+        working-directory: server
+        run: npm test
 
       - name: Client tests
         run: npm test
-
-  # ── Интеграционные тесты (api/planLimits) бьют в реальную БД и пока НЕ в CI:
-  # миграции не реплеятся с нуля в алфавитном порядке (0000-снапшот vs 0001_memory_tables —
-  # chat_history без chapter_id, затем индекс по chapter_id падает). См. TECHDEBT «миграции».
-  # Запускать локально: cd server && npm test (нужен DATABASE_URL + Postgres+pgvector).

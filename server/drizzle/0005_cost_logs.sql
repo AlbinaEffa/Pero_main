@@ -11,9 +11,11 @@ CREATE TABLE IF NOT EXISTS cost_logs (
   created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Fast aggregation: total cost per user, per day
-CREATE INDEX IF NOT EXISTS idx_cost_logs_user_day
-  ON cost_logs (user_id, DATE(created_at) DESC);
+-- Обычный индекс по (user_id, created_at): quota.ts фильтрует диапазоном
+-- (created_at >= date_trunc('day', NOW())), функциональный DATE()-индекс не нужен
+-- и невалиден на timestamptz (DATE() не IMMUTABLE → ломал replay с нуля).
+CREATE INDEX IF NOT EXISTS idx_cost_logs_user_created
+  ON cost_logs (user_id, created_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_cost_logs_project
   ON cost_logs (project_id, created_at DESC);

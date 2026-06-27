@@ -15,6 +15,10 @@ CREATE TABLE IF NOT EXISTS chat_history (
   timestamp   TIMESTAMP   NOT NULL DEFAULT NOW()
 );
 
+-- Replay-safe: 0000-снапшот мог создать chat_history без chapter_id (исторический дрейф);
+-- гарантируем колонку до индекса. No-op, если она уже есть (dev/прод инкрементальные БД).
+ALTER TABLE chat_history ADD COLUMN IF NOT EXISTS chapter_id UUID REFERENCES chapters(id) ON DELETE SET NULL;
+
 -- Fast lookup by user+project+chapter in chronological order
 CREATE INDEX IF NOT EXISTS idx_chat_history_lookup
   ON chat_history (user_id, project_id, chapter_id, timestamp ASC);

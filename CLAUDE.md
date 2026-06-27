@@ -847,7 +847,13 @@ NB на будущее: Скелет-бит привязан к одному ш�
 
 ### Прочее
 - Миграции: plain SQL в `server/drizzle/*.sql`, применяются автоматически при старте
-  сервера (`server/src/db/migrate.ts`), трекинг в `_pero_migrations`.
+  сервера (`server/src/db/migrate.ts`), трекинг в `_pero_migrations`. CLI для CI/ручного
+  прогона: `cd server && npm run migrate` (тот же `runMigrations`). **Реплеятся с нуля**
+  (проверено 27.06: чистая БД → схема колонка-в-колонку как dev). Историю чинили: пробелы
+  от `drizzle-kit push` (таблица `story_entities` + колонки `users.password_hash`,
+  `projects.status/color/genre`) восстановлены идемпотентными `0006a`/`0006b`; невалидный
+  `DATE(timestamptz)`-индекс в 0005 заменён; `0001_memory_tables` дополнен guard'ом chapter_id.
+  **Новые миграции писать replay-safe** (`IF NOT EXISTS`, не зависеть от порядка push-дрейфа).
 - Rate limiting: in-memory per-user (`server/src/middleware/rateLimiter.ts`).
 - Фоновые джобы: таблица `jobs`, worker в том же процессе (`server/src/jobs/worker.ts`).
 

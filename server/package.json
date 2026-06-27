@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "test": "vitest run",
-    "test:unit": "vitest run src/tests/extraction.test.ts src/tests/html.test.ts",
+    "test:unit": "vitest run src/tests/extraction.test.ts src/tests/html.test.ts src/tests/incrementalRecheck.test.ts",
     "test:watch": "vitest",
     "migrate": "tsx src/scripts/migrate.ts",
     "db:generate": "drizzle-kit generate",

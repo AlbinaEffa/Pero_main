@@ -15,10 +15,12 @@
   - client: `editorUtils.test.tsx` (16) + `storyBibleDedup.test.ts` (9). vitest+jsdom подняты.
   - **Сразу окупилось:** полный прогон вскрыл латентную регрессию (Free-лимит ронял api.test.ts) — починено.
 - **✅ CI поднят (27.06):** `.github/workflows/ci.yml` на push/PR в develop/main — typecheck (client+server)
-  + Postgres pgvector + миграции с нуля + **все тесты** (server 85 unit+интеграция, client 25), зелёный.
+  + Postgres pgvector + миграции с нуля + **все тесты** (server **101** unit+интеграция, client 25), зелёный.
   Регрессии больше не утекают молча.
-- **Осталось по тестам:** quota (DB-мок/интеграция), компоненты-хуки, paragraph-diff recheck;
-  **Playwright e2e** на петлю «импорт→чтение→нестыковка».
+- **✅ Расширено (27.06):** `incrementalRecheck.test.ts` (13: split/hash/решение инкремента — экономия токенов)
+  + лимит глав библии в `planLimits.integration.test.ts` (3: граница ранга 30/31 + эндпоинт 402 до AI).
+- **Осталось по тестам:** quota (DB-мок/интеграция), компоненты-хуки; **Playwright e2e** на петлю
+  «импорт→чтение→нестыковка».
 
 ## ✅ Миграции реплеятся с нуля — ПОЧИНЕНО (27.06, был прод-блокер бутстрапа)
 - **Был симптом:** свежая БД через `runMigrations` (= сервер при старте, прод-бутстрап, CI) не строила
@@ -36,7 +38,7 @@
 | Файл | Строк | Статус |
 |---|---|---|
 | `src/pages/Editor.tsx` | 2349 | ◐ −350 (3 хука вынесены); дальше убывающая отдача |
-| `server/src/routes/bible.ts` | 1680 | ⬜ роут-бог: извлечение+нестыковки+дедуп+merge+RAG — можно разбить на сервисы |
+| `server/src/routes/bible.ts` | 1471 | ◐ −209: вынесены `incrementalRecheck` + `recheckPrompts` (чистые); остаток — роут-бог (извлечение+нестыковки+дедуп+merge+RAG) |
 | `src/components/editor/EditorCanvas.tsx` | 1660 | ⬜ тулбар+холст+сноски — кандидат на под-компоненты |
 | `src/pages/Dashboard.tsx` | 1351 | ◐ цвет→токены; инлайн-стили→Tailwind остаётся |
 | `server/src/lib/extraction.ts` | 1206 | ⬜ промпты+резолвер+схемы вперемешку |

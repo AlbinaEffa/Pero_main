@@ -1,5 +1,6 @@
 import express from 'express';
-import { createHash } from 'crypto';
+import { contentHash, paragraphHashes, computeIncrementalText } from '../lib/incrementalRecheck.js';
+import { buildRecheckPrompt, buildBatchRecheckPrompt } from '../lib/recheckPrompts.js';
 import { eq, and, ne, inArray, desc, sql } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import { db } from '../db/client.js';
@@ -47,213 +48,9 @@ async function assertEntityOwnership(entityId: string, userId: string): Promise<
 
 // ── Content hashing & diff ────────────────────────────────────────────────────
 
-/**
- * Short SHA-256 hash of plain text. 16 hex chars = 64 bits of collision resistance,
- * plenty for change detection. Stored in chapters.lastExtractedContentHash.
- */
-function contentHash(text: string): string {
-  return createHash('sha256').update(text, 'utf8').digest('hex').slice(0, 16);
-}
-
-/**
- * Split plain text into non-trivial paragraphs (strips blanks & very short lines).
- */
-function splitParagraphs(text: string): string[] {
-  return text
-    .split(/\n{2,}|\r\n{2,}/)
-    .map(p => p.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim())
-    .filter(p => p.length > 30);
-}
-
-/** Хеши значимых абзацев текста — базлайн для инкрементального recheck. */
-function paragraphHashes(text: string): string[] {
-  return splitParagraphs(text).map(p => contentHash(p));
-}
-
-// ── AI prompts ────────────────────────────────────────────────────────────────
-
-
-/**
- * Recheck prompt — tells the AI about already-approved entities.
- * Key difference from old version: explicitly asks AI to SKIP entities with no new info,
- * which avoids noisy "same description" update suggestions.
- */
-function buildRecheckPrompt(
-  approvedEntities: { name: string; type: string; description: string | null }[]
-): string {
-  if (approvedEntities.length === 0) return BASE_EXTRACTION_PROMPT;
-
-  const list = approvedEntities
-    .map(e => `• ${e.name} (${e.type}): ${e.description ?? '—'}`)
-    .join('\n');
-
-  return `Ты — литературный редактор, обновляющий справочник произведения.
-
-Уже одобренные сущности проекта:
-${list}
-
-ЗАДАЧА — проанализировать текст главы:
-
-1. Для ИЗВЕСТНЫХ сущностей (из списка выше):
-   • Если глава раскрывает НОВЫЙ факт, уточнение или противоречие → верни сущность с обновлённым описанием.
-   • Если новых деталей нет → НЕ включай эту сущность в ответ вообще.
-   • Не предлагай обновление ради косметических изменений формулировки.
-
-2. Для НОВЫХ сущностей (которых нет в списке):
-   • Добавь по общим правилам (только именованные, только с конкретными деталями).
-
-ТРЕБОВАНИЯ:
-• Описание — строго из текста. Никаких домыслов.
-• Используй каноническое имя из списка при совпадении (не новую форму).
-• Если ничего нового нет — верни пустой массив entities.
-• Для каждой сущности добавь significance ("major"/"moderate"/"minor") и attributes (только подтверждённые текстом поля).
-  Для character доступны также: background (предыстория), motivations (мотивация),
-  speech (манера речи), secrets (тайны), plotRelevance (зачем сюжету).
-• Для character добавь events: 0–3 сюжетно значимых события персонажа В ЭТОЙ главе
-  ({ "title": "2–4 слова", "description": "одно предложение", "eventType": "conflict"|"relationship"|"status"|"revelation"|"other",
-     "timeLabel": "маркер времени из текста, если есть («за год до», «той же ночью»), иначе опусти",
-     "timeHint": "'present' | 'flashback' | 'past' | 'future' (по умолчанию 'present')" }).
-• Добавь relations: связи между сущностями (из списка или новыми), ЯВНО подтверждённые текстом:
-  [{ "from": "Имя", "to": "Имя", "relation": "краткий тип («мать», «наставник», «живёт в»)" }].
-  Для ЛОКАЦИЙ добавляй вложенность: relation «находится в»/«часть» (меньшее место → большее).
-
-Ответ — строго JSON, без markdown. Имена и описания бери ТОЛЬКО из текста
-(не подставляй слова «Имя», «Название», «Описание» как значения).
-Структура (пример на вымышленных данных, не копируй):
-{
-  "entities": [
-    {
-      "type": "character",
-      "name": "Кейлен",
-      "description": "Капитан стражи. В этой главе раскрывает свой план побега.",
-      "significance": "major",
-      "attributes": { "appearance": "светловолосый", "role": "капитан стражи" },
-      "events": [{ "title": "Раскрытие плана", "description": "Делится планом побега с сестрой.", "eventType": "conflict" }]
-    }
-  ],
-  "relations": [{ "from": "Кейлен", "to": "Мира", "relation": "союзник" }],
-  "chapterSummary": "Рабочее название главы (2–4 слова)"
-}`;
-}
-
-/**
- * Incremental recheck prompt — only the CHANGED paragraphs are sent.
- * Much cheaper: ~10–20% of the tokens of a full recheck for small edits.
- */
-function buildIncrementalRecheckPrompt(
-  approvedEntities: { name: string; type: string; description: string | null }[],
-  changedParagraphs: string[]
-): string {
-  const list = approvedEntities.length > 0
-    ? approvedEntities.map(e => `• ${e.name} (${e.type}): ${e.description ?? '—'}`).join('\n')
-    : '(нет одобренных сущностей)';
-
-  const paragraphsText = changedParagraphs
-    .map((p, i) => `[Фрагмент ${i + 1}]\n${p}`)
-    .join('\n\n');
-
-  return `Ты — литературный редактор, обновляющий справочник произведения.
-
-В главу были внесены правки. Ниже — ТОЛЬКО изменённые или добавленные фрагменты текста:
-
-${paragraphsText}
-
-Уже одобренные сущности проекта:
-${list}
-
-ЗАДАЧА — проверить изменённые фрагменты:
-1. Для ИЗВЕСТНЫХ сущностей: если изменения раскрывают новый факт → предложи обновление описания.
-2. Для НОВЫХ сущностей: если в изменениях появилась новая именованная сущность с деталями → добавь.
-3. Если изменения не затрагивают сущности → верни пустой массив entities.
-
-НЕ анализируй то, что не изменилось. Описание — строго из текста.
-Для каждой сущности добавь significance ("major"/"moderate"/"minor") и attributes (только подтверждённые текстом поля).
-Для character добавь events (0–3 события персонажа в изменённых фрагментах; если есть
-маркер времени — timeLabel + timeHint 'flashback'/'present') и relations (связи, явно
-подтверждённые текстом; для локаций — вложенность «находится в»/«часть») — по общим правилам.
-
-Ответ — строго JSON, без markdown. Имена/описания — ТОЛЬКО из текста
-(слова «Имя», «Название», «Описание» как значения не подставляй).
-Структура (пример на вымышленных данных, не копируй):
-{
-  "entities": [
-    {
-      "type": "character",
-      "name": "Кейлен",
-      "description": "Капитан стражи; в правке упомянут новый шрам на руке.",
-      "significance": "moderate",
-      "attributes": { "appearance": "шрам на правой руке" },
-      "events": []
-    }
-  ],
-  "relations": [],
-  "chapterSummary": null
-}`;
-}
-
-/**
- * Batch recheck prompt — analyze multiple chapters in a single API call.
- * Reduces N API calls to ceil(N / BATCH_SIZE) calls.
- */
-function buildBatchRecheckPrompt(
-  approvedEntities: { name: string; type: string; description: string | null }[],
-  chapters: { chapterId: string; title: string; plainText: string }[]
-): string {
-  const list = approvedEntities.length > 0
-    ? approvedEntities.map(e => `• ${e.name} (${e.type}): ${e.description ?? '—'}`).join('\n')
-    : '(нет одобренных сущностей)';
-
-  const chapterBlocks = chapters.map(ch =>
-    `=== ГЛАВА: «${ch.title}» | id: ${ch.chapterId} ===\n${ch.plainText}`
-  ).join('\n\n');
-
-  return `Ты — литературный редактор, обновляющий справочник произведения.
-
-Уже одобренные сущности проекта:
-${list}
-
-Проанализируй следующие главы. Для каждой главы:
-1. Найди НОВЫЕ факты об известных сущностях → предложи обновление описания.
-2. Найди новые именованные сущности с деталями → добавь.
-3. Если нет ничего нового — верни пустой массив entities для этой главы.
-
-Критерии качества:
-• Описание — только из текста. Никаких домыслов.
-• Не предлагай косметические переформулировки.
-• Для известных сущностей: включай ТОЛЬКО если есть новая информация.
-• Для каждой сущности добавь significance ("major"/"moderate"/"minor") и attributes (только подтверждённые текстом поля).
-  Для character доступны также: background, motivations, speech, secrets, plotRelevance.
-• Для character добавь events: 0–3 сюжетно значимых события персонажа в данной главе
-  ({ "title": "2–4 слова", "description": "одно предложение", "eventType": "conflict"|"relationship"|"status"|"revelation"|"other",
-     "timeLabel": "маркер времени из текста, если есть, иначе опусти", "timeHint": "'present'|'flashback'|'past'|'future'" }).
-• Для каждой главы добавь relations: связи между сущностями, ЯВНО подтверждённые текстом
-  ([{ "from": "Имя", "to": "Имя", "relation": "краткий тип" }]). Для локаций — вложенность «находится в»/«часть».
-
-${chapterBlocks}
-
-Ответ — строго JSON, без markdown. Имена/описания — ТОЛЬКО из текста глав
-(слова «Имя», «Название», «Описание» как значения не подставляй).
-Структура (пример на вымышленных данных, не копируй):
-{
-  "chapters": [
-    {
-      "chapterId": "uuid-главы",
-      "entities": [
-        {
-          "type": "character",
-          "name": "Кейлен",
-          "description": "Капитан стражи. Принимает командование гарнизоном.",
-          "significance": "major",
-          "attributes": { "appearance": "светловолосый", "role": "капитан стражи" },
-          "events": [{ "title": "Побег из крепости", "description": "Сбегает через подземный ход.", "eventType": "status" }]
-        }
-      ],
-      "relations": [{ "from": "Кейлен", "to": "Мира", "relation": "сестра" }],
-      "chapterSummary": "2–4 слова или null"
-    }
-  ]
-}`;
-}
+// contentHash / splitParagraphs / paragraphHashes / computeIncrementalText → ../lib/incrementalRecheck.ts
+// buildRecheckPrompt / buildBatchRecheckPrompt → ../lib/recheckPrompts.ts
+// (buildIncrementalRecheckPrompt удалён — был мёртвым кодом: инкремент шлёт BASE-промпт инлайн)
 
 
 // ── POST /api/bible/extract ───────────────────────────────────────────────────
@@ -264,8 +61,6 @@ router.post('/extract',
   aiQuota,
   async (req: AuthedRequest, res) => {
     try {
-      if (!ai) return res.status(503).json({ error: 'AI is not configured' });
-
       const { chapterContent, projectId, chapterId } = req.body;
       if (!chapterContent) return res.status(400).json({ error: 'chapterContent is required' });
 
@@ -280,6 +75,10 @@ router.post('/extract',
           if (denial) return res.status(402).json(denial);
         }
       }
+
+      // Провайдер нужен только для самого извлечения — после ownership/лимита (они AI не требуют;
+      // иначе среда без ключей даёт 503 раньше, чем сработает пейволл за лимит глав).
+      if (!ai) return res.status(503).json({ error: 'AI is not configured' });
 
       const plainText = stripHtml(chapterContent);
 
@@ -423,17 +222,7 @@ router.post('/recheck/chapter/:chapterId',
       // Инкрементальный recheck: при наличии базлайна хешей абзацев и изменении МЕНЬШИНСТВА
       // абзацев шлём модели ТОЛЬКО изменённые (экономия токенов). Иначе — полная глава.
       const storedParaHashes: string[] = Array.isArray(storedParaHashesRaw) ? (storedParaHashesRaw as string[]) : [];
-      const curParas = splitParagraphs(plainText);
-      let aiText = plainText;
-      let isIncremental = false;
-      if (storedParaHashes.length > 0 && curParas.length >= 3) {
-        const storedSet = new Set(storedParaHashes);
-        const changed = curParas.filter(p => !storedSet.has(contentHash(p)));
-        if (changed.length > 0 && changed.length / curParas.length <= 0.5) {
-          aiText = changed.join('\n\n');
-          isIncremental = true;
-        }
-      }
+      const { aiText, isIncremental } = computeIncrementalText(plainText, storedParaHashes);
 
       const response = await guardChat(
         () => ai.generate({
@@ -464,7 +253,7 @@ router.post('/recheck/chapter/:chapterId',
         const updatePayload: Record<string, unknown> = {
           lastExtractedAt: new Date(),
           lastExtractedContentHash: currentHash,
-          lastExtractedParagraphHashes: curParas.map(p => contentHash(p)), // обновляем базлайн под след. recheck
+          lastExtractedParagraphHashes: paragraphHashes(plainText), // обновляем базлайн под след. recheck
         };
         if (parsed.chapterSummary && chapterTitle && /^Глава \d+$/.test(chapterTitle.trim())) {
           updatePayload.title = parsed.chapterSummary.substring(0, 100);

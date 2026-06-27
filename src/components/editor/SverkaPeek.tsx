@@ -11,7 +11,7 @@ import { api } from '../../services/api';
 import { Entity } from './types';
 import { findDuplicateGroups } from './StoryBiblePanel';
 
-interface Issue { id: string; chapterId: string | null; issue: string; quote: string | null; severity: string; status: string }
+interface Issue { id: string; chapterId: string | null; issue: string; quote: string | null; severity: string; status: string; kind?: string }
 interface Thread { id: string; title: string; resolved: boolean; chapterIds: string[] }
 
 export function SverkaPeek({ projectId, chapterId, scope, onJumpToQuote, onOpenThreads, onChanged }: {
@@ -28,6 +28,7 @@ export function SverkaPeek({ projectId, chapterId, scope, onJumpToQuote, onOpenT
   const [merging, setMerging] = useState(false);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [dupsOpen, setDupsOpen] = useState(false); // дубли свёрнуты по умолчанию — рельс не стена
+  const [devsOpen, setDevsOpen] = useState(false); // «развитие» свёрнуто — спокойный поток, не алярм
 
   const reload = () => {
     Promise.all([
@@ -39,12 +40,16 @@ export function SverkaPeek({ projectId, chapterId, scope, onJumpToQuote, onOpenT
   useEffect(() => { if (projectId) reload(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [projectId, chapterId, scope]);
 
   const chapterMode = scope === 'chapter';
-  const open = issues.filter(i => i.status === 'open');
+  // Два потока классификатора: нестыковки (алярм, красный) vs «развитие» (спокойный, серо-синий).
+  const open = issues.filter(i => i.status === 'open' && i.kind !== 'development');
   const here = (chapterMode ? open.filter(i => i.chapterId === chapterId) : open).slice(0, chapterMode ? 3 : 8);
+  const devs = issues
+    .filter(i => i.status === 'open' && i.kind === 'development' && (chapterMode ? i.chapterId === chapterId : true))
+    .slice(0, chapterMode ? 3 : 6);
   const guns = threads.filter(t => !t.resolved && (chapterMode ? (chapterId && (t.chapterIds ?? []).includes(chapterId)) : true)).slice(0, chapterMode ? 2 : 6);
   // Дубли — находка book-уровня: показываем на грани «Книга/Серия», не в главе.
   const dups = chapterMode ? [] : findDuplicateGroups(entities).filter(g => !dismissed.has(g.map(e => e.id).sort().join('|')));
-  const total = here.length + guns.length + dups.length;
+  const total = here.length + guns.length + dups.length + devs.length;
   if (!chapterId && chapterMode) return null;
   if (total === 0) return null;
 
@@ -121,6 +126,29 @@ export function SverkaPeek({ projectId, chapterId, scope, onJumpToQuote, onOpenT
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+        {devs.length > 0 && (
+          <div className="bg-white rounded-lg px-2.5 py-2">
+            <button onClick={() => setDevsOpen(v => !v)} className="flex items-center gap-1.5 w-full text-left text-[12px] text-[#54627F] font-medium hover:text-[#3f4c63]">
+              {devsOpen ? <ChevronDown size={12} className="flex-shrink-0" /> : <ChevronRight size={12} className="flex-shrink-0" />}
+              Развитие · {devs.length}
+              <span className="ml-auto text-[10px] font-normal text-[#1e2d1f]/35">не ошибка</span>
+            </button>
+            <div className={`flex-col gap-1.5 mt-1.5 ${devsOpen ? 'flex' : 'hidden'}`}>
+              {devs.map(d => (
+                <div key={d.id} className="flex items-start gap-2 rounded-md bg-[#54627F]/[0.05] px-2 py-1.5">
+                  <button
+                    onClick={() => d.quote && d.chapterId && onJumpToQuote(d.chapterId, d.quote)}
+                    className="min-w-0 flex-1 text-left text-[11.5px] text-[#1e2d1f]/75 leading-snug hover:text-[#54627F] transition-colors"
+                    title={d.quote ? 'Показать в тексте' : undefined}
+                  >
+                    {d.issue}
+                  </button>
+                  <button onClick={() => dismissIssue(d.id)} title="Убрать из развития" className="flex-shrink-0 text-[10.5px] font-medium text-[#1e2d1f]/45 hover:text-[#54627F] hover:bg-[#54627F]/10 rounded px-1.5 py-0.5 transition-colors mt-px">Скрыть</button>
+                </div>
+              ))}
             </div>
           </div>
         )}

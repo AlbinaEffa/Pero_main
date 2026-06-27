@@ -209,6 +209,9 @@ export const contradictionIssues = pgTable('contradiction_issues', {
   issue:        text('issue').notNull(),
   quote:        text('quote'),   // точная конфликтная фраза из текста главы (для подсветки)
   severity:     text('severity').notNull().default('medium'), // low | medium | high
+  // Поток: 'contradiction' = твёрдый конфликт (алярм, красный) | 'development' = развитие/раскрытие
+  // (спокойный поток, не ошибка). Классификатор даёт модели «карман» вместо ложной тревоги.
+  kind:         text('kind').notNull().default('contradiction'),
   status:       text('status').notNull().default('open'),     // open | dismissed
   createdAt:    timestamp('created_at').defaultNow().notNull(),
 });

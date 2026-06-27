@@ -368,6 +368,7 @@ async function handleScanContradictions(
           issue: (it.issue.trim() + (it.canon && String(it.canon).trim() ? ` · Канон: ${String(it.canon).trim()}` : '')).slice(0, 1000),
           quote: (typeof it.quote === 'string' ? it.quote.trim().slice(0, 300) : '') || null,
           severity: VALID_SEVERITY.has(it.severity) ? it.severity : 'medium',
+          kind: it.kind === 'development' ? 'development' : 'contradiction',
           status: 'open' as const,
         }));
       if (rows.length > 0) await db.insert(schema.contradictionIssues).values(rows);

@@ -646,8 +646,11 @@ export default function Editor() {
   }, [projectId]);
 
   // Отчёт о противоречиях (полный скан P1.2) — для подсветки конкретных фраз в тексте (B2).
-  type ScanIssue = { id: string; chapterId: string | null; entityName: string | null; issue: string; quote: string | null; severity: string; status: string };
+  type ScanIssue = { id: string; chapterId: string | null; entityName: string | null; issue: string; quote: string | null; severity: string; status: string; kind?: string };
   const [contradictionIssues, setContradictionIssues] = useState<ScanIssue[]>([]);
+  // Два потока классификатора: алярм (нестыковки) vs спокойное «развитие». Развитие НЕ тревожит
+  // (не красит героя конфликтным, не идёт в гаттер/бейдж/подсветку); видно отдельным потоком в линзе.
+  const realContradictions = useMemo(() => contradictionIssues.filter(i => i.kind !== 'development'), [contradictionIssues]);
   // Счётчик «провисают» для Сводки: значимые сущности с 0–1 связью (как в линзе «Связи»).
   const danglingCount = useMemo(() => {
     const deg = new Map<string, number>();
@@ -682,7 +685,7 @@ export default function Editor() {
   // сворачиваем спутник, освобождая правое поле под гаттер. Делаем это ОДИН раз на главу
   // (ref по chapterId): если автор потом сам откроет спутник, не навязываемся повторно при
   // добавлении новых комментариев. На смене главы — снова можем войти в режим.
-  const hasGutterItems = comments.length > 0 || contradictionIssues.some(i => i.chapterId === chapterId && i.quote);
+  const hasGutterItems = comments.length > 0 || realContradictions.some(i => i.chapterId === chapterId && i.quote);
   // Спутник «Перо» и поле комментариев НЕ конфликтуют: спутником управляет автор (открыл/свернул),
   // а комментарии подстраиваются — гаттер на полях, когда спутник свёрнут; иначе инлайн-поповер.
   // Никакого авто-сворачивания «под комментарий» (раньше это дралось со спутником).
@@ -766,11 +769,11 @@ export default function Editor() {
   // Единый слой полей (Фаза 3): твои комментарии (author) + нестыковки Перо текущей главы (pero).
   const gutterItems = useMemo<GutterItem[]>(() => {
     const mine: GutterItem[] = comments.map(c => ({ id: c.id, source: 'author', body: c.body, quote: c.quote, resolved: c.resolved, replies: c.replies ?? [] }));
-    const pero: GutterItem[] = contradictionIssues
+    const pero: GutterItem[] = realContradictions
       .filter(i => i.chapterId === chapterId && i.quote)
       .map(i => ({ id: i.id, source: 'pero', body: i.issue, quote: i.quote!, entityName: i.entityName, severity: i.severity }));
     return [...mine, ...pero];
-  }, [comments, contradictionIssues, chapterId]);
+  }, [comments, realContradictions, chapterId]);
 
   // Отклонить одну нестыковку по id (ложное срабатывание) — для линзы «Нестыковки».
   const dismissContradictionIssue = useCallback(async (issueId: string) => {
@@ -1351,11 +1354,12 @@ export default function Editor() {
     if (!editor) return;
     const names = allApprovedEntities.filter(e => contradictions.has(e.id)).map(e => e.name);
     // B2: точные конфликтные фразы из отчёта по текущей главе — подсвечиваем их, а не только имена.
-    const quotes = contradictionIssues.filter(i => i.chapterId === chapterId && i.quote).map(i => i.quote!);
+    // Только нестыковки (алярм); «развитие» — спокойный поток, текст не подчёркиваем.
+    const quotes = realContradictions.filter(i => i.chapterId === chapterId && i.quote).map(i => i.quote!);
     try {
       editor.view.dispatch(editor.view.state.tr.setMeta(contradictionHighlightKey, { terms: [...quotes, ...names] }));
     } catch { /* редактор ещё не готов — без подсветки */ }
-  }, [editor, contradictions, allApprovedEntities, chapterId, isLoadingContent, contradictionIssues]);
+  }, [editor, contradictions, allApprovedEntities, chapterId, isLoadingContent, realContradictions]);
 
   // B1: проактивный нудж разнописи имени. Список известных имён (+ алиасы) для сверки при письме.
   const nudgeNames = useMemo(() => {
@@ -2521,7 +2525,7 @@ export default function Editor() {
             seriesHandoff={seriesHandoff}
             onOpenSeriesWorld={() => projectSeriesId && navigate(`/series/${projectSeriesId}/world`)}
             summaryFindings={suggestions.length}
-            summaryContradictions={contradictionIssues.filter(i => i.status !== 'dismissed').length}
+            summaryContradictions={realContradictions.filter(i => i.status !== 'dismissed').length}
             summaryDangling={danglingCount}
             onOpenSummaryLens={openWorldAtLens}
             projectId={projectId}

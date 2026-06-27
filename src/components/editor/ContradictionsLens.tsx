@@ -15,6 +15,8 @@ export interface ContradictionIssue {
   quote: string | null;
   severity: string;       // low | medium | high
   status: string;
+  /** 'contradiction' (алярм) | 'development' (спокойное развитие/раскрытие). */
+  kind?: string;
 }
 
 const SEVERITY: Record<string, { label: string; color: string }> = {
@@ -51,7 +53,11 @@ export function ContradictionsLens({ issues, chapters, entities, scanState, onSc
   };
   const entityType = (name: string | null) => entities.find(e => e.name.trim().toLowerCase() === (name ?? '').trim().toLowerCase())?.type;
 
-  const filtered = sevFilter === 'all' ? issues : issues.filter(i => i.severity === sevFilter);
+  // Два потока: нестыковки (алярм) и «развитие» (спокойное раскрытие — не ошибка).
+  const real = issues.filter(i => i.kind !== 'development');
+  const devs = issues.filter(i => i.kind === 'development');
+
+  const filtered = sevFilter === 'all' ? real : real.filter(i => i.severity === sevFilter);
 
   // Группировка по герою ИЛИ по главе; сортировка групп по самой острой нестыковке.
   const groups = new Map<string, ContradictionIssue[]>();
@@ -66,7 +72,7 @@ export function ContradictionsLens({ issues, chapters, entities, scanState, onSc
     .map(([key, list]) => ({ key, list: [...list].sort((a, b) => (SEV_RANK[a.severity] ?? 1) - (SEV_RANK[b.severity] ?? 1)) }))
     .sort((a, b) => (SEV_RANK[a.list[0].severity] ?? 1) - (SEV_RANK[b.list[0].severity] ?? 1));
 
-  const sevCount = (s: string) => issues.filter(i => i.severity === s).length;
+  const sevCount = (s: string) => real.filter(i => i.severity === s).length;
   const running = scanState?.status === 'running';
 
   return (
@@ -117,7 +123,7 @@ export function ContradictionsLens({ issues, chapters, entities, scanState, onSc
 
       {/* Список */}
       <div className="flex-1 overflow-y-auto -mx-1 px-1">
-        {issues.length === 0 ? (
+        {real.length === 0 ? (
           <div className="flex flex-col items-center justify-center text-center py-16">
             <div className="w-14 h-14 rounded-2xl bg-[#4A5D4E]/8 flex items-center justify-center mb-4"><Check size={26} className="text-[#4A5D4E]" /></div>
             <p className="text-[14px] text-[#1e2d1f]/60 max-w-[260px] leading-relaxed">{running ? 'Перо читает книгу…' : 'Перо не нашёл противоречий с Миром. Запусти проверку после правок.'}</p>
@@ -184,6 +190,34 @@ export function ContradictionsLens({ issues, chapters, entities, scanState, onSc
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Спокойный поток «Развитие» — раскрытие/рост героя, НЕ ошибка. Отдельно от алярма. */}
+        {devs.length > 0 && (
+          <div className="mt-6 pt-4 border-t border-[#1e2d1f]/8">
+            <div className="flex items-center gap-1.5 mb-1 text-[#54627F] font-semibold text-[12px]">
+              <ArrowRight size={13} /> Развитие · {devs.length}
+            </div>
+            <p className="text-[11.5px] text-[#1e2d1f]/45 mb-3 leading-snug">Перо заметило раскрытие или рост героя — это не нестыковка, просто для сверки с замыслом.</p>
+            <div className="space-y-2.5">
+              {devs.map(d => (
+                <div key={d.id} className="rounded-lg bg-[#54627F]/[0.05] px-2.5 py-2">
+                  <div className="flex items-start gap-2">
+                    <span className="text-[13px] text-[#1e2d1f]/85 leading-snug flex-1">
+                      {d.entityName && <><button onClick={() => onOpenEntity(d.entityName!)} className="font-semibold hover:underline">{d.entityName}:</button>{' '}</>}
+                      {d.issue}
+                    </span>
+                    <button onClick={() => onDismiss(d.id)} title="Убрать из развития" className="flex-shrink-0 text-[10.5px] font-medium text-[#1e2d1f]/45 hover:text-[#54627F] hover:bg-[#54627F]/10 rounded px-1.5 py-0.5 transition-colors">Скрыть</button>
+                  </div>
+                  {d.quote && d.chapterId && (
+                    <button onClick={() => onJump(d.chapterId!, d.quote!)} className="mt-1 inline-flex items-center gap-1 text-[11px] text-[#54627F] font-medium hover:underline">
+                      <ArrowRight size={11} /> {chapterLabel(d.chapterId)} · к фразе
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

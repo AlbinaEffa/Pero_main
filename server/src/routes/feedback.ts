@@ -14,7 +14,7 @@ import { db } from '../db/client.js';
 const router = express.Router();
 
 // Optional auth middleware — populate req.user if token present, never block
-const tryAuth = (req: any, res: any, next: any) => {
+const tryAuth = (req: express.Request, res: express.Response, next: express.NextFunction) => {
   const header = req.headers['authorization'];
   if (!header) return next();
   authenticateToken(req, res, next);
@@ -22,7 +22,8 @@ const tryAuth = (req: any, res: any, next: any) => {
 
 const VALID_TYPES = new Set(['bug', 'idea', 'praise', 'general']);
 
-router.post('/', tryAuth, async (req: any, res) => {
+// Опциональная авторизация → req.user может отсутствовать; тип Request (user? из аугментации).
+router.post('/', tryAuth, async (req: express.Request, res) => {
   try {
     const { type = 'general', message, page, metadata } = req.body;
 

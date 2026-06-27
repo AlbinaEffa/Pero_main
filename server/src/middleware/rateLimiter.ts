@@ -40,7 +40,7 @@ export function rateLimit(
   maxRequests: number,
   windowMs = 60 * 60 * 1000
 ) {
-  return (req: any, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     const userId = req.user?.userId;
     if (!userId) return next(); // unauthenticated — let auth middleware handle it
 

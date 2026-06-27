@@ -5,7 +5,7 @@ import express from 'express';
 import { eq, and, sql } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import { db } from '../db/client.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, type AuthedRequest } from '../middleware/auth.js';
 import { stripHtml } from '../lib/html.js';
 import { getEmbeddingProvider, type EmbedTaskType } from '../lib/aiProvider.js';
 import { enqueueJobs } from '../jobs/queue.js';
@@ -67,7 +67,7 @@ async function embedText(text: string, taskType: EmbedTaskType): Promise<number[
 // Strips HTML, chunks, embeds each chunk, deletes old chunks for this chapter,
 // inserts new ones. Silently skips if pgvector not installed.
 
-router.post('/chapter', authenticateToken, async (req: any, res) => {
+router.post('/chapter', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId, chapterId, content } = req.body;
 
@@ -146,7 +146,7 @@ router.post('/chapter', authenticateToken, async (req: any, res) => {
 // ставим по одному фоновому job'у embed_chapter на главу (worker эмбеддит через
 // провайдер; локально это Ollama → бесплатно, без API-токенов). Идемпотентно:
 // worker удаляет старые чанки главы перед вставкой новых.
-router.post('/project/:projectId', authenticateToken, async (req: any, res) => {
+router.post('/project/:projectId', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.params;
     if (!projectId || !isValidUUID(projectId))

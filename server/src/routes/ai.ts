@@ -3,7 +3,7 @@ import { eq, and, desc, isNull, sql, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import * as schema from '../db/schema.js';
 import { pool, db } from '../db/client.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, type AuthedRequest } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rateLimiter.js';
 import { guardChat, CircuitOpenError } from '../lib/aiGuard.js';
 import { getAIProvider, getEmbeddingProvider, type ChatTurn } from '../lib/aiProvider.js';
@@ -317,7 +317,7 @@ router.post('/chat',
   authenticateToken,
   rateLimit('ai:chat', 40, 60 * 60 * 1000),
   aiQuota,
-  async (req: any, res) => {
+  async (req: AuthedRequest, res) => {
   try {
     if (!ai) return res.status(503).json({ error: 'AI service is not configured' });
 
@@ -369,7 +369,7 @@ router.post('/chat/stream',
   authenticateToken,
   rateLimit('ai:chat', 40, 60 * 60 * 1000),
   aiQuota,
-  async (req: any, res) => {
+  async (req: AuthedRequest, res) => {
     if (!ai) return res.status(503).json({ error: 'AI service is not configured' });
 
     const parsed = ChatSchema.safeParse(req.body);
@@ -465,7 +465,7 @@ router.post('/chat/stream',
 // Returns: { plan, used, limit, remaining, resetsAt }
 // Для отображения остатка AI-действий в интерфейсе.
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/quota', authenticateToken, async (req: any, res) => {
+router.get('/quota', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const status = await getQuotaStatus(req.user.userId);
     res.json(status);
@@ -479,7 +479,7 @@ router.get('/quota', authenticateToken, async (req: any, res) => {
 // Query: projectId (required), chapterId (optional)
 // Returns: { messages: { id, role, text, timestamp }[] }
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/history', authenticateToken, async (req: any, res) => {
+router.get('/history', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId, chapterId, seriesId } = req.query as {
       projectId?: string;
@@ -525,7 +525,7 @@ router.post('/consistency',
   authenticateToken,
   rateLimit('ai:consistency', 15, 60 * 60 * 1000), // 15 per hour
   aiQuota,
-  async (req: any, res) => {
+  async (req: AuthedRequest, res) => {
   try {
     if (!ai) return res.status(503).json({ error: 'AI service is not configured' });
 
@@ -625,7 +625,7 @@ router.post('/dictation/normalize',
   authenticateToken,
   rateLimit('ai:dictation', 120, 60 * 60 * 1000),
   aiQuota,
-  async (req: any, res) => {
+  async (req: AuthedRequest, res) => {
     try {
       if (!ai) return res.status(503).json({ error: 'AI service is not configured' });
 
@@ -755,7 +755,7 @@ router.post('/transform',
   authenticateToken,
   rateLimit('ai:transform', 60, 60 * 60 * 1000),  // 60 per hour
   aiQuota,
-  async (req: any, res) => {
+  async (req: AuthedRequest, res) => {
     try {
       if (!ai) return res.status(503).json({ error: 'AI service is not configured' });
 

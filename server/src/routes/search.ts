@@ -2,7 +2,7 @@ import express from 'express';
 import { eq, and, ilike, or, ne } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import { db } from '../db/client.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, type AuthedRequest } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rateLimiter.js';
 import { stripHtml } from '../lib/html.js';
 
@@ -69,7 +69,7 @@ export interface SearchResult {
 router.get('/',
   authenticateToken,
   rateLimit('search', 60, 60_000),
-  async (req: any, res) => {
+  async (req: AuthedRequest, res) => {
     try {
       const { projectId, q } = req.query as { projectId?: string; q?: string };
 

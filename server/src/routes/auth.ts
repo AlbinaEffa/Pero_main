@@ -10,7 +10,7 @@ import { z } from 'zod';
 import { users } from '../db/schema.js';
 import { db } from '../db/client.js';
 import { authRateLimit } from '../app.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, type AuthedRequest } from '../middleware/auth.js';
 
 // ── Input schemas ─────────────────────────────────────────────────────────────
 
@@ -125,7 +125,7 @@ router.post('/login', authRateLimit, async (req, res) => {
   }
 });
 
-router.get('/me', authenticateToken, async (req: any, res) => {
+router.get('/me', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const userRecords = await db.select().from(users).where(eq(users.id, req.user.userId));
     if (userRecords.length === 0) return res.status(404).json({ error: 'User not found' });
@@ -138,7 +138,7 @@ router.get('/me', authenticateToken, async (req: any, res) => {
 });
 
 // PATCH /me — update display name
-router.patch('/me', authenticateToken, async (req: any, res) => {
+router.patch('/me', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { displayName } = req.body;
     if (displayName === undefined) {

@@ -15,7 +15,7 @@ import { pool } from '../db/client.js';
 
 const router = express.Router();
 
-function requireAdmin(req: any, res: any, next: any) {
+function requireAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
   const secret = process.env.ADMIN_SECRET;
   if (!secret) {
     return res.status(503).json({ error: 'ADMIN_SECRET not configured' });

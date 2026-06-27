@@ -15,7 +15,7 @@ import express from 'express';
 import { eq, and } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import { db } from '../db/client.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, type AuthedRequest } from '../middleware/auth.js';
 import { enqueueJobs } from '../jobs/queue.js';
 import { parseManuscript, upload } from './import.js';
 import { getAIProvider } from '../lib/aiProvider.js';
@@ -75,7 +75,7 @@ const DEMO_CHAPTERS: { title: string; content: string }[] = [
 
 // ── Route ─────────────────────────────────────────────────────────────────────
 
-router.post('/create', authenticateToken, async (req: any, res) => {
+router.post('/create', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     // Idempotency: return existing demo project if already created
     const existing = await db
@@ -179,7 +179,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /** ip → timestamps(ms) успешно израсходованных слотов за последние сутки. */
 const ipHits = new Map<string, number[]>();
 
-function clientIp(req: any): string {
+function clientIp(req: express.Request): string {
   const fwd = String(req.headers['x-forwarded-for'] ?? '').split(',')[0]?.trim();
   return fwd || req.ip || req.socket?.remoteAddress || 'unknown';
 }
@@ -210,7 +210,7 @@ function refundIpSlot(ip: string): void {
   if (arr && arr.length) { arr.pop(); ipHits.set(ip, arr); }
 }
 
-router.post('/extract-first', upload.single('file'), async (req: any, res) => {
+router.post('/extract-first', upload.single('file'), async (req: AuthedRequest, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'Файл не получен' });
 

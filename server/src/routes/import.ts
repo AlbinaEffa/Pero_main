@@ -12,7 +12,7 @@ import { parseStringPromise } from 'xml2js';
 // GoogleGenAI removed — entity extraction now happens in the job worker, not here
 import * as schema from '../db/schema.js';
 import { db } from '../db/client.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, type AuthedRequest } from '../middleware/auth.js';
 import { checkProjectCreateLimit } from '../lib/planLimits.js';
 import { eq, and } from 'drizzle-orm';
 import { enqueueJobs } from '../jobs/queue.js';
@@ -338,7 +338,7 @@ export async function parseManuscript(originalname: string, buffer: Buffer): Pro
 // Accepts multipart/form-data with a `file` field.
 // Returns { title, totalWords, chapters: ParsedChapter[] }
 
-router.post('/parse', authenticateToken, upload.single('file'), async (req: any, res) => {
+router.post('/parse', authenticateToken, upload.single('file'), async (req: AuthedRequest, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     const result = await parseManuscript(req.file.originalname, req.file.buffer);
@@ -355,7 +355,7 @@ router.post('/parse', authenticateToken, upload.single('file'), async (req: any,
 // Creates project + chapters in one transaction, fires background extraction.
 // Returns { project, firstChapterId }
 
-router.post('/create', authenticateToken, idempotency(), async (req: any, res) => {
+router.post('/create', authenticateToken, idempotency(), async (req: AuthedRequest, res) => {
   try {
     const { title, genre, color, chapters } = req.body;
 
@@ -449,7 +449,7 @@ router.post('/create', authenticateToken, idempotency(), async (req: any, res) =
 // Возвращает { genres: string[] } — 1–3 жанра из таксономии. Один дешёвый AI-вызов.
 // Никогда не блокирует импорт: при любой проблеме отдаёт пустой список.
 
-router.post('/classify-genre', authenticateToken, async (req: any, res) => {
+router.post('/classify-genre', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const ai = getAIProvider();
     if (!ai) return res.json({ genres: [] });

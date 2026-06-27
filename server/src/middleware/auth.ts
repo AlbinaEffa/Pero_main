@@ -4,7 +4,16 @@
  * and sets req.user = { userId: string } on success.
  */
 import pkg from 'jsonwebtoken';
+import type { Request, Response, NextFunction } from 'express';
 const { verify } = pkg;
+
+/**
+ * Запрос за `authenticateToken` — `req.user` гарантированно установлен.
+ * Используй в типизации хендлеров: `async (req: AuthedRequest, res) => …`.
+ */
+export interface AuthedRequest extends Request {
+  user: { userId: string };
+}
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -13,7 +22,7 @@ if (!JWT_SECRET) {
   throw new Error('[auth] JWT_SECRET env var is not set — refusing to continue');
 }
 
-export const authenticateToken = (req: any, res: any, next: any) => {
+export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 

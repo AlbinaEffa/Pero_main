@@ -8,7 +8,7 @@
 import express from 'express';
 import { randomUUID } from 'crypto';
 import { and, eq, asc } from 'drizzle-orm';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, type AuthedRequest } from '../middleware/auth.js';
 import * as schema from '../db/schema.js';
 import { db } from '../db/client.js';
 import { isValidUUID } from '../lib/extraction.js';
@@ -33,7 +33,7 @@ async function getOwnedComment(commentId: string, userId: string) {
 }
 
 // ── GET /api/comments/:projectId?chapterId=… — комментарии проекта/главы ──────
-router.get('/:projectId', authenticateToken, async (req: any, res) => {
+router.get('/:projectId', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.params;
     const { chapterId } = req.query;
@@ -55,7 +55,7 @@ router.get('/:projectId', authenticateToken, async (req: any, res) => {
 
 // ── POST /api/comments/:projectId — создать комментарий ───────────────────────
 // Принимает клиентский id (=== commentId марки), чтобы марка и строка были связаны атомарно.
-router.post('/:projectId', authenticateToken, async (req: any, res) => {
+router.post('/:projectId', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.params;
     const { id, chapterId, body, quote, source } = req.body ?? {};
@@ -92,7 +92,7 @@ router.post('/:projectId', authenticateToken, async (req: any, res) => {
 });
 
 // ── PATCH /api/comments/item/:id — правка тела / resolve ───────────────────────
-router.patch('/item/:id', authenticateToken, async (req: any, res) => {
+router.patch('/item/:id', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { id } = req.params;
     const existing = await getOwnedComment(id, req.user.userId);
@@ -112,7 +112,7 @@ router.patch('/item/:id', authenticateToken, async (req: any, res) => {
 });
 
 // ── DELETE /api/comments/item/:id ─────────────────────────────────────────────
-router.delete('/item/:id', authenticateToken, async (req: any, res) => {
+router.delete('/item/:id', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { id } = req.params;
     const existing = await getOwnedComment(id, req.user.userId);
@@ -128,7 +128,7 @@ router.delete('/item/:id', authenticateToken, async (req: any, res) => {
 // ── POST /api/comments/item/:id/to-note — перенести комментарий в Заметки ──────
 // Создаёт note (тело = тело комментария, при пустом — снимок цитаты) и УДАЛЯЕТ комментарий.
 // Якорь-марку снимает клиент (по вернувшемуся removed=id). Возвращает созданную заметку.
-router.post('/item/:id/to-note', authenticateToken, async (req: any, res) => {
+router.post('/item/:id/to-note', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { id } = req.params;
     const existing = await getOwnedComment(id, req.user.userId);
@@ -155,7 +155,7 @@ router.post('/item/:id/to-note', authenticateToken, async (req: any, res) => {
 });
 
 // ── POST /api/comments/item/:id/reply — добавить ответ в тред ──────────────────
-router.post('/item/:id/reply', authenticateToken, async (req: any, res) => {
+router.post('/item/:id/reply', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { id } = req.params;
     const body = typeof req.body?.body === 'string' ? req.body.body.trim().slice(0, 4000) : '';

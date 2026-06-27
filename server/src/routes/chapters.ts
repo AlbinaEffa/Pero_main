@@ -2,7 +2,7 @@ import express from 'express';
 import { eq, and } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import { db } from '../db/client.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, type AuthedRequest } from '../middleware/auth.js';
 import { stripHtml, wordCount } from '../lib/html.js';
 import { scheduleChapterEmbed } from '../jobs/queue.js';
 
@@ -29,7 +29,7 @@ async function getChapterForUser(chapterId: string, userId: string) {
 }
 
 // GET /api/chapters/:id
-router.get('/:id', authenticateToken, async (req: any, res) => {
+router.get('/:id', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { id } = req.params;
     const row = await getChapterForUser(id, req.user.userId);
@@ -46,7 +46,7 @@ router.get('/:id', authenticateToken, async (req: any, res) => {
 });
 
 // PUT /api/chapters/:id
-router.put('/:id', authenticateToken, async (req: any, res) => {
+router.put('/:id', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { id } = req.params;
     const { content } = req.body;
@@ -104,7 +104,7 @@ router.put('/:id', authenticateToken, async (req: any, res) => {
 
 
 // PATCH /api/chapters/:id — rename, set status, set order
-router.patch('/:id', authenticateToken, async (req: any, res) => {
+router.patch('/:id', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { id } = req.params;
     const { title, status, order, povCharacter, chapterType, plan } = req.body;

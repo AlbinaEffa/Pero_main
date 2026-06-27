@@ -37,7 +37,7 @@ setInterval(() => {
 }, 5 * 60 * 1000).unref();
 
 export function idempotency() {
-  return (req: any, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     const key = req.headers['x-idempotency-key'] as string | undefined;
     if (!key) return next();
 

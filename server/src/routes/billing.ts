@@ -21,7 +21,7 @@ import express from 'express';
 import { eq, and, desc } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import { db, pool } from '../db/client.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, type AuthedRequest } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rateLimiter.js';
 import { createPayment, getPayment, isYooKassaConfigured } from '../lib/yookassa.js';
 
@@ -47,7 +47,7 @@ function frontendUrl(): string {
 router.post('/checkout',
   authenticateToken,
   rateLimit('billing:checkout', 10, 60 * 60 * 1000),
-  async (req: any, res) => {
+  async (req: AuthedRequest, res) => {
     try {
       if (!isYooKassaConfigured()) {
         return res.status(503).json({ error: 'Оплата временно недоступна (платёжный провайдер не настроен)' });
@@ -182,7 +182,7 @@ router.post('/webhook', async (req, res) => {
 // Текущий план + последний платёж. Если есть pending-платёж — проверяем его
 // статус в ЮKassa на лету (подстраховка, если вебхук не дошёл).
 // ──────────────────────────────────────────────────────────────────────────────
-router.get('/status', authenticateToken, async (req: any, res) => {
+router.get('/status', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     // Подстраховка: довести «зависшие» pending-платежи без вебхука
     if (isYooKassaConfigured()) {

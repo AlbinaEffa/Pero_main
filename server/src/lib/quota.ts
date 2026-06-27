@@ -18,7 +18,7 @@
  *   QUOTA_PRO_AI_PER_DAY  (default 300)
  */
 
-import type { Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { pool } from '../db/client.js';
 
 export type Plan = 'free' | 'pro';
@@ -116,7 +116,7 @@ export async function getQuotaStatus(userId: string): Promise<QuotaStatus> {
  *
  *   router.post('/chat', authenticateToken, rateLimit(...), aiQuota, handler)
  */
-export async function aiQuota(req: any, res: Response, next: NextFunction): Promise<void> {
+export async function aiQuota(req: Request, res: Response, next: NextFunction): Promise<void> {
   const userId = req.user?.userId;
   if (!userId) { next(); return; } // нет auth — пусть разбирается auth middleware
 

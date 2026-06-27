@@ -5,7 +5,7 @@ import * as schema from '../db/schema.js';
 import { db } from '../db/client.js';
 import { retrieveCrossChapterPassages, searchBookPassages, searchSeriesPassages } from '../lib/semanticRetrieval.js';
 import { refreshEntityEmbeddings } from '../lib/entityEmbeddings.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, type AuthedRequest } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rateLimiter.js';
 import { guardChat } from '../lib/aiGuard.js';
 import { stripHtml } from '../lib/html.js';
@@ -262,7 +262,7 @@ router.post('/extract',
   authenticateToken,
   rateLimit('bible:extract', 20, 60 * 60 * 1000),
   aiQuota,
-  async (req: any, res) => {
+  async (req: AuthedRequest, res) => {
     try {
       if (!ai) return res.status(503).json({ error: 'AI is not configured' });
 
@@ -374,7 +374,7 @@ router.post('/recheck/chapter/:chapterId',
   authenticateToken,
   rateLimit('bible:extract', 20, 60 * 60 * 1000),
   aiQuota,
-  async (req: any, res) => {
+  async (req: AuthedRequest, res) => {
     try {
       if (!ai) return res.status(503).json({ error: 'AI is not configured' });
 
@@ -505,7 +505,7 @@ router.post('/recheck/batch',
   authenticateToken,
   rateLimit('bible:extract', 10, 60 * 60 * 1000),  // lower limit — each call is expensive
   aiQuota,
-  async (req: any, res) => {
+  async (req: AuthedRequest, res) => {
     try {
       if (!ai) return res.status(503).json({ error: 'AI is not configured' });
 
@@ -643,7 +643,7 @@ router.post('/recheck/batch',
 
 // ── POST /api/bible/updates/bulk-dismiss ─────────────────────────────────────
 
-router.post('/updates/bulk-dismiss', authenticateToken, async (req: any, res) => {
+router.post('/updates/bulk-dismiss', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId, chapterId } = req.body;
     if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid projectId' });
@@ -671,7 +671,7 @@ router.post('/updates/bulk-dismiss', authenticateToken, async (req: any, res) =>
 
 // ── POST /api/bible/updates/bulk-reject ──────────────────────────────────────
 
-router.post('/updates/bulk-reject', authenticateToken, async (req: any, res) => {
+router.post('/updates/bulk-reject', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId, chapterId } = req.body;
     if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid projectId' });
@@ -699,7 +699,7 @@ router.post('/updates/bulk-reject', authenticateToken, async (req: any, res) => 
 
 // ── GET /api/bible/:projectId/updates ─────────────────────────────────────────
 
-router.get('/:projectId/updates', authenticateToken, async (req: any, res) => {
+router.get('/:projectId/updates', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.params;
     if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
@@ -738,7 +738,7 @@ router.get('/:projectId/updates', authenticateToken, async (req: any, res) => {
 
 // ── POST /api/bible/updates/:updateId/accept ─────────────────────────────────
 
-router.post('/updates/:updateId/accept', authenticateToken, async (req: any, res) => {
+router.post('/updates/:updateId/accept', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { updateId } = req.params;
     if (!isValidUUID(updateId)) return res.status(400).json({ error: 'Invalid update ID' });
@@ -788,7 +788,7 @@ router.post('/updates/:updateId/accept', authenticateToken, async (req: any, res
 
 // ── POST /api/bible/updates/:updateId/reject ─────────────────────────────────
 
-router.post('/updates/:updateId/reject', authenticateToken, async (req: any, res) => {
+router.post('/updates/:updateId/reject', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { updateId } = req.params;
     if (!isValidUUID(updateId)) return res.status(400).json({ error: 'Invalid update ID' });
@@ -818,7 +818,7 @@ router.post('/updates/:updateId/reject', authenticateToken, async (req: any, res
 
 // ── POST /api/bible/updates/:updateId/dismiss ────────────────────────────────
 
-router.post('/updates/:updateId/dismiss', authenticateToken, async (req: any, res) => {
+router.post('/updates/:updateId/dismiss', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { updateId } = req.params;
     if (!isValidUUID(updateId)) return res.status(400).json({ error: 'Invalid update ID' });
@@ -855,7 +855,7 @@ router.post('/updates/:updateId/dismiss', authenticateToken, async (req: any, re
 router.post('/:projectId/letter',
   authenticateToken,
   rateLimit('bible:letter', 5, 60 * 60 * 1000),
-  async (req: any, res) => {
+  async (req: AuthedRequest, res) => {
     try {
       if (!ai) return res.status(503).json({ error: 'AI is not configured' });
 
@@ -936,7 +936,7 @@ ${majors || '(главные персонажи не размечены)'}
 
 // ── GET /api/bible/:projectId — entities + links + timeline events ───────────
 
-router.get('/:projectId', authenticateToken, async (req: any, res) => {
+router.get('/:projectId', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.params;
     if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
@@ -968,7 +968,7 @@ router.get('/:projectId', authenticateToken, async (req: any, res) => {
 // уже есть — возвращаем её, нового дубля не плодим.
 const ALLOWED_ENTITY_TYPES = ['character', 'location', 'item', 'rule'];
 
-router.post('/:projectId/entities', authenticateToken, async (req: any, res) => {
+router.post('/:projectId/entities', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.params;
     if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
@@ -1061,7 +1061,7 @@ export async function recomputeSignificance(projectId: string): Promise<{ update
 }
 
 // POST /api/bible/:projectId/recompute-significance — пересчитать значимость по присутствию
-router.post('/:projectId/recompute-significance', authenticateToken, async (req: any, res) => {
+router.post('/:projectId/recompute-significance', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.params;
     if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
@@ -1074,7 +1074,7 @@ router.post('/:projectId/recompute-significance', authenticateToken, async (req:
   }
 });
 
-router.patch('/:entityId', authenticateToken, async (req: any, res) => {
+router.patch('/:entityId', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { entityId } = req.params;
     if (!isValidUUID(entityId)) return res.status(400).json({ error: 'Invalid entity ID' });
@@ -1126,7 +1126,7 @@ router.patch('/:entityId', authenticateToken, async (req: any, res) => {
 // Лечит корень нестыковок: один герой записан несколько раз с разными описаниями.
 const SIG_RANK_MERGE: Record<string, number> = { major: 0, moderate: 1, minor: 2 };
 
-router.post('/:projectId/merge', authenticateToken, async (req: any, res) => {
+router.post('/:projectId/merge', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.params;
     const { name, ids, survivorId } = req.body ?? {};
@@ -1202,7 +1202,7 @@ function cosineSim(a: number[], b: number[]): number {
 // ── POST /api/bible/:projectId/semantic-search — линза «Эхо»: поиск по смыслу ──
 // Эмбеддит запрос локально (Ollama), косинус по чанкам книги, отдаёт фрагменты с главой.
 // Без API-токенов. НЕ под aiQuota (это локальный эмбеддинг, не интерактивный AI-вызов).
-router.post('/:projectId/semantic-search', authenticateToken, async (req: any, res) => {
+router.post('/:projectId/semantic-search', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.params;
     if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
@@ -1229,7 +1229,7 @@ router.post('/:projectId/semantic-search', authenticateToken, async (req: any, r
   }
 });
 
-router.post('/:projectId/semantic-duplicates', authenticateToken, async (req: any, res) => {
+router.post('/:projectId/semantic-duplicates', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.params;
     if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
@@ -1274,7 +1274,7 @@ router.post('/:projectId/semantic-duplicates', authenticateToken, async (req: an
 // связь ЕЩЁ не отмечена. Это подсказка «между ними, возможно, есть отношение» — не
 // гарантия. Исключаем: уже связанные пары, точные совпадения имён (это дедуп, не связь),
 // и почти-идентичные (>0.9 — вероятный дубль). Эмбеддинги из кэша (refreshEntityEmbeddings).
-router.post('/:projectId/suggested-links', authenticateToken, async (req: any, res) => {
+router.post('/:projectId/suggested-links', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.params;
     if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
@@ -1317,7 +1317,7 @@ router.post('/:projectId/suggested-links', authenticateToken, async (req: any, r
 });
 
 // ── POST /api/bible/:projectId/links — создать связь (подтверждение вероятной) ──
-router.post('/:projectId/links', authenticateToken, async (req: any, res) => {
+router.post('/:projectId/links', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.params;
     if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
@@ -1348,7 +1348,7 @@ router.post('/:projectId/links', authenticateToken, async (req: any, res) => {
 
 // ── DELETE /api/bible/links/:linkId — remove a wrong connection ──────────────
 
-router.delete('/links/:linkId', authenticateToken, async (req: any, res) => {
+router.delete('/links/:linkId', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { linkId } = req.params;
     if (!isValidUUID(linkId)) return res.status(400).json({ error: 'Invalid link ID' });
@@ -1371,7 +1371,7 @@ router.delete('/links/:linkId', authenticateToken, async (req: any, res) => {
 
 // ── DELETE /api/bible/events/:eventId — remove a wrong timeline event ────────
 
-router.delete('/events/:eventId', authenticateToken, async (req: any, res) => {
+router.delete('/events/:eventId', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { eventId } = req.params;
     if (!isValidUUID(eventId)) return res.status(400).json({ error: 'Invalid event ID' });
@@ -1394,7 +1394,7 @@ router.delete('/events/:eventId', authenticateToken, async (req: any, res) => {
 
 // ── PATCH /api/bible/:entityId/approve ───────────────────────────────────────
 
-router.patch('/:entityId/approve', authenticateToken, async (req: any, res) => {
+router.patch('/:entityId/approve', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { entityId } = req.params;
     if (!isValidUUID(entityId)) return res.json({ ok: true, demo: true });
@@ -1418,7 +1418,7 @@ router.patch('/:entityId/approve', authenticateToken, async (req: any, res) => {
 
 // ── PATCH /api/bible/:entityId/reject ────────────────────────────────────────
 
-router.patch('/:entityId/reject', authenticateToken, async (req: any, res) => {
+router.patch('/:entityId/reject', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { entityId } = req.params;
     if (!isValidUUID(entityId)) return res.json({ ok: true, demo: true });
@@ -1444,7 +1444,7 @@ router.patch('/:entityId/reject', authenticateToken, async (req: any, res) => {
 // Находка-вариант (опечатка/склонение) → объединить с существующей сущностью: имя находки
 // (и её алиасы) уходят в алиасы цели, связи/события переносятся, находка удаляется.
 // Рукопись НЕ трогаем — это слияние КАРТОЧЕК, не правка текста.
-router.post('/:projectId/suggestions/:id/merge-into', authenticateToken, async (req: any, res) => {
+router.post('/:projectId/suggestions/:id/merge-into', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId, id } = req.params;
     const { targetId } = req.body ?? {};
@@ -1495,7 +1495,7 @@ router.post('/:projectId/contradictions/scan',
   authenticateToken,
   rateLimit('bible:contradictions', 6, 60 * 60 * 1000),
   aiQuota,
-  async (req: any, res) => {
+  async (req: AuthedRequest, res) => {
     try {
       if (!ai) return res.status(503).json({ error: 'AI is not configured' });
       const { projectId } = req.params;
@@ -1539,7 +1539,7 @@ router.post('/:projectId/contradictions/scan',
 const VALID_SEV = new Set(['low', 'medium', 'high']);
 router.post('/:projectId/contradictions/scan-chapter',
   authenticateToken, rateLimit('ai:scan-chapter', 60, 60 * 60 * 1000), aiQuota,
-  async (req: any, res) => {
+  async (req: AuthedRequest, res) => {
   try {
     if (!ai) return res.status(503).json({ error: 'AI service is not configured' });
     const { projectId } = req.params;
@@ -1606,7 +1606,7 @@ router.post('/:projectId/contradictions/scan-chapter',
 });
 
 // GET /api/bible/:projectId/contradictions — последний отчёт + открытые противоречия
-router.get('/:projectId/contradictions', authenticateToken, async (req: any, res) => {
+router.get('/:projectId/contradictions', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.params;
     if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
@@ -1651,7 +1651,7 @@ router.get('/:projectId/contradictions', authenticateToken, async (req: any, res
 });
 
 // POST /api/bible/contradictions/:issueId/dismiss — отклонить ложное срабатывание
-router.post('/contradictions/:issueId/dismiss', authenticateToken, async (req: any, res) => {
+router.post('/contradictions/:issueId/dismiss', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { issueId } = req.params;
     if (!isValidUUID(issueId)) return res.status(400).json({ error: 'Invalid issue ID' });

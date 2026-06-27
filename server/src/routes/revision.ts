@@ -5,7 +5,7 @@ import express from 'express';
 import { eq, and } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import { pool, db } from '../db/client.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, type AuthedRequest } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rateLimiter.js';
 import { guardChat } from '../lib/aiGuard.js';
 import { getAIProvider, getEmbeddingProvider } from '../lib/aiProvider.js';
@@ -49,7 +49,7 @@ export interface TraceChapter {
 
 const revisionRateLimit = rateLimit('revision', 20, 60 * 60 * 1000); // 20/hr shared across all revision endpoints
 
-router.post('/entity-trace', authenticateToken, revisionRateLimit, async (req: any, res) => {
+router.post('/entity-trace', authenticateToken, revisionRateLimit, async (req: AuthedRequest, res) => {
   try {
     const { projectId, entityName } = req.body;
 
@@ -165,7 +165,7 @@ router.post('/entity-trace', authenticateToken, revisionRateLimit, async (req: a
 // Body: { projectId, entityName }
 // Returns: { arc: string, mentions: number }
 
-router.post('/entity-arc', authenticateToken, revisionRateLimit, aiQuota, async (req: any, res) => {
+router.post('/entity-arc', authenticateToken, revisionRateLimit, aiQuota, async (req: AuthedRequest, res) => {
   try {
     if (!ai) return res.status(503).json({ error: 'AI not configured' });
 
@@ -270,7 +270,7 @@ interface BibleUpdateSuggestion {
   reason: string;
 }
 
-router.post('/bible-update', authenticateToken, revisionRateLimit, aiQuota, async (req: any, res) => {
+router.post('/bible-update', authenticateToken, revisionRateLimit, aiQuota, async (req: AuthedRequest, res) => {
   try {
     if (!ai) return res.status(503).json({ error: 'AI not configured' });
 

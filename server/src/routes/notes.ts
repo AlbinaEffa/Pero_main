@@ -6,7 +6,7 @@
  */
 import express from 'express';
 import { and, eq, desc, sql } from 'drizzle-orm';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, type AuthedRequest } from '../middleware/auth.js';
 import * as schema from '../db/schema.js';
 import { db } from '../db/client.js';
 import { isValidUUID } from '../lib/extraction.js';
@@ -35,7 +35,7 @@ async function getOwnedNote(noteId: string, userId: string) {
 }
 
 // ── GET /api/notes/:projectId — все заметки проекта ──────────────────────────
-router.get('/:projectId', authenticateToken, async (req: any, res) => {
+router.get('/:projectId', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.params;
     if (!(await assertProjectOwnership(projectId, req.user.userId))) {
@@ -53,7 +53,7 @@ router.get('/:projectId', authenticateToken, async (req: any, res) => {
 });
 
 // ── POST /api/notes/:projectId — создать заметку ─────────────────────────────
-router.post('/:projectId', authenticateToken, async (req: any, res) => {
+router.post('/:projectId', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.params;
     if (!(await assertProjectOwnership(projectId, req.user.userId))) {
@@ -79,7 +79,7 @@ router.post('/:projectId', authenticateToken, async (req: any, res) => {
 });
 
 // ── PATCH /api/notes/:noteId — правка (тело/тип/статус/пин/связи) ─────────────
-router.patch('/:noteId', authenticateToken, async (req: any, res) => {
+router.patch('/:noteId', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const note = await getOwnedNote(req.params.noteId, req.user.userId);
     if (!note) return res.status(404).json({ error: 'Note not found' });
@@ -105,7 +105,7 @@ router.patch('/:noteId', authenticateToken, async (req: any, res) => {
 });
 
 // ── DELETE /api/notes/:noteId ────────────────────────────────────────────────
-router.delete('/:noteId', authenticateToken, async (req: any, res) => {
+router.delete('/:noteId', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const note = await getOwnedNote(req.params.noteId, req.user.userId);
     if (!note) return res.status(404).json({ error: 'Note not found' });
@@ -120,7 +120,7 @@ router.delete('/:noteId', authenticateToken, async (req: any, res) => {
 // ── POST /api/notes/:noteId/promote — заметку → сущность в Мире ───────────────
 // Автор «повышает» идею в Мир: создаём approved-сущность из тела заметки,
 // помечаем заметку done и связываем с созданной сущностью.
-router.post('/:noteId/promote', authenticateToken, async (req: any, res) => {
+router.post('/:noteId/promote', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const note = await getOwnedNote(req.params.noteId, req.user.userId);
     if (!note) return res.status(404).json({ error: 'Note not found' });
@@ -159,7 +159,7 @@ router.post('/:noteId/promote', authenticateToken, async (req: any, res) => {
 const escapeHtml = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-router.post('/:noteId/to-chapter', authenticateToken, async (req: any, res) => {
+router.post('/:noteId/to-chapter', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const note = await getOwnedNote(req.params.noteId, req.user.userId);
     if (!note) return res.status(404).json({ error: 'Note not found' });

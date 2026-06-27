@@ -15,7 +15,7 @@ import express from 'express';
 import { eq, and, inArray, asc, sql } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import { db, pool } from '../db/client.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, type AuthedRequest } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rateLimiter.js';
 import { aiQuota } from '../lib/quota.js';
 import { guardChat } from '../lib/aiGuard.js';
@@ -35,7 +35,7 @@ async function ownsSeries(seriesId: string, userId: string) {
 }
 
 // GET / — серии пользователя (книги группирует дашборд из своего списка проектов по series_id)
-router.get('/', authenticateToken, async (req: any, res) => {
+router.get('/', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const rows = await db.select().from(schema.series)
       .where(eq(schema.series.userId, req.user.userId))
@@ -45,7 +45,7 @@ router.get('/', authenticateToken, async (req: any, res) => {
 });
 
 // POST / — создать серию
-router.post('/', authenticateToken, async (req: any, res) => {
+router.post('/', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const title = (req.body?.title ?? '').trim();
     if (!title) return res.status(400).json({ error: 'Title required' });
@@ -56,7 +56,7 @@ router.post('/', authenticateToken, async (req: any, res) => {
 });
 
 // PATCH /:seriesId — переименовать + вёдра замысла (премис/лор/герои/слоты-план)
-router.patch('/:seriesId', authenticateToken, async (req: any, res) => {
+router.patch('/:seriesId', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     if (!(await ownsSeries(req.params.seriesId, req.user.userId))) return res.status(403).json({ error: 'Access denied' });
     const b = req.body ?? {};
@@ -74,7 +74,7 @@ router.patch('/:seriesId', authenticateToken, async (req: any, res) => {
 });
 
 // GET /:seriesId — одна серия (вёдра замысла) + её написанные книги по порядку (рабочее пространство)
-router.get('/:seriesId', authenticateToken, async (req: any, res) => {
+router.get('/:seriesId', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const s = await ownsSeries(req.params.seriesId, req.user.userId);
     if (!s) return res.status(403).json({ error: 'Access denied' });
@@ -86,7 +86,7 @@ router.get('/:seriesId', authenticateToken, async (req: any, res) => {
 
 // POST /:seriesId/books/create — создать НОВУЮ книгу в серии (следующий номер). Опц. из слота-плана.
 // title из слота или тела; премис книги сидируется из about слота. Возвращает project для открытия.
-router.post('/:seriesId/books/create', authenticateToken, async (req: any, res) => {
+router.post('/:seriesId/books/create', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const s = await ownsSeries(req.params.seriesId, req.user.userId);
     if (!s) return res.status(403).json({ error: 'Access denied' });
@@ -115,7 +115,7 @@ router.post('/:seriesId/books/create', authenticateToken, async (req: any, res) 
 
 // POST /continue/:projectId — «Написать продолжение»: завести серию из книги, если её нет (книга=#1),
 // создать следующую пустую книгу и вернуть, куда идти. Ярлык в рабочее пространство.
-router.post('/continue/:projectId', authenticateToken, async (req: any, res) => {
+router.post('/continue/:projectId', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const [book] = await db.select().from(schema.projects)
       .where(and(eq(schema.projects.id, req.params.projectId), eq(schema.projects.userId, req.user.userId)));
@@ -141,7 +141,7 @@ router.post('/continue/:projectId', authenticateToken, async (req: any, res) => 
 });
 
 // DELETE /:seriesId — удалить серию (книги отвязываются через FK ON DELETE SET NULL)
-router.delete('/:seriesId', authenticateToken, async (req: any, res) => {
+router.delete('/:seriesId', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     if (!(await ownsSeries(req.params.seriesId, req.user.userId))) return res.status(403).json({ error: 'Access denied' });
     await db.update(schema.projects).set({ seriesOrder: null })
@@ -152,7 +152,7 @@ router.delete('/:seriesId', authenticateToken, async (req: any, res) => {
 });
 
 // POST /:seriesId/books — добавить книгу в серию (в конец)
-router.post('/:seriesId/books', authenticateToken, async (req: any, res) => {
+router.post('/:seriesId/books', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     if (!(await ownsSeries(req.params.seriesId, req.user.userId))) return res.status(403).json({ error: 'Access denied' });
     const projectId = req.body?.projectId;
@@ -171,7 +171,7 @@ router.post('/:seriesId/books', authenticateToken, async (req: any, res) => {
 });
 
 // DELETE /:seriesId/books/:projectId — убрать книгу из серии
-router.delete('/:seriesId/books/:projectId', authenticateToken, async (req: any, res) => {
+router.delete('/:seriesId/books/:projectId', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     if (!(await ownsSeries(req.params.seriesId, req.user.userId))) return res.status(403).json({ error: 'Access denied' });
     await db.update(schema.projects).set({ seriesId: null, seriesOrder: null, updatedAt: new Date() })
@@ -181,7 +181,7 @@ router.delete('/:seriesId/books/:projectId', authenticateToken, async (req: any,
 });
 
 // PUT /:seriesId/order — переупорядочить книги серии по массиву id
-router.put('/:seriesId/order', authenticateToken, async (req: any, res) => {
+router.put('/:seriesId/order', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     if (!(await ownsSeries(req.params.seriesId, req.user.userId))) return res.status(403).json({ error: 'Access denied' });
     const ids: string[] = Array.isArray(req.body?.ids) ? req.body.ids : [];
@@ -202,7 +202,7 @@ router.put('/:seriesId/order', authenticateToken, async (req: any, res) => {
 // GET /:seriesId/bible — единый каталог Мира через все книги серии (Этап E2).
 // Сущности одноимённого типа из разных книг сливаются в одну запись (по normalizeNameRu),
 // показываем, в каких книгах герой/локация встречается. Канон-описание — самое полное.
-router.get('/:seriesId/bible', authenticateToken, async (req: any, res) => {
+router.get('/:seriesId/bible', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const s = await ownsSeries(req.params.seriesId, req.user.userId);
     if (!s) return res.status(403).json({ error: 'Access denied' });
@@ -245,7 +245,7 @@ router.get('/:seriesId/bible', authenticateToken, async (req: any, res) => {
 
 // GET /:seriesId/contradictions — нестыковки по ВСЕЙ серии (грань зума «Серия» в рельсе «Сверка»).
 // Открытые issues из ПОСЛЕДНЕГО отчёта каждой книги серии + метка книги (cross-book ров).
-router.get('/:seriesId/contradictions', authenticateToken, async (req: any, res) => {
+router.get('/:seriesId/contradictions', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const s = await ownsSeries(req.params.seriesId, req.user.userId);
     if (!s) return res.status(403).json({ error: 'Access denied' });
@@ -271,7 +271,7 @@ router.get('/:seriesId/contradictions', authenticateToken, async (req: any, res)
 // POST /:seriesId/books/:projectId/snapshot — заморозить «состояние мира на конец книги» (Этап E4).
 // Снимок выводится из Мира ДЕТЕРМИНИРОВАННО (без AI): значимые сущности + их финальный статус
 // (последнее событие типа 'status' по порядку глав). Старт-канон для следующей книги серии.
-router.post('/:seriesId/books/:projectId/snapshot', authenticateToken, async (req: any, res) => {
+router.post('/:seriesId/books/:projectId/snapshot', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const s = await ownsSeries(req.params.seriesId, req.user.userId);
     if (!s) return res.status(403).json({ error: 'Access denied' });
@@ -312,7 +312,7 @@ router.post('/:seriesId/books/:projectId/snapshot', authenticateToken, async (re
 // Один ИИ-вызов. Транзиентный отчёт (статусы не хранятся — авторский план в franchiseThreads жив).
 router.post('/:seriesId/threads/xray',
   authenticateToken, rateLimit('ai:franchise-xray', 20, 60 * 60 * 1000), aiQuota,
-  async (req: any, res) => {
+  async (req: AuthedRequest, res) => {
   try {
     if (!ai) return res.status(503).json({ error: 'AI service is not configured' });
     const s = await ownsSeries(req.params.seriesId, req.user.userId);

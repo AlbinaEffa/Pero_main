@@ -2,7 +2,7 @@ import express from 'express';
 import { eq, and, asc, desc, inArray, sql } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import { db } from '../db/client.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, type AuthedRequest } from '../middleware/auth.js';
 import { checkProjectCreateLimit } from '../lib/planLimits.js';
 
 const router = express.Router();
@@ -17,7 +17,7 @@ async function assertOwnership(projectId: string, userId: string): Promise<boole
 }
 
 // GET /api/projects — list projects enriched with word counts + chapter stats
-router.get('/', authenticateToken, async (req: any, res) => {
+router.get('/', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     // Most recently edited projects appear first
     const projects = await db
@@ -86,7 +86,7 @@ router.get('/', authenticateToken, async (req: any, res) => {
 });
 
 // GET /api/projects/:id
-router.get('/:id', authenticateToken, async (req: any, res) => {
+router.get('/:id', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { id } = req.params;
     const rows = await db
@@ -124,7 +124,7 @@ router.get('/:id', authenticateToken, async (req: any, res) => {
 });
 
 // POST /api/projects — create project + first chapter in a transaction
-router.post('/', authenticateToken, async (req: any, res) => {
+router.post('/', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { title, genre, color } = req.body;
 
@@ -167,7 +167,7 @@ router.post('/', authenticateToken, async (req: any, res) => {
 });
 
 // PATCH /api/projects/:id — update title, genre, color, status
-router.patch('/:id', authenticateToken, async (req: any, res) => {
+router.patch('/:id', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { id } = req.params;
     const owned = await assertOwnership(id, req.user.userId);
@@ -216,7 +216,7 @@ router.patch('/:id', authenticateToken, async (req: any, res) => {
 });
 
 // DELETE /api/projects/:id — cascade delete in a transaction
-router.delete('/:id', authenticateToken, async (req: any, res) => {
+router.delete('/:id', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { id } = req.params;
     const owned = await assertOwnership(id, req.user.userId);
@@ -238,7 +238,7 @@ router.delete('/:id', authenticateToken, async (req: any, res) => {
 });
 
 // GET /api/projects/:id/chapters — list chapters ordered by creation time
-router.get('/:id/chapters', authenticateToken, async (req: any, res) => {
+router.get('/:id/chapters', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { id } = req.params;
     const owned = await assertOwnership(id, req.user.userId);
@@ -260,7 +260,7 @@ router.get('/:id/chapters', authenticateToken, async (req: any, res) => {
 });
 
 // POST /api/projects/:id/chapters
-router.post('/:id/chapters', authenticateToken, async (req: any, res) => {
+router.post('/:id/chapters', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { id } = req.params;
     const { title, chapterType } = req.body;
@@ -298,7 +298,7 @@ router.post('/:id/chapters', authenticateToken, async (req: any, res) => {
 });
 
 // POST /api/projects/:id/duplicate — duplicate project, chapters, and story bible
-router.post('/:id/duplicate', authenticateToken, async (req: any, res) => {
+router.post('/:id/duplicate', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { id } = req.params;
     const owned = await assertOwnership(id, req.user.userId);
@@ -376,7 +376,7 @@ router.post('/:id/duplicate', authenticateToken, async (req: any, res) => {
 });
 
 // PUT /api/projects/:id/chapters/order — bulk reorder
-router.put('/:id/chapters/order', authenticateToken, async (req: any, res) => {
+router.put('/:id/chapters/order', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { id } = req.params;
     const { ids } = req.body as { ids: string[] };

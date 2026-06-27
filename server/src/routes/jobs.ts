@@ -17,7 +17,7 @@ import express from 'express';
 import { eq, and } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import { pool, db } from '../db/client.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, type AuthedRequest } from '../middleware/auth.js';
 import { enqueueJobs } from '../jobs/queue.js';
 
 const router = express.Router();
@@ -49,7 +49,7 @@ async function assertProjectOwnership(projectId: string, userId: string): Promis
 
 // ── GET /api/jobs?projectId=xxx ───────────────────────────────────────────────
 
-router.get('/', authenticateToken, async (req: any, res) => {
+router.get('/', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.query as { projectId?: string };
 
@@ -146,7 +146,7 @@ router.get('/', authenticateToken, async (req: any, res) => {
 
 // ── POST /api/jobs/:id/retry ──────────────────────────────────────────────────
 
-router.post('/:id/retry', authenticateToken, async (req: any, res) => {
+router.post('/:id/retry', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { id } = req.params;
 
@@ -194,7 +194,7 @@ router.post('/:id/retry', authenticateToken, async (req: any, res) => {
 
 // ── POST /api/jobs/retry-failed ───────────────────────────────────────────────
 
-router.post('/retry-failed', authenticateToken, async (req: any, res) => {
+router.post('/retry-failed', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.body as { projectId?: string };
 
@@ -230,7 +230,7 @@ router.post('/retry-failed', authenticateToken, async (req: any, res) => {
 // then creates fresh extract_entities + embed_chapter jobs for each chapter
 // with enough content. Skips chapters that already have queued/running jobs.
 
-router.post('/enqueue-project', authenticateToken, async (req: any, res) => {
+router.post('/enqueue-project', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.body as { projectId?: string };
 

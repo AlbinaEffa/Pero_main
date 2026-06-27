@@ -12,7 +12,7 @@ import express from 'express';
 import JSZip from 'jszip';
 import { Document, Paragraph, TextRun, HeadingLevel, Packer, PageBreak, AlignmentType } from 'docx';
 import { pool } from '../db/client.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, type AuthedRequest } from '../middleware/auth.js';
 import { htmlToText, htmlToMarkdown } from '../lib/html.js';
 
 const router = express.Router();
@@ -268,7 +268,7 @@ function buildFilename(title: string, suffix = ''): string {
 }
 
 /** GET /api/export/:projectId/markdown */
-router.get('/:projectId/markdown', authenticateToken, async (req: any, res) => {
+router.get('/:projectId/markdown', authenticateToken, async (req: AuthedRequest, res) => {
   const { projectId } = req.params;
   if (!UUID_RE.test(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
 
@@ -286,7 +286,7 @@ router.get('/:projectId/markdown', authenticateToken, async (req: any, res) => {
 });
 
 /** GET /api/export/:projectId/txt */
-router.get('/:projectId/txt', authenticateToken, async (req: any, res) => {
+router.get('/:projectId/txt', authenticateToken, async (req: AuthedRequest, res) => {
   const { projectId } = req.params;
   if (!UUID_RE.test(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
 
@@ -317,7 +317,7 @@ router.get('/:projectId/txt', authenticateToken, async (req: any, res) => {
 });
 
 /** GET /api/export/:projectId/docx */
-router.get('/:projectId/docx', authenticateToken, async (req: any, res) => {
+router.get('/:projectId/docx', authenticateToken, async (req: AuthedRequest, res) => {
   const { projectId } = req.params;
   if (!UUID_RE.test(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
 
@@ -336,7 +336,7 @@ router.get('/:projectId/docx', authenticateToken, async (req: any, res) => {
 });
 
 /** GET /api/export/:projectId/backup — full ZIP archive */
-router.get('/:projectId/backup', authenticateToken, async (req: any, res) => {
+router.get('/:projectId/backup', authenticateToken, async (req: AuthedRequest, res) => {
   const { projectId } = req.params;
   if (!UUID_RE.test(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
 
@@ -409,7 +409,7 @@ router.get('/:projectId/backup', authenticateToken, async (req: any, res) => {
 });
 
 /** GET /api/export/all — all user projects as one mega-ZIP */
-router.get('/all', authenticateToken, async (req: any, res) => {
+router.get('/all', authenticateToken, async (req: AuthedRequest, res) => {
   const { rows: projects } = await pool.query<any>(
     `SELECT id, title FROM projects WHERE user_id=$1 AND status='active' ORDER BY created_at DESC`,
     [req.user.userId]

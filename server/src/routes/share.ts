@@ -16,7 +16,7 @@ import { randomBytes } from 'crypto';
 import { eq, and } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import { db } from '../db/client.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, type AuthedRequest } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -29,7 +29,7 @@ async function ownedProject(projectId: string, userId: string) {
 }
 
 // GET /:projectId/status — расшарено ли, и токен (для построения ссылки на клиенте)
-router.get('/:projectId/status', authenticateToken, async (req: any, res) => {
+router.get('/:projectId/status', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const proj = await ownedProject(req.params.projectId, req.user.userId);
     if (!proj) return res.status(403).json({ error: 'Access denied' });
@@ -41,7 +41,7 @@ router.get('/:projectId/status', authenticateToken, async (req: any, res) => {
 });
 
 // POST /:projectId/enable — включить шеринг (идемпотентно: если уже есть токен, вернуть его)
-router.post('/:projectId/enable', authenticateToken, async (req: any, res) => {
+router.post('/:projectId/enable', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const proj = await ownedProject(req.params.projectId, req.user.userId);
     if (!proj) return res.status(403).json({ error: 'Access denied' });
@@ -60,7 +60,7 @@ router.post('/:projectId/enable', authenticateToken, async (req: any, res) => {
 });
 
 // POST /:projectId/disable — отозвать ссылку
-router.post('/:projectId/disable', authenticateToken, async (req: any, res) => {
+router.post('/:projectId/disable', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const proj = await ownedProject(req.params.projectId, req.user.userId);
     if (!proj) return res.status(403).json({ error: 'Access denied' });

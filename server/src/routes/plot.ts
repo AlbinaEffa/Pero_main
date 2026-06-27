@@ -6,7 +6,7 @@
 import express from 'express';
 import { randomUUID } from 'crypto';
 import { and, eq, asc, desc } from 'drizzle-orm';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, type AuthedRequest } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rateLimiter.js';
 import { aiQuota } from '../lib/quota.js';
 import { guardChat } from '../lib/aiGuard.js';
@@ -55,7 +55,7 @@ async function resolveTemplate(projectId: string, key: string): Promise<BeatDefL
 }
 
 // ── GET /api/plot/:projectId/threads — активные линии ────────────────────────
-router.get('/:projectId/threads', authenticateToken, async (req: any, res) => {
+router.get('/:projectId/threads', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.params;
     if (!(await ownsProject(projectId, req.user.userId))) return res.status(403).json({ error: 'Access denied' });
@@ -72,7 +72,7 @@ router.get('/:projectId/threads', authenticateToken, async (req: any, res) => {
 // ── POST /api/plot/:projectId/threads/scan — извлечь линии из синопсисов ──────
 router.post('/:projectId/threads/scan',
   authenticateToken, rateLimit('ai:threads-scan', 20, 60 * 60 * 1000), aiQuota,
-  async (req: any, res) => {
+  async (req: AuthedRequest, res) => {
   try {
     if (!ai) return res.status(503).json({ error: 'AI service is not configured' });
     const { projectId } = req.params;
@@ -145,7 +145,7 @@ router.post('/:projectId/threads/scan',
 });
 
 // ── GET /api/plot/:projectId/beats?template=... — последняя бит-карта ─────────
-router.get('/:projectId/beats', authenticateToken, async (req: any, res) => {
+router.get('/:projectId/beats', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.params;
     const template = String(req.query.template ?? 'romancing_the_beat');
@@ -165,7 +165,7 @@ router.get('/:projectId/beats', authenticateToken, async (req: any, res) => {
 // ── POST /api/plot/:projectId/beats/scan — реверс-детект битов ────────────────
 router.post('/:projectId/beats/scan',
   authenticateToken, rateLimit('ai:beats-scan', 30, 60 * 60 * 1000), aiQuota,
-  async (req: any, res) => {
+  async (req: AuthedRequest, res) => {
   try {
     if (!ai) return res.status(503).json({ error: 'AI service is not configured' });
     const { projectId } = req.params;
@@ -221,7 +221,7 @@ router.post('/:projectId/beats/scan',
 // ── PUT /api/plot/:projectId/beats — сохранить АВТОРСКИЙ план битов (до текста) ─
 // Без ИИ: заполнение схемы-анкеты. Мердж планов в существующую бит-карту (или создаёт
 // её из определения шаблона). Детект-поля (chapterId/note) не трогает.
-router.put('/:projectId/beats', authenticateToken, async (req: any, res) => {
+router.put('/:projectId/beats', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.params;
     const template = String(req.body?.template ?? 'romancing_the_beat');
@@ -255,7 +255,7 @@ router.put('/:projectId/beats', authenticateToken, async (req: any, res) => {
 });
 
 // ── GET /api/plot/:projectId/templates — пресеты + кастомные бит-шаблоны ──────
-router.get('/:projectId/templates', authenticateToken, async (req: any, res) => {
+router.get('/:projectId/templates', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.params;
     if (!(await ownsProject(projectId, req.user.userId))) return res.status(403).json({ error: 'Access denied' });
@@ -271,7 +271,7 @@ router.get('/:projectId/templates', authenticateToken, async (req: any, res) => 
 });
 
 // ── POST /api/plot/:projectId/templates — создать свой шаблон (бит-архитектор) ─
-router.post('/:projectId/templates', authenticateToken, async (req: any, res) => {
+router.post('/:projectId/templates', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.params;
     if (!(await ownsProject(projectId, req.user.userId))) return res.status(403).json({ error: 'Access denied' });
@@ -296,7 +296,7 @@ router.post('/:projectId/templates', authenticateToken, async (req: any, res) =>
 });
 
 // ── DELETE /api/plot/:projectId/templates/:rowId — удалить свой шаблон ────────
-router.delete('/:projectId/templates/:rowId', authenticateToken, async (req: any, res) => {
+router.delete('/:projectId/templates/:rowId', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId, rowId } = req.params;
     if (!isValidUUID(rowId)) return res.status(400).json({ error: 'Invalid id' });
@@ -314,7 +314,7 @@ router.delete('/:projectId/templates/:rowId', authenticateToken, async (req: any
 });
 
 // ── GET /api/plot/:projectId/arcs — арки персонажей ──────────────────────────
-router.get('/:projectId/arcs', authenticateToken, async (req: any, res) => {
+router.get('/:projectId/arcs', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.params;
     if (!(await ownsProject(projectId, req.user.userId))) return res.status(403).json({ error: 'Access denied' });
@@ -331,7 +331,7 @@ router.get('/:projectId/arcs', authenticateToken, async (req: any, res) => {
 // ── POST /api/plot/:projectId/arcs/scan — вывести арки главных героев ─────────
 router.post('/:projectId/arcs/scan',
   authenticateToken, rateLimit('ai:arcs-scan', 20, 60 * 60 * 1000), aiQuota,
-  async (req: any, res) => {
+  async (req: AuthedRequest, res) => {
   try {
     if (!ai) return res.status(503).json({ error: 'AI service is not configured' });
     const { projectId } = req.params;
@@ -387,7 +387,7 @@ router.post('/:projectId/arcs/scan',
 
 // ── PUT /api/plot/arcs/:arcId — править арку вручную (переживает рентген) ──────
 const ARC_FIELDS = ['want', 'need', 'ghost', 'lie', 'truth'] as const;
-router.put('/arcs/:arcId', authenticateToken, async (req: any, res) => {
+router.put('/arcs/:arcId', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { arcId } = req.params;
     if (!isValidUUID(arcId)) return res.status(400).json({ error: 'Invalid id' });
@@ -411,7 +411,7 @@ router.put('/arcs/:arcId', authenticateToken, async (req: any, res) => {
 });
 
 // ── POST /api/plot/:projectId/arcs — добавить арку героя вручную ──────────────
-router.post('/:projectId/arcs', authenticateToken, async (req: any, res) => {
+router.post('/:projectId/arcs', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.params;
     if (!(await ownsProject(projectId, req.user.userId))) return res.status(403).json({ error: 'Access denied' });
@@ -430,7 +430,7 @@ router.post('/:projectId/arcs', authenticateToken, async (req: any, res) => {
 });
 
 // ── PATCH /api/plot/threads/:threadId — отклонить / отметить разрешённой ──────
-router.patch('/threads/:threadId', authenticateToken, async (req: any, res) => {
+router.patch('/threads/:threadId', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { threadId } = req.params;
     if (!isValidUUID(threadId)) return res.status(400).json({ error: 'Invalid id' });
@@ -458,7 +458,7 @@ router.patch('/threads/:threadId', authenticateToken, async (req: any, res) => {
 });
 
 // ── POST /api/plot/:projectId/threads — создать ручную план-нить (до текста) ──
-router.post('/:projectId/threads', authenticateToken, async (req: any, res) => {
+router.post('/:projectId/threads', authenticateToken, async (req: AuthedRequest, res) => {
   try {
     const { projectId } = req.params;
     if (!(await ownsProject(projectId, req.user.userId))) return res.status(403).json({ error: 'Access denied' });
@@ -481,7 +481,7 @@ router.post('/:projectId/threads', authenticateToken, async (req: any, res) => {
 // с прозой по синопсисам. Один ИИ-вызов. Транзиентный отчёт (не хранится).
 router.post('/:projectId/delivery/scan',
   authenticateToken, rateLimit('ai:delivery-scan', 20, 60 * 60 * 1000), aiQuota,
-  async (req: any, res) => {
+  async (req: AuthedRequest, res) => {
   try {
     if (!ai) return res.status(503).json({ error: 'AI service is not configured' });
     const { projectId } = req.params;

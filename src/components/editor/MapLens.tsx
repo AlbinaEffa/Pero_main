@@ -71,6 +71,36 @@ export function MapLens({ entities, links, onJumpToChapter }: Props) {
   });
   // Отдельные места (без вложенности) прячем за «+N» — в дереве важна сама иерархия.
   const [showFlat, setShowFlat] = useState(false);
+  // Вид: «Карта» (пространственные вложенные боксы — контейнеры из вложенности) ↔ «Дерево» (список).
+  const [mapView, setMapView] = useState<'boxes' | 'tree'>('boxes');
+
+  // Пространственный рендер: место = бокс-контейнер, дети вложены ВНУТРЬ (читается как карта).
+  const renderBox = (id: string, visited: Set<string>, depth = 0) => {
+    if (visited.has(id)) return null;
+    visited.add(id);
+    const loc = byId.get(id);
+    if (!loc) return null;
+    const kids = childrenOf.get(id) ?? [];
+    return (
+      <div key={id} className="rounded-xl border min-w-0 flex-shrink"
+        style={{ borderColor: `${SAGE}33`, background: `${SAGE}${depth % 2 === 0 ? '12' : '0a'}` }}>
+        <button
+          onClick={() => { if (loc.chapterId) onJumpToChapter(loc.chapterId, loc.name); }}
+          className="w-full flex items-center gap-1.5 text-left px-2.5 py-1.5 rounded-t-xl hover:bg-white/60 transition-colors"
+          title={loc.chapterId ? `${loc.name} — клик: в текст` : loc.name}
+        >
+          <MapPin size={12} className="flex-shrink-0" style={{ color: SAGE }} />
+          <span className="text-[12px] font-medium text-[#1e2d1f] truncate">{loc.name}</span>
+          {kids.length > 0 && <span className="text-[10px] text-[#1e2d1f]/35 flex-shrink-0">{kids.length}</span>}
+        </button>
+        {kids.length > 0 && (
+          <div className="flex flex-wrap items-start gap-1.5 p-1.5 pt-0">
+            {kids.map(k => renderBox(k, visited, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const renderNode = (id: string, depth: number, visited: Set<string>) => {
     if (visited.has(id)) return null;
@@ -114,12 +144,29 @@ export function MapLens({ entities, links, onJumpToChapter }: Props) {
   const nestedRoots = roots.filter(r => (childrenOf.get(r.id)?.length ?? 0) > 0);
   const flatRoots = roots.filter(r => (childrenOf.get(r.id)?.length ?? 0) === 0);
 
+  const boxVisited = new Set<string>();
+
   return (
     <div className="text-[12px]">
-      <p className="text-[11px] text-[#1e2d1f]/45 mb-3 leading-snug">
-        Вложенность мест (регион → город → место). Клик — перейти в главу · шеврон — свернуть ветку.
-        {!hasNesting && ' Перо пока не нашло связей «место в месте» — показаны как список.'}
-      </p>
+      <div className="flex items-start gap-2 mb-3">
+        <p className="flex-1 text-[11px] text-[#1e2d1f]/45 leading-snug">
+          Вложенность мест (регион → город → место). Клик — перейти в главу.
+          {!hasNesting && ' Перо пока не нашло связей «место в месте» — показаны как список.'}
+        </p>
+        <div className="inline-flex rounded-md bg-[#1e2d1f]/[0.06] p-0.5 flex-shrink-0">
+          {([['boxes', 'Карта'] as const, ['tree', 'Дерево'] as const]).map(([id, label]) => (
+            <button key={id} onClick={() => setMapView(id)}
+              className={`text-[10.5px] rounded px-2 py-0.5 transition-colors ${mapView === id ? 'bg-white text-[#1e2d1f] shadow-sm' : 'text-[#1e2d1f]/45 hover:text-[#1e2d1f]/70'}`}
+            >{label}</button>
+          ))}
+        </div>
+      </div>
+      {mapView === 'boxes' ? (
+        <div className="flex flex-wrap items-start gap-2">
+          {(hasNesting ? nestedRoots : roots).map(r => renderBox(r.id, boxVisited))}
+          {hasNesting && flatRoots.map(r => renderBox(r.id, boxVisited))}
+        </div>
+      ) : (
       <div className="rounded-xl bg-white/40 border border-[#1e2d1f]/5 p-2">
         {(hasNesting ? nestedRoots : roots).map(r => renderNode(r.id, 0, visited))}
 
@@ -137,6 +184,7 @@ export function MapLens({ entities, links, onJumpToChapter }: Props) {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

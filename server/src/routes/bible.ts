@@ -65,30 +65,6 @@ function splitParagraphs(text: string): string[] {
     .filter(p => p.length > 30);
 }
 
-interface ParagraphDiff {
-  /** Paragraphs that are new or changed (not present in the old version). */
-  changedParagraphs: string[];
-  /** Ratio of changed paragraphs to total paragraphs in the new text. */
-  changeRatio: number;
-}
-
-/**
- * Compare two plain-text versions of a chapter at paragraph level.
- * Returns paragraphs that are new or modified in the new version.
- */
-function diffParagraphs(oldText: string, newText: string): ParagraphDiff {
-  const oldParas = splitParagraphs(oldText);
-  const newParas = splitParagraphs(newText);
-
-  // Build a set of hashes from the old version for O(1) lookup
-  const oldHashes = new Set(oldParas.map(p => contentHash(p)));
-
-  const changedParagraphs = newParas.filter(p => !oldHashes.has(contentHash(p)));
-  const changeRatio = newParas.length > 0 ? changedParagraphs.length / newParas.length : 1;
-
-  return { changedParagraphs, changeRatio };
-}
-
 /** Хеши значимых абзацев текста — базлайн для инкрементального recheck. */
 function paragraphHashes(text: string): string[] {
   return splitParagraphs(text).map(p => contentHash(p));

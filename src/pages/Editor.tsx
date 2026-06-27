@@ -27,7 +27,6 @@ import type { BookFootnote } from '../components/editor/FootnotesLens';
 import { CommandPalette, Command } from '../components/editor/CommandPalette';
 import { SelectionBar } from '../components/editor/SelectionBar';
 import { NotesBoard, Note } from '../components/NotesBoard';
-import { ContradictionPopover } from '../components/editor/ContradictionPopover';
 import { StoryBiblePanel } from '../components/editor/StoryBiblePanel';
 import { PlotPanel } from '../components/editor/PlotPanel';
 import type { PlotThread } from '../components/editor/ThreadsLens';
@@ -427,9 +426,6 @@ export default function Editor() {
   // Scope «Мира» (Эта глава / Вся книга) поднят в Editor, чтобы кнопка «Мир» в нижнем
   // тулбаре могла открывать сразу мир ТЕКУЩЕЙ главы.
   const [bibleScope, setBibleScope] = useState<'project' | 'chapter' | 'series'>('project');
-  const [contradictionPopover, setContradictionPopover] = useState<{ name: string; x: number; y: number; issue?: string; issueChapterId?: string | null } | null>(null);
-  // Превью нестыковки по наведению (как у проверки орфографии): peek без клика.
-  const [contradictionHover, setContradictionHover] = useState<{ issue?: string; name: string; x: number; y: number } | null>(null);
   // Комментарии главы (авторские пометки, привязанные к диапазону текста).
   const [comments, setComments] = useState<CommentData[]>([]);
   const [commentPopover, setCommentPopover] = useState<{ comment: CommentData; x: number; y: number; startEditing?: boolean } | null>(null);
@@ -1919,7 +1915,6 @@ export default function Editor() {
               const id = cm.getAttribute('data-comment-id');
               const found = id ? comments.find(c => c.id === id) : null;
               if (found) {
-                setContradictionPopover(null);
                 // спутник свёрнут + широкий → карточка на полях; иначе поповер (спутник не трогаем)
                 if (window.matchMedia('(min-width: 1024px)').matches && companionCollapsedRef.current) {
                   setActiveCommentId(found.id);

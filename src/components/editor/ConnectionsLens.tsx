@@ -204,22 +204,34 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
   );
   const nodeIdSet = useMemo(() => new Set(nodes0.map(n => n.id)), [nodes0]);
 
-  const edges = useMemo(
-    () => links.filter(l =>
-      l.sourceEntityId !== l.targetEntityId
-      && nodeIdSet.has(l.sourceEntityId) && nodeIdSet.has(l.targetEntityId)),
-    [links, nodeIdSet],
-  );
+  // Одно ребро на ПАРУ: в данных бывают дубли (обе стороны A→B и B→A, или две записи
+  // отношений) — иначе рисуются две кривые в разные стороны («линза» между узлами).
+  const edges = useMemo(() => {
+    const seen = new Set<string>();
+    const out: typeof links = [];
+    for (const l of links) {
+      if (l.sourceEntityId === l.targetEntityId) continue;
+      if (!nodeIdSet.has(l.sourceEntityId) || !nodeIdSet.has(l.targetEntityId)) continue;
+      const key = l.sourceEntityId < l.targetEntityId
+        ? `${l.sourceEntityId}|${l.targetEntityId}` : `${l.targetEntityId}|${l.sourceEntityId}`;
+      if (seen.has(key)) continue;
+      seen.add(key); out.push(l);
+    }
+    return out;
+  }, [links, nodeIdSet]);
 
   // Степень считаем по ВСЕМ связям (не только видимым) — иначе скрытие эпизодических
   // ложно делает узлы «оторванными».
   const degree = useMemo(() => {
-    const d = new Map<string, number>();
+    const nb = new Map<string, Set<string>>();
+    const touch = (a: string, b: string) => (nb.get(a) ?? nb.set(a, new Set()).get(a)!).add(b);
     links.forEach(e => {
       if (e.sourceEntityId === e.targetEntityId) return;
-      d.set(e.sourceEntityId, (d.get(e.sourceEntityId) ?? 0) + 1);
-      d.set(e.targetEntityId, (d.get(e.targetEntityId) ?? 0) + 1);
+      touch(e.sourceEntityId, e.targetEntityId);
+      touch(e.targetEntityId, e.sourceEntityId);
     });
+    const d = new Map<string, number>();
+    nb.forEach((s, id) => d.set(id, s.size)); // степень = число РАЗНЫХ соседей
     return d;
   }, [links]);
 

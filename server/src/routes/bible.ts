@@ -1,7 +1,7 @@
 import express from 'express';
 import { contentHash, paragraphHashes, computeIncrementalText } from '../lib/incrementalRecheck.js';
 import { buildRecheckPrompt, buildBatchRecheckPrompt } from '../lib/recheckPrompts.js';
-import { eq, and, ne, inArray, desc, sql } from 'drizzle-orm';
+import { eq, and, ne, inArray, desc, asc, sql } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import { db } from '../db/client.js';
 import { retrieveCrossChapterPassages, searchBookPassages, searchSeriesPassages } from '../lib/semanticRetrieval.js';
@@ -22,6 +22,8 @@ import {
 import {
   EXTRACTION_SCHEMA, BASE_EXTRACTION_PROMPT, buildStoryBibleContext, buildContradictionPrompt, povContextBlock,
 } from '../lib/extractionPrompts.js';
+import { classifyChapterPov, buildPovDetectPrompt } from '../lib/povResolution.js';
+import { AUTHOR_POV } from '../lib/chapterPov.js';
 
 const router = express.Router();
 
@@ -877,6 +879,82 @@ router.post('/:projectId/recompute-significance', authenticateToken, async (req:
     res.json(result);
   } catch (error) {
     console.error('Error recomputing significance:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/bible/:projectId/resolve-pov — книжный резолв POV (Фаза 3).
+// Детерминированно: служебные → «Автор», структурные/третье лицо → null (рассказчика нет).
+// Фокусный AI-детект «кто рассказчик?» тратится ТОЛЬКО на narrative-главы от первого лица.
+// body: { onlyMissing?: boolean = true } — по умолчанию заполняет лишь пустые POV (не трогает заданные).
+const RESOLVE_POV_MAX_DETECT = 250;   // потолок AI-вызовов за один проход (защита от рантуэя)
+const RESOLVE_POV_CONCURRENCY = 4;
+router.post('/:projectId/resolve-pov',
+  authenticateToken, rateLimit('bible:resolve-pov', 5, 60 * 60 * 1000),
+  async (req: AuthedRequest, res) => {
+  try {
+    const { projectId } = req.params;
+    if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
+    if (!(await assertProjectOwnership(projectId, req.user.userId))) return res.status(403).json({ error: 'Access denied' });
+    const onlyMissing = req.body?.onlyMissing !== false;
+
+    const chapters = await db
+      .select({ id: schema.chapters.id, content: schema.chapters.content,
+                chapterType: schema.chapters.chapterType, povCharacter: schema.chapters.povCharacter })
+      .from(schema.chapters)
+      .where(eq(schema.chapters.projectId, projectId))
+      .orderBy(asc(schema.chapters.order));
+
+    let byAuthor = 0, skippedNone = 0, alreadyHad = 0;
+    const toDetect: { id: string; text: string }[] = [];
+    for (const ch of chapters) {
+      if (onlyMissing && ch.povCharacter) { alreadyHad++; continue; }
+      const text = stripHtml(ch.content ?? '');
+      const { plan } = classifyChapterPov({ chapterType: ch.chapterType, text });
+      if (plan === 'author') {
+        await db.update(schema.chapters).set({ povCharacter: AUTHOR_POV }).where(eq(schema.chapters.id, ch.id));
+        byAuthor++;
+      } else if (plan === 'none') {
+        skippedNone++;
+      } else {
+        toDetect.push({ id: ch.id, text });
+      }
+    }
+
+    // Фокусный AI-детект рассказчика — только для first-person narrative-глав.
+    let byDetect = 0, detectFailed = 0;
+    const detectList = toDetect.slice(0, RESOLVE_POV_MAX_DETECT);
+    if (detectList.length > 0 && !ai) {
+      return res.status(503).json({ error: 'AI service is not configured', byAuthor, skippedNone, alreadyHad, needDetect: detectList.length });
+    }
+    for (let i = 0; i < detectList.length; i += RESOLVE_POV_CONCURRENCY) {
+      const batch = detectList.slice(i, i + RESOLVE_POV_CONCURRENCY);
+      await Promise.all(batch.map(async ({ id, text }) => {
+        try {
+          const response = await guardChat(
+            () => ai!.generate({ contents: buildPovDetectPrompt(text), temperature: 0.1 }),
+            { userId: req.user.userId, projectId, route: 'bible:resolve-pov' },
+          );
+          let parsed: { pov?: unknown };
+          try { parsed = JSON.parse(cleanJsonResponse(response.text || '{}')); } catch { parsed = {}; }
+          const pov = sanitizePov(parsed.pov);
+          if (pov) { await db.update(schema.chapters).set({ povCharacter: pov }).where(eq(schema.chapters.id, id)); byDetect++; }
+          else detectFailed++;
+        } catch (e) {
+          console.warn('[resolve-pov] detect failed for chapter', id, (e as Error)?.message);
+          detectFailed++;
+        }
+      }));
+    }
+
+    res.json({
+      total: chapters.length,
+      byAuthor, byDetect, thirdPersonOrStub: skippedNone, alreadyHad,
+      detectAttempted: detectList.length, detectFailed,
+      detectSkippedOverCap: Math.max(0, toDetect.length - detectList.length),
+    });
+  } catch (error) {
+    console.error('Error resolving POV:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

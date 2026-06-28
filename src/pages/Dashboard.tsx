@@ -20,6 +20,7 @@ import { api, PlanLimitError } from '../services/api';
 import { useJobStatus } from '../hooks/useJobStatus';
 import { track } from '../services/analytics';
 import { ink, PALETTE } from '../theme/tokens';
+import { formatWords } from '../lib/format';
 
 interface Project {
   id: string;
@@ -98,11 +99,6 @@ function fromApiProject(p: any): Project {
   };
 }
 
-
-function formatWords(n: number) {
-  if (n >= 1000) return `${(n / 1000).toFixed(0)}К`;
-  return n.toString();
-}
 
 const PRESET_COLORS = [PALETTE.pineDeep, PALETTE.clay, PALETTE.navy, PALETTE.plum, PALETTE.emerald, PALETTE.ochre, PALETTE.wine, PALETTE.blue];
 

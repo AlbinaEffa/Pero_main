@@ -39,7 +39,7 @@
 |---|---|---|
 | `src/pages/Editor.tsx` | 2349 | ◐ −350 (3 хука вынесены); дальше убывающая отдача |
 | `server/src/routes/bible.ts` | 1471 | ◐ −209: вынесены `incrementalRecheck` + `recheckPrompts` (чистые); остаток — роут-бог (извлечение+нестыковки+дедуп+merge+RAG) |
-| `src/components/editor/EditorCanvas.tsx` | 1500 | ◐ −160: чистые команды редактора → `editorCommands.ts` (tsc + preview-verified); остаток — тулбар+холст+сноски (под-компоненты) |
+| `src/components/editor/EditorCanvas.tsx` | 1470 | ◐ −190: команды → `editorCommands.ts`, область сносок → `FootnotesArea.tsx` (tsc + preview-verified); остаток — тулбар+холст |
 | `src/pages/Dashboard.tsx` | 1351 | ◐ цвет→токены; инлайн-стили→Tailwind остаётся |
 | `server/src/lib/extraction.ts` | 584 | ◐ −622: промпты «Сюжета» → `plotPrompts.ts`, промпты+схема извлечения/нестыковок/жанра → `extractionPrompts.ts`; остаток — утилы+дедуп+резолвер `processExtractionResults` |
 | `src/components/editor/StoryBiblePanel.tsx` | 1082 | ◐ −80: детектор дублей → `storyBibleDedup.ts` (покрыт тестом + preview-verified); остаток — каталог+линзы |

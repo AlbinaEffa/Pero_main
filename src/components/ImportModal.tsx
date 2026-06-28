@@ -13,6 +13,7 @@ import { X, Upload, FileText, CheckCircle, ChevronDown, ChevronUp, AlertCircle, 
 import { getApiBaseUrl } from '../services/api';
 import { paywall } from '../store/paywall';
 import GenrePicker from './GenrePicker';
+import { formatWords } from '../lib/format';
 
 const API = getApiBaseUrl();
 
@@ -40,11 +41,6 @@ interface ImportModalProps {
   onSuccess: (projectId: string, firstChapterId: string) => void;
   /** Файл, выбранный заранее (например, в «У меня уже есть рукопись») — разбор стартует сразу. */
   initialFile?: File | null;
-}
-
-function formatWords(n: number) {
-  if (n >= 1000) return `${(n / 1000).toFixed(0)}К`;
-  return String(n);
 }
 
 export default function ImportModal({ onClose, onSuccess, initialFile }: ImportModalProps) {

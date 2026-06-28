@@ -648,7 +648,7 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
             const cat = neighborId ? catOf.get(neighborId) : undefined;
             const stroke = cat ? (REL_CATEGORIES.find(c => c.key === cat)?.color ?? '#1e2d1f') : '#1e2d1f';
             // прозрачность ребра: фокус 0.3; выбор — только касающиеся выбранной; иначе база
-            let op = focusId ? 0.3 : 0.14;
+            let op = focusId ? 0.42 : 0.14;
             if (!focusId && selectedId) op = (e.sourceEntityId === selectedId || e.targetEntityId === selectedId) ? 0.5 : 0.04;
             else if (!focusId && diagOrphans) op = 0.04;
             else if (!focusId && hoverNeighbors.size) op = (e.sourceEntityId === hoveredId || e.targetEntityId === hoveredId) ? 0.5 : 0.03;
@@ -699,8 +699,10 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
             if (!p) return null;
             // Радиус и подписи делим на зум → узлы держат постоянный экранный размер (камера,
             // как в Obsidian): приближение РАЗДВИГАЕТ узлы, а не раздувает их.
-            const r = (focusId ? (n.id === focusId ? 26 : 13) : (SIG_RADIUS[n.significance ?? 'minor'] ?? 11)) / t.k;
+            const baseR = focusId ? (n.id === focusId ? 26 : 13) : (SIG_RADIUS[n.significance ?? 'minor'] ?? 11);
+            const r = baseR / t.k;
             const pigment = TYPE_PIGMENT[n.type] ?? '#54627F';
+            const initial = n.name.trim().charAt(0).toUpperCase(); // буквица-инициал внутри крупных узлов
             const conflict = contradictions.has(n.id);
             const isFocus = n.id === focusId;
             const isSelected = n.id === selectedId;
@@ -733,6 +735,14 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
                  }}>
                 {conflict && <circle cx={p.x} cy={p.y} r={r + 3 / t.k} fill="none" stroke="#A14F44" strokeWidth={2 / t.k} />}
                 <circle cx={p.x} cy={p.y} r={r} fill={pigment} stroke={isSelected ? '#1e2d1f' : '#f5f0e8'} strokeWidth={(isFocus || isSelected ? 3 : 1.5) / t.k} />
+                {baseR >= 13 && initial && (
+                  <text x={p.x} y={p.y + (baseR * 0.34) / t.k} textAnchor="middle"
+                        fontSize={(baseR * 1.05) / t.k} fill="#f5f0e8"
+                        fontFamily="Cormorant Garamond, serif" fontWeight={600}
+                        style={{ pointerEvents: 'none' }}>
+                    {initial}
+                  </text>
+                )}
                 {showLabel(n) && (
                   <text x={p.x} y={p.y + r + 11 / t.k} textAnchor="middle" fontSize={10.5 / t.k} fill="#1e2d1f" fontFamily="Golos Text, system-ui"
                         stroke="#f5f0e8" strokeWidth={2.5 / t.k} paintOrder="stroke"

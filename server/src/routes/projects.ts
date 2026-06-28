@@ -4,6 +4,7 @@ import * as schema from '../db/schema.js';
 import { db } from '../db/client.js';
 import { authenticateToken, type AuthedRequest } from '../middleware/auth.js';
 import { checkProjectCreateLimit } from '../lib/planLimits.js';
+import { ALLOWED_CHAPTER_TYPES, deterministicPov } from '../lib/chapterPov.js';
 
 const router = express.Router();
 
@@ -270,8 +271,7 @@ router.post('/:id/chapters', authenticateToken, async (req: AuthedRequest, res) 
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    const ALLOWED_TYPES = ['chapter', 'prologue', 'epilogue', 'part', 'interlude', 'acknowledgments', 'dedication', 'foreword', 'afterword'];
-    const type = ALLOWED_TYPES.includes(chapterType) ? chapterType : 'chapter';
+    const type = ALLOWED_CHAPTER_TYPES.includes(chapterType) ? chapterType : 'chapter';
 
     // Set order = current chapter count so the new chapter goes to end
     const [{ count }] = await db
@@ -287,6 +287,7 @@ router.post('/:id/chapters', authenticateToken, async (req: AuthedRequest, res) 
         content: '',
         order: count,
         chapterType: type,
+        povCharacter: deterministicPov(type), // служебная глава → «Автор» сразу
       })
       .returning();
 

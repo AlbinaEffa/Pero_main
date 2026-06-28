@@ -5,6 +5,7 @@ import { db } from '../db/client.js';
 import { authenticateToken, type AuthedRequest } from '../middleware/auth.js';
 import { stripHtml, wordCount } from '../lib/html.js';
 import { scheduleChapterEmbed } from '../jobs/queue.js';
+import { ALLOWED_CHAPTER_TYPES, isServiceChapter, AUTHOR_POV } from '../lib/chapterPov.js';
 
 const router = express.Router();
 
@@ -137,8 +138,11 @@ router.patch('/:id', authenticateToken, async (req: AuthedRequest, res) => {
         : null;
     }
     // Тип главы — авторская правка (например, пометить эпилогом).
-    if (chapterType !== undefined && ['chapter', 'prologue', 'epilogue', 'part', 'interlude', 'acknowledgments', 'dedication', 'foreword', 'afterword'].includes(chapterType)) {
+    if (chapterType !== undefined && ALLOWED_CHAPTER_TYPES.includes(chapterType)) {
       patch.chapterType = chapterType;
+      // POV-инвариант: пометили служебной (благодарности и т.п.) → POV = «Автор» (если pov
+      // не задан явно в этом же запросе). Сюжетные не трогаем — их резолвит модель/проход.
+      if (povCharacter === undefined && isServiceChapter(chapterType)) patch.povCharacter = AUTHOR_POV;
     }
     // Авторский план главы (режим архитектора): строка или null.
     if (plan !== undefined) patch.plan = typeof plan === 'string' && plan.trim() ? plan.trim().slice(0, 2000) : null;

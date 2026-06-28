@@ -6,8 +6,9 @@
 import 'dotenv/config';
 import { db } from '../db/client.js';
 import * as schema from '../db/schema.js';
-import { eq, asc } from 'drizzle-orm';
+import { eq, asc, and, inArray, isNull } from 'drizzle-orm';
 import { sanitizePov } from '../lib/extraction.js';
+import { SERVICE_CHAPTER_TYPES, AUTHOR_POV } from '../lib/chapterPov.js';
 
 const projectId = process.argv[2];
 if (!projectId) { console.error('usage: backfillPov.ts <projectId>'); process.exit(1); }
@@ -45,6 +46,17 @@ ${text.slice(0, 1800)}`;
 }
 
 async function main() {
+  // Детерминированный шаг (без ИИ): служебные главы → POV «Автор». Повторяемо/идемпотентно.
+  const svc = await db.update(schema.chapters)
+    .set({ povCharacter: AUTHOR_POV })
+    .where(and(
+      eq(schema.chapters.projectId, projectId),
+      inArray(schema.chapters.chapterType, [...SERVICE_CHAPTER_TYPES]),
+      isNull(schema.chapters.povCharacter),
+    ))
+    .returning({ id: schema.chapters.id });
+  if (svc.length) console.log(`служебных глав → «Автор»: ${svc.length}`);
+
   const chapters = await db.select({ id: schema.chapters.id, title: schema.chapters.title, content: schema.chapters.content })
     .from(schema.chapters).where(eq(schema.chapters.projectId, projectId))
     .orderBy(asc(schema.chapters.order));

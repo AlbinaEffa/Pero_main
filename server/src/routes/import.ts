@@ -21,6 +21,7 @@ import { getAIProvider } from '../lib/aiProvider.js';
 import { guardChat } from '../lib/aiGuard.js';
 import { cleanJsonResponse } from '../lib/extraction.js';
 import { buildGenreClassifyPrompt, coerceGenres, coerceMoodColor } from '../lib/extractionPrompts.js';
+import { deterministicPov } from '../lib/chapterPov.js';
 
 const router = express.Router();
 
@@ -388,6 +389,7 @@ router.post('/create', authenticateToken, idempotency(), async (req: AuthedReque
             content: c.content || '',
             order: i,
             chapterType,
+            povCharacter: deterministicPov(chapterType), // служебная глава → «Автор» сразу
           };
         })
       ).returning();

@@ -3,7 +3,7 @@
  * routes/bible.ts. Полная (buildRecheckPrompt) и пакетная (buildBatchRecheckPrompt)
  * перепроверка глав против уже одобренных сущностей. Без БД/AI/IO.
  */
-import { BASE_EXTRACTION_PROMPT } from './extractionPrompts.js';
+import { BASE_EXTRACTION_PROMPT, povContextBlock } from './extractionPrompts.js';
 
 export interface ApprovedEntity { name: string; type: string; description: string | null }
 
@@ -12,8 +12,8 @@ export interface ApprovedEntity { name: string; type: string; description: strin
  * Key difference from old version: explicitly asks AI to SKIP entities with no new info,
  * which avoids noisy "same description" update suggestions.
  */
-export function buildRecheckPrompt(approvedEntities: ApprovedEntity[]): string {
-  if (approvedEntities.length === 0) return BASE_EXTRACTION_PROMPT;
+export function buildRecheckPrompt(approvedEntities: ApprovedEntity[], pov?: string | null): string {
+  if (approvedEntities.length === 0) return BASE_EXTRACTION_PROMPT + povContextBlock(pov);
 
   const list = approvedEntities
     .map(e => `• ${e.name} (${e.type}): ${e.description ?? '—'}`)
@@ -48,6 +48,7 @@ ${list}
 • Добавь relations: связи между сущностями (из списка или новыми), ЯВНО подтверждённые текстом:
   [{ "from": "Имя", "to": "Имя", "relation": "краткий тип («мать», «наставник», «живёт в»)" }].
   Для ЛОКАЦИЙ добавляй вложенность: relation «находится в»/«часть» (меньшее место → большее).
+${povContextBlock(pov)}
 
 Ответ — строго JSON, без markdown. Имена и описания бери ТОЛЬКО из текста
 (не подставляй слова «Имя», «Название», «Описание» как значения).

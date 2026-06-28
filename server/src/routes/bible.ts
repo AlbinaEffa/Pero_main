@@ -20,7 +20,7 @@ import {
   type AiEntity, type AiRelation,
 } from '../lib/extraction.js';
 import {
-  EXTRACTION_SCHEMA, BASE_EXTRACTION_PROMPT, buildStoryBibleContext, buildContradictionPrompt,
+  EXTRACTION_SCHEMA, BASE_EXTRACTION_PROMPT, buildStoryBibleContext, buildContradictionPrompt, povContextBlock,
 } from '../lib/extractionPrompts.js';
 
 const router = express.Router();
@@ -84,9 +84,16 @@ router.post('/extract',
 
       const plainText = stripHtml(chapterContent);
 
+      // POV-aware (Фаза 2): известный рассказчик главы → подаём в промпт и в спасение само-упоминаний.
+      let knownPov: string | null = null;
+      if (chapterId && isValidUUID(chapterId)) {
+        const rows = await db.select({ povCharacter: schema.chapters.povCharacter }).from(schema.chapters).where(eq(schema.chapters.id, chapterId));
+        knownPov = rows[0]?.povCharacter ?? null;
+      }
+
       const response = await guardChat(
         () => ai.generate({
-          contents: `${BASE_EXTRACTION_PROMPT}\n\nТекст главы:\n"""\n${plainText}\n"""`,
+          contents: `${BASE_EXTRACTION_PROMPT}${povContextBlock(knownPov)}\n\nТекст главы:\n"""\n${plainText}\n"""`,
           temperature: 0.15,
           responseSchema: EXTRACTION_SCHEMA,
           responseSchemaName: 'entity_extraction',
@@ -114,7 +121,7 @@ router.post('/extract',
         }
 
         const { newSuggestions, updateSuggestions, newLinks, newEvents } = await processExtractionResults(
-          entities, relations, projectId, chapterId ?? null, chapterTitle, plainText,
+          entities, relations, projectId, chapterId ?? null, chapterTitle, plainText, sanitizePov(parsed.pov) || knownPov,
         );
 
         if (chapterId && isValidUUID(chapterId)) {
@@ -189,6 +196,7 @@ router.post('/recheck/chapter/:chapterId',
           projectId:                 schema.chapters.projectId,
           lastExtractedContentHash:  schema.chapters.lastExtractedContentHash,
           lastExtractedParagraphHashes: schema.chapters.lastExtractedParagraphHashes,
+          povCharacter:              schema.chapters.povCharacter,
         })
         .from(schema.chapters)
         .innerJoin(schema.projects, eq(schema.chapters.projectId, schema.projects.id))
@@ -196,7 +204,7 @@ router.post('/recheck/chapter/:chapterId',
 
       if (!chapterRows.length) return res.status(403).json({ error: 'Chapter not found or access denied' });
 
-      const { content, title: chapterTitle, projectId, lastExtractedContentHash: storedHash, lastExtractedParagraphHashes: storedParaHashesRaw } = chapterRows[0];
+      const { content, title: chapterTitle, projectId, lastExtractedContentHash: storedHash, lastExtractedParagraphHashes: storedParaHashesRaw, povCharacter: knownPov } = chapterRows[0];
       const plainText = stripHtml(content ?? '');
 
       if (!plainText) return res.json({ entities: [], updates: [], total: 0, note: 'empty' });
@@ -217,9 +225,11 @@ router.post('/recheck/chapter/:chapterId',
         .from(schema.storyEntities)
         .where(and(eq(schema.storyEntities.projectId, projectId), eq(schema.storyEntities.status, 'approved')));
 
+      // POV-системное (Фаза 2): если рассказчик главы уже известен — называем его модели,
+      // чтобы факты от первого лица («я поранил руку») приписывались ему, а не терялись.
       const prompt = (storedHash || approvedEntities.length > 0)
-        ? buildRecheckPrompt(approvedEntities)
-        : BASE_EXTRACTION_PROMPT;
+        ? buildRecheckPrompt(approvedEntities, knownPov)
+        : BASE_EXTRACTION_PROMPT + povContextBlock(knownPov);
 
       // Инкрементальный recheck: при наличии базлайна хешей абзацев и изменении МЕНЬШИНСТВА
       // абзацев шлём модели ТОЛЬКО изменённые (экономия токенов). Иначе — полная глава.
@@ -246,8 +256,10 @@ router.post('/recheck/chapter/:chapterId',
       const entities = Array.isArray(parsed) ? parsed : (parsed.entities || []);
       const relations = Array.isArray(parsed) ? [] : (parsed.relations || []);
 
+      // POV для спасения само-упоминаний: свежий из ответа, иначе уже известный по главе.
+      const resolvedPov = sanitizePov(parsed.pov) || knownPov;
       const { newSuggestions, updateSuggestions, newLinks, newEvents } = await processExtractionResults(
-        entities, relations, projectId, chapterId, chapterTitle, plainText,
+        entities, relations, projectId, chapterId, chapterTitle, plainText, resolvedPov,
       );
 
       // Update freshness metadata
@@ -317,6 +329,7 @@ router.post('/recheck/batch',
           title:   schema.chapters.title,
           content: schema.chapters.content,
           lastExtractedContentHash: schema.chapters.lastExtractedContentHash,
+          povCharacter: schema.chapters.povCharacter,
         })
         .from(schema.chapters)
         .where(and(
@@ -392,6 +405,7 @@ router.post('/recheck/batch',
 
           const { newSuggestions, updateSuggestions } = await processExtractionResults(
             entities, relations, projectId, chResult.chapterId, chMeta.title, chMeta.plainText,
+            sanitizePov(chResult.pov) || chMeta.povCharacter,
           );
 
           allNewSuggestions.push(...newSuggestions);
@@ -1355,7 +1369,7 @@ router.post('/:projectId/contradictions/scan-chapter',
     const storyBible = buildStoryBibleContext(entities, links);
     // RAG: подтягиваем близкие по смыслу места из ДРУГИХ глав (синопсис как запрос, иначе текст).
     const related = await retrieveCrossChapterPassages(projectId, chapterId, chapter.summary || plainText, 6);
-    const prompt = buildContradictionPrompt(storyBible, chapter.title, plainText.slice(0, 12000), related);
+    const prompt = buildContradictionPrompt(storyBible, chapter.title, plainText.slice(0, 12000), related, chapter.povCharacter);
 
     const response = await guardChat(
       () => ai.generate({ contents: prompt, temperature: 0.1 }),

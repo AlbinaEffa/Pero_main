@@ -12,6 +12,7 @@
 import { eq, and, ne, inArray } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import { db } from '../db/client.js';
+import { AUTHOR_POV } from './chapterPov.js';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -198,6 +199,27 @@ const PRONOUN_NAMES = new Set([
 ]);
 
 /**
+ * Само-упоминания рассказчика: первое лицо («я», «мы») и родовые слова-роли протагониста
+ * («героиня», «рассказчик», «протагонист»…). В главе с ИЗВЕСТНЫМ POV такой фантом — это сам
+ * рассказчик, и его факты от первого лица надо спасти в POV-героя, а не выбросить (см.
+ * processExtractionResults, пронг «спасение»). НЕ включаем 2-е/3-е лицо (ты/он/они — не
+ * рассказчик), «антагонист» (это противник), «автор» (служебный голос, POV «Автор»).
+ */
+const FIRST_PERSON_PRONOUNS = new Set([
+  'я', 'меня', 'мне', 'мной', 'мною', 'мы', 'нас', 'нам', 'нами',
+  'i', 'me', 'we', 'us', 'myself',
+]);
+const NARRATOR_ROLE_NAMES = new Set([
+  'героиня', 'герой', 'главная героиня', 'главный герой', 'главный персонаж',
+  'главное действующее лицо', 'протагонист', 'рассказчик', 'рассказчица',
+  'повествователь', 'повествовательница',
+]);
+export function isSelfReferenceName(name?: string | null): boolean {
+  const n = normalizeMeta(name);
+  return !!n && (FIRST_PERSON_PRONOUNS.has(n) || NARRATOR_ROLE_NAMES.has(n));
+}
+
+/**
  * True, если извлечённая «сущность» — служебная мета-строка (эхо полей промпта) или
  * местоимение, а не реальный персонаж/локация/предмет/правило.
  */
@@ -346,11 +368,22 @@ export async function processExtractionResults(
   chapterId: string | null,
   chapterTitle: string | null,
   plainText: string | null,
+  pov?: string | null,
 ): Promise<ProcessResult> {
-  // Отсеять служебные/шаблонные мета-строки (эхо названий полей промпта),
-  // прежде чем они станут сущностями. Связи/события на них тоже отвалятся,
-  // т.к. имена не попадут в nameToId.
-  entities = (entities ?? []).filter(e => !isMetaEntity(e));
+  // POV-спасение (системное решение, Фаза 2): если рассказчик главы ИЗВЕСТЕН, фантом-
+  // самоупоминание (сущность «я»/«мы»/«героиня»/«рассказчик»…) — это сам рассказчик.
+  // Переименовываем его в POV-героя, чтобы факты от первого лица (раны/болезни/решения,
+  // атрибуты, события) легли на него через обычный резолв, а не утекли «в мусорку».
+  // Прочий мусор (эхо полей промпта, 3-е лицо, антагонист-плейсхолдер) — по-прежнему отсев.
+  const narrator = (pov ?? '').trim();
+  const canSalvage = !!narrator && narrator !== AUTHOR_POV;
+  entities = (entities ?? []).flatMap(e => {
+    if (!isMetaEntity(e)) return [e];
+    if (canSalvage && isSelfReferenceName(e.name)) {
+      return [{ ...e, name: narrator, type: e.type || 'character' }];
+    }
+    return [];
+  });
 
   // All non-rejected entities: approved drive the update-suggestion flow,
   // pending ones still resolve names for links/events.

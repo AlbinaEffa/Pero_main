@@ -8,6 +8,29 @@
  */
 import * as schema from '../db/schema.js'; // только типы $inferSelect в buildStoryBibleContext
 import { cleanJsonResponse } from './extraction.js';
+import { AUTHOR_POV } from './chapterPov.js';
+
+/**
+ * Блок-врезка «ракурс главы» (POV). Системное решение POV (Фаза 2): когда рассказчик
+ * главы ИЗВЕСТЕН (chapters.pov_character), мы прямо называем модели его имя, чтобы
+ * первое лицо («я пораню руку», «меня лихорадит») приписывалось этому персонажу, а не
+ * выбрасывалось как безымянное. Пустая строка, если POV неизвестен или это «Автор»
+ * (служебные главы вне ИИ-анализа) — тогда врезка не нужна.
+ *
+ * Возвращается с ведущими переносами, чтобы безопасно подклеиваться в конец промпта.
+ */
+export function povContextBlock(pov?: string | null): string {
+  const p = (pov ?? '').trim();
+  if (!p || p === AUTHOR_POV) return '';
+  return `
+
+=== РАКУРС ЭТОЙ ГЛАВЫ (POV) — КРИТИЧНО ===
+Повествование ведётся ОТ ПЕРВОГО ЛИЦА, рассказчик — персонаж «${p}». Поэтому:
+• Любое «я», «меня», «мне», «мной», «мой/моя/мои», а также «мы»/«нас» (когда рассказчик о себе) — это «${p}». Это НЕ безымянный персонаж и НЕ отдельная сущность-местоимение.
+• ВСЕ факты, которые рассказчик сообщает о себе от первого лица — ранения, болезни, усталость, действия, решения, чувства, мысли, черты, предыстория — приписывай сущности character «${p}». Если её ещё нет в ответе, СОЗДАЙ её с этими фактами и событиями.
+• НИКОГДА не выбрасывай факт только из-за того, что он сказан про «я» без имени; НИКОГДА не создавай сущность «я»/«героиня»/«герой»/«рассказчик»/«протагонист» — всё это «${p}».
+• В поле pov верни ровно «${p}».`;
+}
 
 // ── Genre taxonomy (mirror of client src/data/genres.ts — keep in sync) ────────
 
@@ -166,7 +189,7 @@ export interface RawContradiction {
  * Тот же критерий, что и в интерактивной /ai/consistency — только факты,
  * не стиль и не сюжет. Используется фоновой джобой scan_contradictions.
  */
-export function buildContradictionPrompt(storyBible: string, chapterTitle: string, plainText: string, relatedPassages: string[] = []): string {
+export function buildContradictionPrompt(storyBible: string, chapterTitle: string, plainText: string, relatedPassages: string[] = [], pov?: string | null): string {
   const relatedBlock = relatedPassages.length
     ? `\n=== РЕЛЕВАНТНЫЕ МЕСТА ИЗ ДРУГИХ ГЛАВ (семантически близкие — сверь факты по всей книге;
 фрагменты с пометкой «[Из книги «…»]» — канон ПРЕДЫДУЩИХ книг серии: новый текст не должен им противоречить) ===
@@ -182,6 +205,7 @@ ${relatedBlock}
 <chapter_content>
 ${plainText.trim()}
 </chapter_content>
+${povContextBlock(pov)}
 
 === ДВА ПОТОКА: НЕСТЫКОВКА и РАЗВИТИЕ ===
 Когда текст ЭТОЙ главы говорит о сущности НЕ ТО, что в Мире, реши, к какому потоку это относится,

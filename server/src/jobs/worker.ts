@@ -27,7 +27,7 @@ import {
   type AiEntity, type AiRelation,
 } from '../lib/extraction.js';
 import {
-  EXTRACTION_SCHEMA, BASE_EXTRACTION_PROMPT, buildStoryBibleContext, buildContradictionPrompt, type RawContradiction,
+  EXTRACTION_SCHEMA, BASE_EXTRACTION_PROMPT, buildStoryBibleContext, buildContradictionPrompt, povContextBlock, type RawContradiction,
 } from '../lib/extractionPrompts.js';
 import { retrieveCrossChapterPassages, retrieveCrossBookPassages } from '../lib/semanticRetrieval.js';
 
@@ -101,12 +101,21 @@ async function handleExtractEntities(
     .replace(/\s+/g, ' ')
     .trim();
 
+  // Заголовок + POV главы (один запрос, до AI). POV-aware (Фаза 2): если рассказчик уже
+  // известен (бэкфилл/книжный проход), называем его модели — первое лицо приписывается ему.
+  const chapterRows = await db
+    .select({ title: schema.chapters.title, povCharacter: schema.chapters.povCharacter })
+    .from(schema.chapters)
+    .where(eq(schema.chapters.id, payload.chapterId));
+  const chapterTitle = chapterRows[0]?.title ?? null;
+  const knownPov = chapterRows[0]?.povCharacter ?? null;
+
   let response;
   try {
     response = await guardChat(
       () => aiClient!.generate({
         // No truncation — send full chapter content
-        contents: `${BASE_EXTRACTION_PROMPT}\n\n<chapter_content>\n${plainText}\n</chapter_content>`,
+        contents: `${BASE_EXTRACTION_PROMPT}${povContextBlock(knownPov)}\n\n<chapter_content>\n${plainText}\n</chapter_content>`,
         temperature: 0.15,
         responseSchema: EXTRACTION_SCHEMA,      // структурный вывод для локальных моделей (Ollama)
         responseSchemaName: 'entity_extraction',
@@ -156,17 +165,10 @@ async function handleExtractEntities(
   }
   if (entities.length === 0) return; // Valid empty response — soft skip, mark succeeded
 
-  // Заголовок главы — для подписи update suggestions и событий таймлайна
-  const chapterRows = await db
-    .select({ title: schema.chapters.title })
-    .from(schema.chapters)
-    .where(eq(schema.chapters.id, payload.chapterId));
-  const chapterTitle = chapterRows[0]?.title ?? null;
-
   // Общий конвейер: pending-сущности, update suggestions для одобренных,
   // аддитивное обогащение атрибутов, entity_links и entity_events — с дедупом.
   await processExtractionResults(
-    entities, relations, projectId, payload.chapterId, chapterTitle, plainText,
+    entities, relations, projectId, payload.chapterId, chapterTitle, plainText, pov || knownPov,
   );
 
   // Отметить главу как проанализированную (+ POV, синопсис, и имя главы, если было «сырым»).
@@ -322,6 +324,7 @@ async function handleScanContradictions(
 
   const chapters = await db.select({
       id: schema.chapters.id, title: schema.chapters.title, content: schema.chapters.content,
+      povCharacter: schema.chapters.povCharacter,
     })
     .from(schema.chapters)
     .where(eq(schema.chapters.projectId, projectId))
@@ -343,7 +346,7 @@ async function handleScanContradictions(
     const crossBook = earlierBookIds.length
       ? (await retrieveCrossBookPassages(earlierBookIds, ch.plainText, 4)).map(p => `[Из книги «${p.bookTitle ?? '?'}»] ${p.chunkText}`)
       : [];
-    const prompt = buildContradictionPrompt(storyBible, ch.title, ch.plainText.slice(0, CONTRADICTION_CHAPTER_CHAR_CAP), [...related, ...priorCanonLines, ...crossBook]);
+    const prompt = buildContradictionPrompt(storyBible, ch.title, ch.plainText.slice(0, CONTRADICTION_CHAPTER_CHAR_CAP), [...related, ...priorCanonLines, ...crossBook], ch.povCharacter);
 
     try {
       const response = await guardChat(

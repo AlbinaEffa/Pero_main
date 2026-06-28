@@ -376,7 +376,61 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
     return m;
   }, [shownNodes, W, H]);
   const sim = useLiveForce(fullIds, shownEdges, W, H, !focusId && expanded, simRadii, typeAnchors);
-  const pos = focusId ? layout.pos : sim.pos;
+
+  // ── Радиальное ДЕРЕВО для полного графа (вместо force-клубка): корень-хаб в центре,
+  // связанные ветвятся наружу кольцами; толщина ветви — по числу листьев (как в референсе-
+  // созвездии). Корень — самый связный или выбранный кликом (drill вглубь).
+  const [treeRoot, setTreeRoot] = useState<string | null>(null);
+  const treeLayout = useMemo(() => {
+    const cx = W / 2, cy = H / 2;
+    const empty = { pos: new Map<string, { x: number; y: number }>(), root: null as string | null, unreached: 0, treeEdges: new Set<string>() };
+    if (focusId) return empty;
+    const rootId = (treeRoot && shownIdSet.has(treeRoot)) ? treeRoot : mostConnected;
+    if (!rootId) return empty;
+    const adj = new Map<string, string[]>();
+    const add = (a: string, b: string) => { (adj.get(a) ?? adj.set(a, []).get(a)!).push(b); };
+    shownEdges.forEach(e => { add(e.sourceEntityId, e.targetEntityId); add(e.targetEntityId, e.sourceEntityId); });
+    const children = new Map<string, string[]>(), depth = new Map<string, number>();
+    const order: string[] = [], seen = new Set<string>([rootId]);
+    const treeEdges = new Set<string>(); // ключи рёбер-веток (скелет дерева) — рисуем ярко
+    const ekey = (a: string, b: string) => (a < b ? a + '|' + b : b + '|' + a);
+    depth.set(rootId, 0); children.set(rootId, []);
+    const q = [rootId];
+    while (q.length) {
+      const u = q.shift()!; order.push(u);
+      for (const v of (adj.get(u) ?? [])) {
+        if (!seen.has(v) && shownIdSet.has(v)) {
+          seen.add(v); depth.set(v, (depth.get(u) ?? 0) + 1);
+          children.set(v, []); children.get(u)!.push(v); q.push(v);
+          treeEdges.add(ekey(u, v));
+        }
+      }
+    }
+    const leaves = new Map<string, number>();
+    for (let i = order.length - 1; i >= 0; i--) {
+      const ch = children.get(order[i])!;
+      leaves.set(order[i], ch.length ? ch.reduce((s, c) => s + (leaves.get(c) ?? 1), 0) : 1);
+    }
+    const maxDepth = Math.max(1, ...order.map(id => depth.get(id) ?? 0));
+    const ringStep = (Math.min(W, H) / 2 - 44) / Math.max(1, maxDepth);
+    const pos = new Map<string, { x: number; y: number }>();
+    const place = (id: string, a0: number, a1: number) => {
+      const a = (a0 + a1) / 2, r = (depth.get(id) ?? 0) * ringStep;
+      pos.set(id, { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
+      const ch = children.get(id)!, total = leaves.get(id) ?? 1;
+      let acc = a0;
+      for (const c of ch) { const span = (a1 - a0) * (leaves.get(c) ?? 1) / total; place(c, acc, acc + span); acc += span; }
+    };
+    place(rootId, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI);
+    const unreached = shownNodes.filter(n => !seen.has(n.id));
+    unreached.forEach((n, i) => {
+      const a = -Math.PI / 2 + (i / Math.max(1, unreached.length)) * 2 * Math.PI, r = (maxDepth + 0.7) * ringStep;
+      pos.set(n.id, { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
+    });
+    return { pos, root: rootId, unreached: unreached.length, treeEdges };
+  }, [focusId, treeRoot, shownIdSet, mostConnected, shownEdges, shownNodes, W, H]);
+
+  const pos = focusId ? layout.pos : treeLayout.pos;
 
   // ── Зум/пан ────────────────────────────────────────────────────────────────
   const [t, setT] = useState({ k: 1, x: 0, y: 0 });
@@ -520,8 +574,8 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
             : selectedId
               ? <>Выбран: <span className="font-medium text-[#1e2d1f]/70">«{selected?.name ?? ''}»</span> — его зависимости подсвечены</>
               : graphCapped
-                ? `Топ-${MAX_GRAPH} самых связных из ${nodes0.length}. Клик — зависимости · тащи узел · колесо — зум.`
-                : 'Весь граф. Клик по вершине — её зависимости · тащи узел · колесо — зум.'}
+                ? `Дерево связей · топ-${MAX_GRAPH} из ${nodes0.length}. Клик по узлу — центрировать на нём · колесо — зум.`
+                : 'Дерево связей: размер = число связей (видно центр и одиночек). Клик по узлу — центрировать на нём · колесо — зум.'}
         </p>
         <div className="flex items-center gap-1 flex-shrink-0">
           {/* Пикер центра эго-графа — выбрать любого героя напрямую (поиск). */}
@@ -613,11 +667,11 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
       <div className="relative rounded-xl bg-white/40 border border-[#1e2d1f]/5 overflow-hidden">
         {(t.k !== 1 || t.x !== 0 || t.y !== 0 || selectedId || (expanded && !focusId)) && (
           <button
-            onClick={() => { setT({ k: 1, x: 0, y: 0 }); setSelectedId(null); sim.reheat(); }}
+            onClick={() => { setT({ k: 1, x: 0, y: 0 }); setSelectedId(null); setTreeRoot(null); }}
             className="absolute top-2 right-2 z-10 flex items-center gap-1 text-[10.5px] px-2 py-1 rounded-md bg-white/80 hover:bg-white text-[#1e2d1f]/60 border border-[#1e2d1f]/10"
-            title="Сбросить масштаб/выбор и переразложить граф"
+            title="Вернуть дерево к центру-хабу и сбросить масштаб"
           >
-            <Maximize size={11} /> переразложить
+            <Maximize size={11} /> к центру
           </button>
         )}
         {/* Действия для выбранной вершины */}
@@ -661,8 +715,11 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
             const neighborId = focusId ? (e.sourceEntityId === focusId ? e.targetEntityId : e.sourceEntityId) : null;
             // Цвет ветки — пигмент ТИПА соседа (надёжно), а не догадка о характере связи.
             const stroke = neighborId ? (TYPE_PIGMENT[byId.get(neighborId)?.type ?? ''] ?? '#1e2d1f') : '#1e2d1f';
-            // прозрачность ребра: фокус 0.3; выбор — только касающиеся выбранной; иначе база
-            let op = focusId ? 0.42 : 0.14;
+            // В полном графе скелет ДЕРЕВА рисуем ярко, прочие связи — еле-видно (фон-сетка):
+            // так читается чистый радиальный «фейерверк», а не спагетти.
+            const ekeyE = e.sourceEntityId < e.targetEntityId ? `${e.sourceEntityId}|${e.targetEntityId}` : `${e.targetEntityId}|${e.sourceEntityId}`;
+            const isTree = !focusId && treeLayout.treeEdges?.has(ekeyE);
+            let op = focusId ? 0.42 : (isTree ? 0.5 : 0.05);
             if (!focusId && selectedId) op = (e.sourceEntityId === selectedId || e.targetEntityId === selectedId) ? 0.5 : 0.04;
             else if (!focusId && diagOrphans) op = 0.04;
             else if (!focusId && hoverNeighbors.size) op = (e.sourceEntityId === hoveredId || e.targetEntityId === hoveredId) ? 0.5 : 0.03;
@@ -675,7 +732,7 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
             const cpx = (a.x + b.x) / 2 + (-dy / dist) * off, cpy = (a.y + b.y) / 2 + (dx / dist) * off;
             return (
               <path key={e.id} d={`M ${a.x} ${a.y} Q ${cpx} ${cpy} ${b.x} ${b.y}`} fill="none" stroke={stroke}
-                    strokeOpacity={op} strokeWidth={(hoveredEdge ? 2.2 : 1.5) / t.k} strokeLinecap="round" />
+                    strokeOpacity={op} strokeWidth={(hoveredEdge ? 2.2 : (isTree ? 1.7 : 0.9)) / t.k} strokeLinecap="round" />
             );
           })}
 
@@ -718,20 +775,14 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
                  opacity={op}
                  onMouseEnter={() => setHoveredId(n.id)}
                  onMouseLeave={() => setHoveredId(h => (h === n.id ? null : h))}
-                 onPointerDown={(e) => {
-                   if (focusId) return;                       // в полном графе узел можно тащить
-                   const pp = pos.get(n.id); if (!pp) return;
-                   e.stopPropagation();                        // не запускаем пан холста
-                   dragNode.current = { id: n.id, sx: e.clientX, sy: e.clientY, ox: pp.x, oy: pp.y };
-                   moved.current = false;
-                   sim.pin(n.id); // НЕ reheat: клик-выбор не должен дёргать граф; reheat только при реальном перетаскивании
-                   svgRef.current?.setPointerCapture?.(e.pointerId);
-                 }}
                  onClick={() => {
                    if (moved.current) return;
-                   if (canWalk) { goToFocus(n.id); return; } // ЛЮБОЙ сосед → его граф; остаёмся в графе (+ можно назад)
-                   if (focusId) return;                       // клик по центру — ничего (уже в центре, из графа не уходим)
-                   setSelectedId(prev => (prev === n.id ? null : n.id)); // полный граф → выбрать/снять
+                   if (canWalk) { goToFocus(n.id); return; } // эго: сосед → его граф
+                   if (focusId) return;                       // эго-центр — ничего
+                   // Полный граф (дерево): клик = центрировать дерево на узле (drill в его созвездие)
+                   // + показать панель действий. Повторный клик по корню — снять.
+                   setTreeRoot(prev => (prev === n.id ? null : n.id));
+                   setSelectedId(n.id);
                  }}>
                 {conflict && <circle cx={p.x} cy={p.y} r={r + 3 / t.k} fill="none" stroke="#A14F44" strokeWidth={2 / t.k} />}
                 <circle cx={p.x} cy={p.y} r={r} fill={pigment} stroke={isSelected ? '#1e2d1f' : '#f5f0e8'} strokeWidth={(isFocus || isSelected ? 3 : 1.5) / t.k} />

@@ -42,7 +42,7 @@
 | `src/components/editor/EditorCanvas.tsx` | 1500 | ◐ −160: чистые команды редактора → `editorCommands.ts` (tsc + preview-verified); остаток — тулбар+холст+сноски (под-компоненты) |
 | `src/pages/Dashboard.tsx` | 1351 | ◐ цвет→токены; инлайн-стили→Tailwind остаётся |
 | `server/src/lib/extraction.ts` | 584 | ◐ −622: промпты «Сюжета» → `plotPrompts.ts`, промпты+схема извлечения/нестыковок/жанра → `extractionPrompts.ts`; остаток — утилы+дедуп+резолвер `processExtractionResults` |
-| `src/components/editor/StoryBiblePanel.tsx` | 1162 | ⬜ каталог+линзы+дедуп |
+| `src/components/editor/StoryBiblePanel.tsx` | 1082 | ◐ −80: детектор дублей → `storyBibleDedup.ts` (покрыт тестом + preview-verified); остаток — каталог+линзы |
 - **Подход:** оппортунистически — выносить кластер, когда правишь область. Не самоцель (P3), но bible.ts/extraction.ts стоит разнести по доменам. **Priority:** P3 (фон).
 
 ## 🟡 Типобезопасность (`: any`)

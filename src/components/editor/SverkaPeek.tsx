@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle, Crosshair, ArrowRight, Sparkles, Copy, ChevronRight, ChevronDown } from 'lucide-react';
 import { api } from '../../services/api';
 import { Entity } from './types';
-import { findDuplicateGroups } from './StoryBiblePanel';
+import { findDuplicateGroups } from './storyBibleDedup';
 
 interface Issue { id: string; projectId?: string; chapterId: string | null; issue: string; quote: string | null; severity: string; status: string; kind?: string; bookTitle?: string | null; bookOrder?: number | null }
 interface Thread { id: string; title: string; resolved: boolean; chapterIds: string[] }

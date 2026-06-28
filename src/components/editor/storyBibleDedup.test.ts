@@ -4,7 +4,7 @@
  * защита от ложного слияния категорий («Кольцо X» / «Кольцо Y»), типы, опечатки.
  */
 import { describe, it, expect } from 'vitest';
-import { findDuplicateGroups } from './StoryBiblePanel';
+import { findDuplicateGroups } from './storyBibleDedup';
 import type { Entity } from './types';
 
 let seq = 0;

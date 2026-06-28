@@ -16,7 +16,7 @@ import { checkBibleChapterLimit } from '../lib/planLimits.js';
 import { enqueueJob } from '../jobs/queue.js';
 import {
   isValidUUID, cleanJsonResponse,
-  processExtractionResults, sanitizePov, sanitizeSynopsis, isLowInfoChapterTitle,
+  processExtractionResults, sanitizePov, sanitizeSynopsis, isLowInfoChapterTitle, canonicalizePov,
   type AiEntity, type AiRelation,
 } from '../lib/extraction.js';
 import {
@@ -927,6 +927,12 @@ router.post('/:projectId/resolve-pov',
     if (detectList.length > 0 && !ai) {
       return res.status(503).json({ error: 'AI service is not configured', byAuthor, skippedNone, alreadyHad, needDetect: detectList.length });
     }
+    // Approved-персонажи (имя+алиасы) для канонизации детект-POV к сущности Каталога (Фаза 4).
+    const approvedChars = detectList.length > 0
+      ? await db.select({ name: schema.storyEntities.name, attributes: schema.storyEntities.attributes })
+          .from(schema.storyEntities)
+          .where(and(eq(schema.storyEntities.projectId, projectId), eq(schema.storyEntities.type, 'character'), eq(schema.storyEntities.status, 'approved')))
+      : [];
     for (let i = 0; i < detectList.length; i += RESOLVE_POV_CONCURRENCY) {
       const batch = detectList.slice(i, i + RESOLVE_POV_CONCURRENCY);
       await Promise.all(batch.map(async ({ id, text }) => {
@@ -937,7 +943,7 @@ router.post('/:projectId/resolve-pov',
           );
           let parsed: { pov?: unknown };
           try { parsed = JSON.parse(cleanJsonResponse(response.text || '{}')); } catch { parsed = {}; }
-          const pov = sanitizePov(parsed.pov);
+          const pov = canonicalizePov(sanitizePov(parsed.pov), approvedChars);
           if (pov) { await db.update(schema.chapters).set({ povCharacter: pov }).where(eq(schema.chapters.id, id)); byDetect++; }
           else detectFailed++;
         } catch (e) {

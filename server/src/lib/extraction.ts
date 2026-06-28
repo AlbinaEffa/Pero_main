@@ -280,6 +280,28 @@ export function aliasesOf(attrs: unknown): string[] {
   return Array.isArray(a.aliases) ? (a.aliases as unknown[]).filter((x): x is string => typeof x === 'string') : [];
 }
 
+/**
+ * Канонизация имени рассказчика (POV) к существующей сущности Каталога (Фаза 4). Детект-вариант
+ * («Ризанд») приводится к каноническому имени слитой записи («Риз»), сопоставляясь по
+ * НОРМАЛИЗОВАННОМУ написанию имени или алиаса. Так POV совпадает с сущностью Мира (кликабелен,
+ * салвидж/значимость считаются на одного героя) и держит единый POV сквозь книгу/серию.
+ * Если совпадения нет — возвращает исходное имя (новый рассказчик — это нормально).
+ */
+export function canonicalizePov(
+  pov: string | null | undefined,
+  approvedChars: { name: string; attributes?: unknown }[],
+): string | null {
+  const p = (pov ?? '').trim();
+  if (!p) return null;
+  const norm = normalizeNameRu(p);
+  if (!norm) return p;
+  for (const c of approvedChars) {
+    if (normalizeNameRu(c.name) === norm) return c.name;
+    for (const al of aliasesOf(c.attributes)) if (normalizeNameRu(al) === norm) return c.name;
+  }
+  return p;
+}
+
 
 // ── shared: process AI extraction results ────────────────────────────────────
 

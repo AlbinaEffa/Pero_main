@@ -192,7 +192,9 @@ export interface RawContradiction {
 export function buildContradictionPrompt(storyBible: string, chapterTitle: string, plainText: string, relatedPassages: string[] = [], pov?: string | null): string {
   const relatedBlock = relatedPassages.length
     ? `\n=== РЕЛЕВАНТНЫЕ МЕСТА ИЗ ДРУГИХ ГЛАВ (семантически близкие — сверь факты по всей книге;
-фрагменты с пометкой «[Из книги «…»]» — канон ПРЕДЫДУЩИХ книг серии: новый текст не должен им противоречить) ===
+фрагменты с пометкой «[Из книги «…»]» — канон ПРЕДЫДУЩИХ книг серии: новый текст не должен им противоречить;
+фрагмент с пометкой «(глава от лица X)» написан от лица ДРУГОГО рассказчика — «я» в нём = X, а не
+рассказчик текущей главы, поэтому разные «я» РАЗНЫХ рассказчиков сами по себе НЕ противоречие) ===
 ${relatedPassages.map((p, i) => `[${i + 1}] ${p}`).join('\n\n')}
 `
     : '';

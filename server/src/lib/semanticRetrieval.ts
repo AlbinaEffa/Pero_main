@@ -142,14 +142,22 @@ export async function retrieveCrossChapterPassages(
   const vec = await embedder.embed(queryText.slice(0, 2000), 'query');
   if (!vec) return [];
   try {
-    const { rows } = await pool.query<{ chunk_text: string }>(
-      `SELECT chunk_text FROM semantic_memory
-        WHERE project_id = $1 AND chapter_id <> $2 AND embedding IS NOT NULL
-        ORDER BY embedding <=> $3::vector
+    // POV-aware (Фаза 4): тянем POV исходной главы. Фрагмент из главы с другим рассказчиком
+    // помечаем «(глава от лица X)», чтобы модель НЕ считала «я разных рассказчиков»
+    // противоречием — первое лицо в каждой главе относится к СВОЕМУ POV-герою.
+    const { rows } = await pool.query<{ chunk_text: string; pov_character: string | null }>(
+      `SELECT sm.chunk_text, c.pov_character
+         FROM semantic_memory sm
+         LEFT JOIN chapters c ON c.id = sm.chapter_id
+        WHERE sm.project_id = $1 AND sm.chapter_id <> $2 AND sm.embedding IS NOT NULL
+        ORDER BY sm.embedding <=> $3::vector
         LIMIT $4`,
       [projectId, chapterId, `[${vec.join(',')}]`, topK],
     );
-    return rows.map(r => r.chunk_text);
+    return rows.map(r => {
+      const pov = (r.pov_character ?? '').trim();
+      return pov && pov !== 'Автор' ? `(глава от лица «${pov}») ${r.chunk_text}` : r.chunk_text;
+    });
   } catch (e: any) {
     if (!['42P01', '42703', '42883'].includes(e?.code)) console.warn('cross-chapter retrieval failed:', e?.message ?? e);
     return [];

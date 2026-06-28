@@ -269,6 +269,54 @@ router.get('/:seriesId/contradictions', authenticateToken, async (req: AuthedReq
   } catch (e) { console.error('series contradictions', e); res.status(500).json({ error: 'Internal server error' }); }
 });
 
+// GET /:seriesId/pov — сквозная согласованность POV-рассказчиков по серии (Фаза 4, без AI).
+// Детерминированно: POV-герои каждой книги + флаг ВАРИАНТОВ имени одного рассказчика между
+// книгами (нормализованное написание совпадает, а буквальное — нет: «Риз» в кн.1 / «Ризанд»
+// в кн.2). Это межкнижный дедуп POV — чтобы один герой не вёл серию под разными именами.
+router.get('/:seriesId/pov', authenticateToken, async (req: AuthedRequest, res) => {
+  try {
+    const s = await ownsSeries(req.params.seriesId, req.user.userId);
+    if (!s) return res.status(403).json({ error: 'Access denied' });
+    const books = await db.select({ id: schema.projects.id, title: schema.projects.title, order: schema.projects.seriesOrder })
+      .from(schema.projects).where(eq(schema.projects.seriesId, s.id)).orderBy(asc(schema.projects.seriesOrder));
+    if (books.length === 0) return res.json({ books: [], variants: [] });
+
+    const { rows } = await pool.query<{ project_id: string; pov: string; n: number }>(
+      `SELECT project_id, pov_character AS pov, COUNT(*)::int AS n
+         FROM chapters
+        WHERE project_id = ANY($1) AND pov_character IS NOT NULL AND pov_character <> 'Автор'
+        GROUP BY project_id, pov_character`,
+      [books.map(b => b.id)],
+    );
+
+    const bookTitle = new Map(books.map(b => [b.id, b.title]));
+    const perBook = books.map(b => ({
+      projectId: b.id, bookTitle: b.title, order: b.order,
+      pov: rows.filter(r => r.project_id === b.id).map(r => ({ name: r.pov, chapters: r.n })).sort((a, c) => c.chapters - a.chapters),
+    }));
+
+    // Варианты одного имени между книгами: группируем по нормализованному написанию.
+    const byNorm = new Map<string, Map<string, Set<string>>>(); // norm → (spelling → set книг)
+    for (const r of rows) {
+      const norm = normalizeNameRu(r.pov);
+      if (!norm) continue;
+      if (!byNorm.has(norm)) byNorm.set(norm, new Map());
+      const sp = byNorm.get(norm)!;
+      if (!sp.has(r.pov)) sp.set(r.pov, new Set());
+      sp.get(r.pov)!.add(r.project_id);
+    }
+    const variants = [...byNorm.values()]
+      .filter(sp => sp.size > 1) // одно нормализованное имя записано по-разному
+      .map(sp => ({
+        spellings: [...sp.entries()].map(([name, ids]) => ({
+          name, books: [...ids].map(id => bookTitle.get(id) ?? null),
+        })),
+      }));
+
+    res.json({ books: perBook, variants });
+  } catch (e) { console.error('series pov', e); res.status(500).json({ error: 'Internal server error' }); }
+});
+
 // POST /:seriesId/books/:projectId/snapshot — заморозить «состояние мира на конец книги» (Этап E4).
 // Снимок выводится из Мира ДЕТЕРМИНИРОВАННО (без AI): значимые сущности + их финальный статус
 // (последнее событие типа 'status' по порядку глав). Старт-канон для следующей книги серии.

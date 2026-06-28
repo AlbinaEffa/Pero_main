@@ -430,7 +430,17 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
     return { pos, root: rootId, unreached: unreached.length, treeEdges };
   }, [focusId, treeRoot, shownIdSet, mostConnected, shownEdges, shownNodes, W, H]);
 
-  const pos = focusId ? layout.pos : treeLayout.pos;
+  // Ручные оверрайды позиций поверх дерева: перетащил узел — он остаётся, где бросил.
+  const manualPos = useRef(new Map<string, { x: number; y: number }>());
+  const [manualVer, setManualVer] = useState(0);
+  const clearManual = () => { if (manualPos.current.size) { manualPos.current.clear(); setManualVer(v => v + 1); } };
+  const pos = useMemo(() => {
+    if (focusId) return layout.pos;
+    if (manualPos.current.size === 0) return treeLayout.pos;
+    const m = new Map(treeLayout.pos);
+    manualPos.current.forEach((p, id) => m.set(id, p));
+    return m;
+  }, [focusId, layout.pos, treeLayout.pos, manualVer]);
 
   // ── Зум/пан ────────────────────────────────────────────────────────────────
   const [t, setT] = useState({ k: 1, x: 0, y: 0 });
@@ -441,7 +451,7 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
 
   useEffect(() => { setT({ k: 1, x: 0, y: 0 }); }, [expanded, focusId, showMinor]);
   // Сброс выбора при смене раскладки.
-  useEffect(() => { setSelectedId(null); }, [focusId, showMinor, graphMode]);
+  useEffect(() => { setSelectedId(null); clearManual(); }, [focusId, showMinor, graphMode]);
 
   const onWheel = (e: React.WheelEvent) => {
     e.preventDefault();
@@ -463,8 +473,12 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
     if (dragNode.current) {
       const d = dragNode.current;
       if (Math.abs(e.clientX - d.sx) + Math.abs(e.clientY - d.sy) > 3) moved.current = true;
-      sim.moveTo(d.id, d.ox + (e.clientX - d.sx) * vbPerPx / t.k, d.oy + (e.clientY - d.sy) * vbPerPx / t.k);
-      // НЕ reheat: граф не «оживает» при ручной раскладке — двигаем ровно то, что схватили.
+      // Пишем в ручной оверрайд → узел остаётся, где бросил (поверх дерева, без «оживления»).
+      manualPos.current.set(d.id, {
+        x: d.ox + (e.clientX - d.sx) * vbPerPx / t.k,
+        y: d.oy + (e.clientY - d.sy) * vbPerPx / t.k,
+      });
+      setManualVer(v => v + 1);
       return;
     }
     if (!drag.current.active) return;
@@ -475,7 +489,7 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
   };
   const onPointerUp = () => {
     // Узел остаётся, где бросил (граф холодный → не схлопывается назад). Раскладка — твоя.
-    if (dragNode.current) { sim.pin(null); dragNode.current = null; return; }
+    if (dragNode.current) { dragNode.current = null; return; }
     drag.current.active = false;
   };
 
@@ -574,8 +588,8 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
             : selectedId
               ? <>Выбран: <span className="font-medium text-[#1e2d1f]/70">«{selected?.name ?? ''}»</span> — его зависимости подсвечены</>
               : graphCapped
-                ? `Дерево связей · топ-${MAX_GRAPH} из ${nodes0.length}. Клик по узлу — центрировать на нём · колесо — зум.`
-                : 'Дерево связей: размер = число связей (видно центр и одиночек). Клик по узлу — центрировать на нём · колесо — зум.'}
+                ? `Дерево связей · топ-${MAX_GRAPH} из ${nodes0.length}. Клик — центрировать · тащи узел — разложить · колесо — зум.`
+                : 'Дерево связей: размер = число связей (видно центр и одиночек). Клик — центрировать на узле · тащи узел — разложить руками · колесо — зум.'}
         </p>
         <div className="flex items-center gap-1 flex-shrink-0">
           {/* Пикер центра эго-графа — выбрать любого героя напрямую (поиск). */}
@@ -667,9 +681,9 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
       <div className="relative rounded-xl bg-white/40 border border-[#1e2d1f]/5 overflow-hidden">
         {(t.k !== 1 || t.x !== 0 || t.y !== 0 || selectedId || (expanded && !focusId)) && (
           <button
-            onClick={() => { setT({ k: 1, x: 0, y: 0 }); setSelectedId(null); setTreeRoot(null); }}
+            onClick={() => { setT({ k: 1, x: 0, y: 0 }); setSelectedId(null); setTreeRoot(null); clearManual(); }}
             className="absolute top-2 right-2 z-10 flex items-center gap-1 text-[10.5px] px-2 py-1 rounded-md bg-white/80 hover:bg-white text-[#1e2d1f]/60 border border-[#1e2d1f]/10"
-            title="Вернуть дерево к центру-хабу и сбросить масштаб"
+            title="Вернуть дерево к центру-хабу, сбросить ручную раскладку и масштаб"
           >
             <Maximize size={11} /> к центру
           </button>
@@ -775,12 +789,21 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
                  opacity={op}
                  onMouseEnter={() => setHoveredId(n.id)}
                  onMouseLeave={() => setHoveredId(h => (h === n.id ? null : h))}
+                 onPointerDown={(e) => {
+                   if (focusId) return;                       // в полном графе (дереве) узел можно тащить
+                   const pp = pos.get(n.id); if (!pp) return;
+                   e.stopPropagation();                        // не запускаем пан холста
+                   dragNode.current = { id: n.id, sx: e.clientX, sy: e.clientY, ox: pp.x, oy: pp.y };
+                   moved.current = false;
+                   svgRef.current?.setPointerCapture?.(e.pointerId);
+                 }}
                  onClick={() => {
-                   if (moved.current) return;
+                   if (moved.current) return;                  // перетаскивание не считается кликом
                    if (canWalk) { goToFocus(n.id); return; } // эго: сосед → его граф
                    if (focusId) return;                       // эго-центр — ничего
                    // Полный граф (дерево): клик = центрировать дерево на узле (drill в его созвездие)
                    // + показать панель действий. Повторный клик по корню — снять.
+                   clearManual();                              // новое дерево — старые ручные позиции сбрасываем
                    setTreeRoot(prev => (prev === n.id ? null : n.id));
                    setSelectedId(n.id);
                  }}>

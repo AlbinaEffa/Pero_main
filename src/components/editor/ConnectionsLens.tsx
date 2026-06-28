@@ -410,7 +410,7 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
       const d = dragNode.current;
       if (Math.abs(e.clientX - d.sx) + Math.abs(e.clientY - d.sy) > 3) moved.current = true;
       sim.moveTo(d.id, d.ox + (e.clientX - d.sx) * vbPerPx / t.k, d.oy + (e.clientY - d.sy) * vbPerPx / t.k);
-      sim.reheat();
+      // НЕ reheat: граф не «оживает» при ручной раскладке — двигаем ровно то, что схватили.
       return;
     }
     if (!drag.current.active) return;
@@ -420,7 +420,8 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
     setT(p => ({ ...p, x: drag.current.ox + dx, y: drag.current.oy + dy }));
   };
   const onPointerUp = () => {
-    if (dragNode.current) { sim.pin(null); if (moved.current) sim.reheat(); dragNode.current = null; return; }
+    // Узел остаётся, где бросил (граф холодный → не схлопывается назад). Раскладка — твоя.
+    if (dragNode.current) { sim.pin(null); dragNode.current = null; return; }
     drag.current.active = false;
   };
 
@@ -610,13 +611,13 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
       )}
 
       <div className="relative rounded-xl bg-white/40 border border-[#1e2d1f]/5 overflow-hidden">
-        {(t.k !== 1 || t.x !== 0 || t.y !== 0 || selectedId) && (
+        {(t.k !== 1 || t.x !== 0 || t.y !== 0 || selectedId || (expanded && !focusId)) && (
           <button
-            onClick={() => { setT({ k: 1, x: 0, y: 0 }); setSelectedId(null); }}
+            onClick={() => { setT({ k: 1, x: 0, y: 0 }); setSelectedId(null); sim.reheat(); }}
             className="absolute top-2 right-2 z-10 flex items-center gap-1 text-[10.5px] px-2 py-1 rounded-md bg-white/80 hover:bg-white text-[#1e2d1f]/60 border border-[#1e2d1f]/10"
-            title="Сбросить масштаб и выбор"
+            title="Сбросить масштаб/выбор и переразложить граф"
           >
-            <Maximize size={11} /> сброс
+            <Maximize size={11} /> переразложить
           </button>
         )}
         {/* Действия для выбранной вершины */}

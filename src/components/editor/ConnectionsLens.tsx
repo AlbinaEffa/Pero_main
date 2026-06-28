@@ -26,7 +26,7 @@ interface Props {
 const TYPE_PIGMENT: Record<string, string> = {
   character: '#A14F44', location: '#4A5D4E', item: '#91682E', rule: '#54627F',
 };
-const SIG_RADIUS: Record<string, number> = { major: 22, moderate: 16, minor: 11 };
+const SIG_RADIUS: Record<string, number> = { major: 18, moderate: 13, minor: 9 };
 // Потолок узлов в графе: и рендер SVG-групп, и симуляция — O(n²). До ~140 держится 60fps;
 // выше рисуем только топ по связности (книга может быть огромной; показывать 5000 в одном
 // клубке бессмысленно и тормозно). Защита от деградации на больших книгах.
@@ -104,7 +104,7 @@ function useLiveForce(
           for (let j = i + 1; j < n; j++) {
             const B = pos.get(ids[j]); if (!B) continue;
             let dx = A.x - B.x, dy = A.y - B.y; let d2 = dx * dx + dy * dy; if (d2 < 1) d2 = 1;
-            const d = Math.sqrt(d2), f = 4400 / d2;
+            const d = Math.sqrt(d2), f = 8500 / d2;
             fx[i] += (dx / d) * f; fy[i] += (dy / d) * f;
             fx[j] -= (dx / d) * f; fy[j] -= (dy / d) * f;
           }
@@ -121,8 +121,8 @@ function useLiveForce(
           // Лёгкое центрирование + притяжение к якорю своего ТИПА → типы расходятся в зоны,
           // но рёбра по-прежнему стягивают связанных (эмерджентные «персонажи тут, места там»).
           const an = anchorsRef.current.get(id);
-          const ax = fx[i] + (cx - p.x) * 0.005 + (an ? (an.x - p.x) * 0.032 : 0);
-          const ay = fy[i] + (cy - p.y) * 0.005 + (an ? (an.y - p.y) * 0.032 : 0);
+          const ax = fx[i] + (cx - p.x) * 0.003 + (an ? (an.x - p.x) * 0.03 : 0);
+          const ay = fy[i] + (cy - p.y) * 0.003 + (an ? (an.y - p.y) * 0.03 : 0);
           v.x = (v.x + ax) * 0.55; v.y = (v.y + ay) * 0.55;
           p.x += clampN(v.x, -55, 55) * alpha; p.y += clampN(v.y, -55, 55) * alpha;
         }
@@ -667,9 +667,12 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
             // связь развивается по ходу книги (враг→союзник→любовник), единственная подпись врёт.
             const hoveredEdge = !!focusId && hoveredId != null && neighborId === hoveredId;
             if (hoveredEdge) op = 0.85;
+            // Изогнутое ребро (квадратичная кривая) — органично, меньше спагетти-пересечений.
+            const dx = b.x - a.x, dy = b.y - a.y, dist = Math.hypot(dx, dy) || 1, off = dist * 0.16;
+            const cpx = (a.x + b.x) / 2 + (-dy / dist) * off, cpy = (a.y + b.y) / 2 + (dx / dist) * off;
             return (
-              <line key={e.id} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={stroke}
-                    strokeOpacity={op} strokeWidth={(hoveredEdge ? 2.2 : 1.5) / t.k} />
+              <path key={e.id} d={`M ${a.x} ${a.y} Q ${cpx} ${cpy} ${b.x} ${b.y}`} fill="none" stroke={stroke}
+                    strokeOpacity={op} strokeWidth={(hoveredEdge ? 2.2 : 1.5) / t.k} strokeLinecap="round" />
             );
           })}
 

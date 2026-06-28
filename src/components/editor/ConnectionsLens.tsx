@@ -32,26 +32,12 @@ const SIG_RADIUS: Record<string, number> = { major: 22, moderate: 16, minor: 11 
 // клубке бессмысленно и тормозно). Защита от деградации на больших книгах.
 const MAX_GRAPH = 140;
 
-const REL_CATEGORIES = [
-  { key: 'ally',     label: 'Союзники и семья', color: '#4A5D4E' },
-  { key: 'power',    label: 'Власть и роль',    color: '#54627F' },
-  { key: 'conflict', label: 'Конфликт',         color: '#A14F44' },
-  { key: 'place',    label: 'Места',            color: '#4A5D4E' },
-  { key: 'item',     label: 'Предметы',         color: '#91682E' },
-  { key: 'other',    label: 'Прочее',           color: '#1e2d1f' },
-] as const;
-type RelCat = typeof REL_CATEGORIES[number]['key'];
-const CAT_RANK: Record<RelCat, number> = { conflict: 0, ally: 1, power: 2, place: 3, item: 4, other: 5 };
-
-function relationCategory(relation: string | null | undefined, neighborType: string | undefined): RelCat {
-  if (neighborType === 'location') return 'place';
-  if (neighborType === 'item') return 'item';
-  const r = (relation ?? '').toLowerCase();
-  if (/против|враг|конфликт|сопер|пойма|сраж|\bбор|\bуби|преда|охот|пресл|похит|плен|месть|мстит/.test(r)) return 'conflict';
-  if (/союзник|друг|партн|помога|спаса|защищ|довер|любов|роман|\bжен|\bмуж|брат|сестр|мать|отец|\bотц|\bсын|доч|семь|\bрод|наставн|спутник|связан|отношен|вместе|союз/.test(r)) return 'ally';
-  if (/команд|подчин|руковод|владел|правит|служ|вассал|корол|госпож|хозя|лидер|\bглав|приказ|подвласт/.test(r)) return 'power';
-  return 'other';
-}
+// Соседей хаба группируем по ТИПУ сущности (надёжные данные), а не по догадке о связи.
+// Связь развивается по ходу книги (враг→любовник) — категория связи врала бы; тип — нет.
+const TYPE_GROUP_ORDER = ['character', 'location', 'item', 'rule'] as const;
+const TYPE_GROUP_LABEL: Record<string, string> = {
+  character: 'Персонажи', location: 'Локации', item: 'Предметы', rule: 'Правила',
+};
 
 const clampN = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
@@ -282,17 +268,6 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
     return edges.filter(e => shownIdSet.has(e.sourceEntityId) && shownIdSet.has(e.targetEntityId));
   }, [edges, shownIdSet, focusId]);
 
-  const catOf = useMemo(() => {
-    const m = new Map<string, RelCat>();
-    if (!focusId) return m;
-    shownEdges.forEach(e => {
-      const otherId = e.sourceEntityId === focusId ? e.targetEntityId : e.sourceEntityId;
-      const cat = relationCategory(e.relation, byId.get(otherId)?.type);
-      const prev = m.get(otherId);
-      if (prev === undefined || CAT_RANK[cat] < CAT_RANK[prev]) m.set(otherId, cat);
-    });
-    return m;
-  }, [shownEdges, focusId, byId]);
 
   // Соседи выбранной вершины (полный граф) — для подсветки её зависимостей.
   const selNeighbors = useMemo(() => {
@@ -321,31 +296,34 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
   const W = expanded ? 680 : 460;
   const H = expanded ? 480 : 360;
 
-  // Раскладка: эго — секторами (как раньше); полный граф — силовая.
+  // Раскладка: эго — секторами по ТИПУ сущности + зоны-клинья; полный граф — силовая.
   const layout = useMemo(() => {
-    const headings: { key: RelCat; label: string; color: string; x: number; y: number }[] = [];
+    const headings: { key: string; label: string; color: string; x: number; y: number }[] = [];
+    const zones: { key: string; color: string; path: string }[] = [];
     const cx = W / 2, cy = H / 2;
     const minDim = Math.min(W, H);
     if (!focusId) {
       // Полный граф — живая симуляция (sim ниже). Здесь только эго раскладывается статично.
-      return { pos: new Map<string, { x: number; y: number }>(), headings };
+      return { pos: new Map<string, { x: number; y: number }>(), headings, zones };
     }
     const p = new Map<string, { x: number; y: number }>();
     p.set(focusId, { x: cx, y: cy });
     const others = shownNodes.filter(n => n.id !== focusId);
-    // Соседи по секторам (для группировки цветом/заголовком), внутри сектора — как есть.
-    const groups = REL_CATEGORIES
-      .map(c => ({ ...c, ids: others.filter(n => (catOf.get(n.id) ?? 'other') === c.key).map(n => n.id) }))
+    // Соседи по секторам ПО ТИПУ (Персонажи/Локации/Предметы/Правила) — стабильно и различимо.
+    const groups = TYPE_GROUP_ORDER
+      .map(t => ({ key: t as string, label: TYPE_GROUP_LABEL[t], color: TYPE_PIGMENT[t] ?? '#54627F', ids: others.filter(n => n.type === t).map(n => n.id) }))
       .filter(g => g.ids.length > 0);
     const M = others.length;
     // Слоты: каждый сосед = 1 слот, между секторами — пустой зазор GAP_SLOTS, чтобы группы
     // ЧИТАЛИСЬ как кластеры (а не равномерная каша), и заголовок ясно стоял над своей группой.
-    const GAP_SLOTS = 1.4;
+    const GAP_SLOTS = 1.6;
     const totalSlots = Math.max(1, M + groups.length * GAP_SLOTS);
     const twoRing = M > 16;
     const R = minDim / 2 - 52;
     const step = (2 * Math.PI) / totalSlots;
     const start = -Math.PI / 2;
+    const px = (r: number, a: number) => (cx + r * Math.cos(a)).toFixed(1);
+    const py = (r: number, a: number) => (cy + r * Math.sin(a)).toFixed(1);
     let slot = 0;
     groups.forEach(g => {
       const groupStart = slot;
@@ -356,13 +334,21 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
         slot += 1;
       });
       const midSlot = groupStart + (g.ids.length - 1) / 2;
-      const a = start + midSlot * step;
-      const HR = R + 28;
-      headings.push({ key: g.key, label: g.label, color: g.color, x: cx + HR * Math.cos(a), y: cy + HR * Math.sin(a) });
+      const aMid = start + midSlot * step;
+      const HR = R + 32;
+      headings.push({ key: g.key, label: g.label, color: g.color, x: cx + HR * Math.cos(aMid), y: cy + HR * Math.sin(aMid) });
+      // Зона-клин за группой («выделить тип в круг»): тонкий пигментный сектор, чтобы СРАЗУ
+      // читалось «здесь персонажи, здесь места» — без догадок о связи.
+      const a0 = start + (groupStart - GAP_SLOTS / 2) * step;
+      const a1 = start + (groupStart + g.ids.length - 1 + GAP_SLOTS / 2) * step;
+      const r0 = Math.max(34, R - (twoRing ? 60 : 30)), r1 = R + 22;
+      const large = (a1 - a0) > Math.PI ? 1 : 0;
+      zones.push({ key: g.key, color: g.color,
+        path: `M ${px(r0,a0)} ${py(r0,a0)} L ${px(r1,a0)} ${py(r1,a0)} A ${r1} ${r1} 0 ${large} 1 ${px(r1,a1)} ${py(r1,a1)} L ${px(r0,a1)} ${py(r0,a1)} A ${r0} ${r0} 0 ${large} 0 ${px(r0,a0)} ${py(r0,a0)} Z` });
       slot += GAP_SLOTS;                              // зазор перед следующим сектором
     });
-    return { pos: p, headings };
-  }, [shownNodes, focusId, catOf, W, H]);
+    return { pos: p, headings, zones };
+  }, [shownNodes, focusId, W, H]);
 
   // Живая физика для полного графа (узлы = видимый/капнутый набор, рёбра — среди них).
   const fullIds = useMemo(() => shownNodes.map(n => n.id), [shownNodes]);
@@ -641,12 +627,16 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
           onPointerLeave={onPointerUp}
         >
           <g transform={`translate(${t.x} ${t.y}) scale(${t.k})`}>
+          {/* Зоны-клинья по типу сущности (под рёбрами и узлами): сразу видно «здесь персонажи, здесь места». */}
+          {focusId && layout.zones.map(z => (
+            <path key={`zone-${z.key}`} d={z.path} fill={z.color} fillOpacity={0.07} stroke="none" style={{ pointerEvents: 'none' }} />
+          ))}
           {shownEdges.map(e => {
             const a = pos.get(e.sourceEntityId), b = pos.get(e.targetEntityId);
             if (!a || !b) return null;
             const neighborId = focusId ? (e.sourceEntityId === focusId ? e.targetEntityId : e.sourceEntityId) : null;
-            const cat = neighborId ? catOf.get(neighborId) : undefined;
-            const stroke = cat ? (REL_CATEGORIES.find(c => c.key === cat)?.color ?? '#1e2d1f') : '#1e2d1f';
+            // Цвет ветки — пигмент ТИПА соседа (надёжно), а не догадка о характере связи.
+            const stroke = neighborId ? (TYPE_PIGMENT[byId.get(neighborId)?.type ?? ''] ?? '#1e2d1f') : '#1e2d1f';
             // прозрачность ребра: фокус 0.3; выбор — только касающиеся выбранной; иначе база
             let op = focusId ? 0.42 : 0.14;
             if (!focusId && selectedId) op = (e.sourceEntityId === selectedId || e.targetEntityId === selectedId) ? 0.5 : 0.04;

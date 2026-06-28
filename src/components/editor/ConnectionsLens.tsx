@@ -652,25 +652,13 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
             if (!focusId && selectedId) op = (e.sourceEntityId === selectedId || e.targetEntityId === selectedId) ? 0.5 : 0.04;
             else if (!focusId && diagOrphans) op = 0.04;
             else if (!focusId && hoverNeighbors.size) op = (e.sourceEntityId === hoveredId || e.targetEntityId === hoveredId) ? 0.5 : 0.03;
-            // В эго при наведении на соседа — толще его ветка + подпись отношения НА ВЕТКЕ.
+            // В эго при наведении на соседа — подсвечиваем его ветку (толще + ярче), БЕЗ текста-ярлыка:
+            // связь развивается по ходу книги (враг→союзник→любовник), единственная подпись врёт.
             const hoveredEdge = !!focusId && hoveredId != null && neighborId === hoveredId;
             if (hoveredEdge) op = 0.85;
-            const mx = a.x + (b.x - a.x) * 0.55, my = a.y + (b.y - a.y) * 0.55;
             return (
-              <g key={e.id}>
-                <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={stroke}
-                      strokeOpacity={op} strokeWidth={(hoveredEdge ? 2.2 : 1.5) / t.k}>
-                  <title>{e.relation}</title>
-                </line>
-                {hoveredEdge && e.relation && (
-                  <text x={mx} y={my} textAnchor="middle" fontSize={10 / t.k} fill={stroke}
-                        fontFamily="Golos Text, system-ui" fontWeight={600}
-                        stroke="#f5f0e8" strokeWidth={3.5 / t.k} paintOrder="stroke"
-                        style={{ pointerEvents: 'none' }}>
-                    {e.relation.length > 32 ? e.relation.slice(0, 31) + '…' : e.relation}
-                  </text>
-                )}
-              </g>
+              <line key={e.id} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={stroke}
+                    strokeOpacity={op} strokeWidth={(hoveredEdge ? 2.2 : 1.5) / t.k} />
             );
           })}
 
@@ -708,11 +696,6 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
             const isSelected = n.id === selectedId;
             const canWalk = !!focusId && n.id !== focusId;
             const op = nodeOpacity(n);
-            const rels = canWalk
-              ? shownEdges
-                  .filter(e => (e.sourceEntityId === focusId && e.targetEntityId === n.id) || (e.targetEntityId === focusId && e.sourceEntityId === n.id))
-                  .map(e => e.relation).filter(Boolean)
-              : [];
             return (
               <g key={n.id} style={{ cursor: 'pointer' }}
                  opacity={op}
@@ -750,7 +733,7 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
                     {n.name.length > 16 ? n.name.slice(0, 15) + '…' : n.name}
                   </text>
                 )}
-                <title>{rels.length ? `${n.name} — ${rels.join(', ')}` : n.name}{canWalk ? (n.type === 'character' ? ' · клик: его граф' : ' · клик: карточка') : (!focusId ? ' · клик: показать зависимости' : ' · клик: карточка')}</title>
+                <title>{n.name}{canWalk ? (n.type === 'character' ? ' · клик: его граф' : ' · клик: карточка') : (!focusId ? ' · клик: показать зависимости' : ' · клик: карточка')}</title>
               </g>
             );
           })}

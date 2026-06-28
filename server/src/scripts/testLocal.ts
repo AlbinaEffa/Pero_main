@@ -2,7 +2,8 @@ import 'dotenv/config';
 import { db } from '../db/client.js';
 import * as schema from '../db/schema.js';
 import { eq } from 'drizzle-orm';
-import { BASE_EXTRACTION_PROMPT, cleanJsonResponse, isMetaEntity } from '../lib/extraction.js';
+import { cleanJsonResponse, isMetaEntity } from '../lib/extraction.js';
+import { BASE_EXTRACTION_PROMPT } from '../lib/extractionPrompts.js';
 
 const MODEL = process.argv[3] || 'gemma2:9b';
 const CHID = process.argv[2] || '9c8259aa-6341-4b8c-bbb7-18353b2f73ab'; // гл.10

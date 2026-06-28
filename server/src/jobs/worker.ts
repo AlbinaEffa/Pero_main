@@ -22,11 +22,13 @@ import { guardChat, guardEmbed } from '../lib/aiGuard.js';
 import { pool as sharedPool } from '../db/client.js';
 import { getAIProvider, getEmbeddingProvider, type AIProvider } from '../lib/aiProvider.js';
 import {
-  BASE_EXTRACTION_PROMPT, EXTRACTION_SCHEMA, cleanJsonResponse, processExtractionResults, sanitizePov,
+  EXTRACTION_SCHEMA, cleanJsonResponse, processExtractionResults, sanitizePov,
   sanitizeSynopsis, isLowInfoChapterTitle,
-  buildStoryBibleContext, buildContradictionPrompt, type RawContradiction,
   type AiEntity, type AiRelation,
 } from '../lib/extraction.js';
+import {
+  BASE_EXTRACTION_PROMPT, buildStoryBibleContext, buildContradictionPrompt, type RawContradiction,
+} from '../lib/extractionPrompts.js';
 import { retrieveCrossChapterPassages, retrieveCrossBookPassages } from '../lib/semanticRetrieval.js';
 
 const POLL_INTERVAL_MS   = 5_000;  // check for new jobs every 5 seconds

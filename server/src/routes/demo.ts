@@ -20,7 +20,8 @@ import { enqueueJobs } from '../jobs/queue.js';
 import { parseManuscript, upload } from './import.js';
 import { getAIProvider } from '../lib/aiProvider.js';
 import { guardChat } from '../lib/aiGuard.js';
-import { BASE_EXTRACTION_PROMPT, cleanJsonResponse, coerceGenres, GENRE_TAXONOMY, type AiEntity, type AiRelation } from '../lib/extraction.js';
+import { cleanJsonResponse, type AiEntity, type AiRelation } from '../lib/extraction.js';
+import { BASE_EXTRACTION_PROMPT, coerceGenres, GENRE_TAXONOMY } from '../lib/extractionPrompts.js';
 
 const router = express.Router();
 

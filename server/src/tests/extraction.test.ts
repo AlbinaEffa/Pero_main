@@ -14,13 +14,12 @@ import {
   sanitizeSynopsis,
   isLowInfoChapterTitle,
   aliasesOf,
-  coerceGenres,
-  coerceMoodColor,
   cleanJsonResponse,
   descriptionsDiffer,
   isValidUUID,
   extractEntitySnippet,
 } from '../lib/extraction.js';
+import { coerceGenres, coerceMoodColor } from '../lib/extractionPrompts.js';
 
 describe('normalizeNameRu', () => {
   it('сводит е/э/ё → е', () => {

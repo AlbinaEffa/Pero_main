@@ -3,7 +3,7 @@
  * routes/bible.ts. Полная (buildRecheckPrompt) и пакетная (buildBatchRecheckPrompt)
  * перепроверка глав против уже одобренных сущностей. Без БД/AI/IO.
  */
-import { BASE_EXTRACTION_PROMPT } from './extraction.js';
+import { BASE_EXTRACTION_PROMPT } from './extractionPrompts.js';
 
 export interface ApprovedEntity { name: string; type: string; description: string | null }
 

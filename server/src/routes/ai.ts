@@ -9,7 +9,7 @@ import { guardChat, CircuitOpenError } from '../lib/aiGuard.js';
 import { getAIProvider, getEmbeddingProvider, type ChatTurn } from '../lib/aiProvider.js';
 import { searchSeriesPassages } from '../lib/semanticRetrieval.js';
 import { aiQuota, getQuotaStatus } from '../lib/quota.js';
-import { buildStoryBibleContext } from '../lib/extraction.js';
+import { buildStoryBibleContext } from '../lib/extractionPrompts.js';
 
 // ── Input schemas ─────────────────────────────────────────────────────────────
 

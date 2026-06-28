@@ -16,10 +16,12 @@ import { checkBibleChapterLimit } from '../lib/planLimits.js';
 import { enqueueJob } from '../jobs/queue.js';
 import {
   isValidUUID, cleanJsonResponse,
-  BASE_EXTRACTION_PROMPT, EXTRACTION_SCHEMA, processExtractionResults, sanitizePov, sanitizeSynopsis, isLowInfoChapterTitle,
-  buildStoryBibleContext, buildContradictionPrompt,
+  EXTRACTION_SCHEMA, processExtractionResults, sanitizePov, sanitizeSynopsis, isLowInfoChapterTitle,
   type AiEntity, type AiRelation,
 } from '../lib/extraction.js';
+import {
+  BASE_EXTRACTION_PROMPT, buildStoryBibleContext, buildContradictionPrompt,
+} from '../lib/extractionPrompts.js';
 
 const router = express.Router();
 

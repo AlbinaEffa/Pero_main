@@ -19,7 +19,8 @@ import { enqueueJobs } from '../jobs/queue.js';
 import { idempotency } from '../middleware/idempotency.js';
 import { getAIProvider } from '../lib/aiProvider.js';
 import { guardChat } from '../lib/aiGuard.js';
-import { buildGenreClassifyPrompt, coerceGenres, coerceMoodColor, cleanJsonResponse } from '../lib/extraction.js';
+import { cleanJsonResponse } from '../lib/extraction.js';
+import { buildGenreClassifyPrompt, coerceGenres, coerceMoodColor } from '../lib/extractionPrompts.js';
 
 const router = express.Router();
 

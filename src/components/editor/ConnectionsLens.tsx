@@ -26,7 +26,9 @@ interface Props {
 const TYPE_PIGMENT: Record<string, string> = {
   character: '#A14F44', location: '#4A5D4E', item: '#91682E', rule: '#54627F',
 };
-const SIG_RADIUS: Record<string, number> = { major: 18, moderate: 13, minor: 9 };
+// Размер узла = ЧИСЛО СВЯЗЕЙ (степень): хаб всей книги — крупнейший, одиночки — крошечные.
+// Так из графа СРАЗУ видно «кто притяжение» и «кто один». sqrt — чтобы хаб не раздулся.
+const degreeRadius = (deg: number) => Math.max(8, Math.min(34, 7 + Math.sqrt(deg) * 3.4));
 // Потолок узлов в графе: и рендер SVG-групп, и симуляция — O(n²). До ~140 держится 60fps;
 // выше рисуем только топ по связности (книга может быть огромной; показывать 5000 в одном
 // клубке бессмысленно и тормозно). Защита от деградации на больших книгах.
@@ -358,7 +360,7 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
 
   // Живая физика для полного графа (узлы = видимый/капнутый набор, рёбра — среди них).
   const fullIds = useMemo(() => shownNodes.map(n => n.id), [shownNodes]);
-  const simRadii = useMemo(() => new Map(nodes0.map(n => [n.id, SIG_RADIUS[n.significance ?? 'minor'] ?? 11])), [nodes0]);
+  const simRadii = useMemo(() => new Map(nodes0.map(n => [n.id, degreeRadius(degree.get(n.id) ?? 0)])), [nodes0, degree]);
   // Якоря по типу — узлы одного типа тянутся в свою зону (персонажи — ядро в центре,
   // локации/предметы/правила оттянуты к краям), чтобы граф не был перемешанным клубком.
   const typeAnchors = useMemo(() => {
@@ -701,7 +703,7 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
             if (!p) return null;
             // Радиус и подписи делим на зум → узлы держат постоянный экранный размер (камера,
             // как в Obsidian): приближение РАЗДВИГАЕТ узлы, а не раздувает их.
-            const baseR = focusId ? (n.id === focusId ? 26 : 13) : (SIG_RADIUS[n.significance ?? 'minor'] ?? 11);
+            const baseR = focusId ? (n.id === focusId ? 26 : 13) : degreeRadius(degree.get(n.id) ?? 0);
             const r = baseR / t.k;
             const pigment = TYPE_PIGMENT[n.type] ?? '#54627F';
             const initial = n.name.trim().charAt(0).toUpperCase(); // буквица-инициал внутри крупных узлов

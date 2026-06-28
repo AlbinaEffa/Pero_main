@@ -54,8 +54,10 @@ function useLiveForce(
   edges: { sourceEntityId: string; targetEntityId: string }[],
   W: number, H: number, active: boolean,
   radii: Map<string, number>,
+  anchors: Map<string, { x: number; y: number }>,
 ) {
   const radiiRef = useRef(radii); radiiRef.current = radii; // радиусы для collision (без ре-подписки)
+  const anchorsRef = useRef(anchors); anchorsRef.current = anchors; // якоря по типу (мягкая группировка)
   const posRef = useRef(new Map<string, { x: number; y: number }>());
   const velRef = useRef(new Map<string, { x: number; y: number }>());
   const pinRef = useRef<string | null>(null);
@@ -102,21 +104,25 @@ function useLiveForce(
           for (let j = i + 1; j < n; j++) {
             const B = pos.get(ids[j]); if (!B) continue;
             let dx = A.x - B.x, dy = A.y - B.y; let d2 = dx * dx + dy * dy; if (d2 < 1) d2 = 1;
-            const d = Math.sqrt(d2), f = 3200 / d2;
+            const d = Math.sqrt(d2), f = 4400 / d2;
             fx[i] += (dx / d) * f; fy[i] += (dy / d) * f;
             fx[j] -= (dx / d) * f; fy[j] -= (dy / d) * f;
           }
         }
         for (const [a, b] of E) {
           const A = pos.get(ids[a]), B = pos.get(ids[b]); if (!A || !B) continue;
-          let dx = B.x - A.x, dy = B.y - A.y; const d = Math.sqrt(dx * dx + dy * dy) || 1, f = 0.045 * (d - 90);
+          let dx = B.x - A.x, dy = B.y - A.y; const d = Math.sqrt(dx * dx + dy * dy) || 1, f = 0.045 * (d - 108);
           fx[a] += (dx / d) * f; fy[a] += (dy / d) * f;
           fx[b] -= (dx / d) * f; fy[b] -= (dy / d) * f;
         }
         for (let i = 0; i < n; i++) {
           const id = ids[i]; const p = pos.get(id), v = vel.get(id); if (!p || !v) continue;
           if (id === pinRef.current) { v.x = 0; v.y = 0; continue; }
-          const ax = fx[i] + (cx - p.x) * 0.012, ay = fy[i] + (cy - p.y) * 0.012;
+          // Лёгкое центрирование + притяжение к якорю своего ТИПА → типы расходятся в зоны,
+          // но рёбра по-прежнему стягивают связанных (эмерджентные «персонажи тут, места там»).
+          const an = anchorsRef.current.get(id);
+          const ax = fx[i] + (cx - p.x) * 0.005 + (an ? (an.x - p.x) * 0.032 : 0);
+          const ay = fy[i] + (cy - p.y) * 0.005 + (an ? (an.y - p.y) * 0.032 : 0);
           v.x = (v.x + ax) * 0.55; v.y = (v.y + ay) * 0.55;
           p.x += clampN(v.x, -55, 55) * alpha; p.y += clampN(v.y, -55, 55) * alpha;
         }
@@ -353,7 +359,21 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
   // Живая физика для полного графа (узлы = видимый/капнутый набор, рёбра — среди них).
   const fullIds = useMemo(() => shownNodes.map(n => n.id), [shownNodes]);
   const simRadii = useMemo(() => new Map(nodes0.map(n => [n.id, SIG_RADIUS[n.significance ?? 'minor'] ?? 11])), [nodes0]);
-  const sim = useLiveForce(fullIds, shownEdges, W, H, !focusId && expanded, simRadii);
+  // Якоря по типу — узлы одного типа тянутся в свою зону (персонажи — ядро в центре,
+  // локации/предметы/правила оттянуты к краям), чтобы граф не был перемешанным клубком.
+  const typeAnchors = useMemo(() => {
+    const cx = W / 2, cy = H / 2;
+    const A: Record<string, { x: number; y: number }> = {
+      character: { x: cx,              y: cy - H * 0.04 },
+      location:  { x: cx + W * 0.30,   y: cy + H * 0.22 },
+      item:      { x: cx - W * 0.30,   y: cy + H * 0.24 },
+      rule:      { x: cx - W * 0.30,   y: cy - H * 0.24 },
+    };
+    const m = new Map<string, { x: number; y: number }>();
+    shownNodes.forEach(n => m.set(n.id, A[n.type] ?? { x: cx, y: cy }));
+    return m;
+  }, [shownNodes, W, H]);
+  const sim = useLiveForce(fullIds, shownEdges, W, H, !focusId && expanded, simRadii, typeAnchors);
   const pos = focusId ? layout.pos : sim.pos;
 
   // ── Зум/пан ────────────────────────────────────────────────────────────────
@@ -461,13 +481,14 @@ export function ConnectionsLens({ entities, links, contradictions, expanded, onJ
   const selected = selectedId ? byId.get(selectedId) : null;
 
   // показывать подпись узла в полном графе?
-  const labelThreshold = Math.max(2, Math.round(6 / t.k)); // зум вниз порога → больше подписей; в обзоре только хабы
+  const labelThreshold = Math.max(3, Math.round(9 / t.k)); // зум вниз порога → больше подписей; в обзоре только хабы
   const showLabel = (n: Entity): boolean => {
     if (focusId) return true; // эго — все подписаны (их мало)
     if (hoveredId === n.id) return true;
     if (selectedId) return selNeighbors.has(n.id);
     if (diagOrphans) return isOrphan(n.id);
-    return (n.significance === 'major') || (degree.get(n.id) ?? 0) >= labelThreshold;
+    // В обзоре подписываем ТОЛЬКО хабы (по связности) — иначе подписи наезжают в центре каши.
+    return (degree.get(n.id) ?? 0) >= labelThreshold;
   };
   const nodeOpacity = (n: Entity): number => {
     if (focusId) return 1;

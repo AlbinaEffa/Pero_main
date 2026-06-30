@@ -84,9 +84,9 @@ export default function Landing() {
                 Загрузить рукопись бесплатно
                 <MoveRight size={20} />
               </Link>
-              <a href="#how" className="flex items-center gap-2 px-6 py-4 text-lg font-medium text-ink/70 hover:text-ink transition-colors">
-                Как это работает
-              </a>
+              <Link to="/demo/sample" className="flex items-center gap-2 px-6 py-4 text-lg font-medium text-ink/70 hover:text-ink transition-colors">
+                Посмотреть на примере
+              </Link>
             </div>
             <p className="text-[13px] text-ink/60">
               Без карты · docx, fb2, epub, pdf, txt · Тексты не используются для обучения моделей

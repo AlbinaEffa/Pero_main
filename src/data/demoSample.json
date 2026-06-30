@@ -1,0 +1,312 @@
+{
+  "title": "Королевство крыльев и руин",
+  "author": "Сара Дж. Маас",
+  "genre": "Романтическое фэнтези",
+  "stats": {
+    "chapters": 83,
+    "words": 50163,
+    "character": 51,
+    "location": 62,
+    "item": 41,
+    "rule": 23
+  },
+  "reveal": [
+    {
+      "type": "character",
+      "name": "Ласен",
+      "description": "Персонаж Ласен. Союзник Фейры.",
+      "significance": "major",
+      "firstChapter": 11
+    },
+    {
+      "type": "location",
+      "name": "Подгорье",
+      "description": "Одно из измерений в мире Притиании.",
+      "significance": "moderate",
+      "firstChapter": 11
+    },
+    {
+      "type": "character",
+      "name": "Эрис",
+      "description": "Старший сын Берона, наследник верховного правителя.",
+      "significance": "moderate",
+      "firstChapter": 13
+    },
+    {
+      "type": "character",
+      "name": "Азриель",
+      "description": "Союзник Фейры, участвует в схватке.",
+      "significance": "major",
+      "firstChapter": 14
+    },
+    {
+      "type": "character",
+      "name": "Кассиан",
+      "description": "Союзник Фейры, иллирианский воин.",
+      "significance": "major",
+      "firstChapter": 14
+    },
+    {
+      "type": "character",
+      "name": "Амрена",
+      "description": "Персонаж с серебристым взглядом, выражающим почтение перед верховной правительницей. По-видимому, су",
+      "significance": "major",
+      "firstChapter": 15
+    },
+    {
+      "type": "character",
+      "name": "Ризанд",
+      "description": "Персонаж, который внезапно появляется и вызывает сильную эмоциональную реакцию у главного персонажа.",
+      "significance": "major",
+      "firstChapter": 15
+    },
+    {
+      "type": "location",
+      "name": "Веларис",
+      "description": "Город Звездного света, где происходит главная часть действия.",
+      "significance": "moderate",
+      "firstChapter": 15
+    },
+    {
+      "type": "location",
+      "name": "Дом ветра",
+      "description": "Просторная гостиная с красными каменными стенами и выходом на город. Ключевые детали - солнце, вид н",
+      "significance": "moderate",
+      "firstChapter": 17
+    },
+    {
+      "type": "item",
+      "name": "Книга Дуновений",
+      "description": "Книга, которая лежит у Амрены на ночном столике. Ключевые свойства - способность говорить и содержан",
+      "significance": "moderate",
+      "firstChapter": 17
+    },
+    {
+      "type": "rule",
+      "name": "Сонное королевство",
+      "description": "Государство, стремящееся к войне и попытках разрушить стену. Ключевые правила - однозначная вера в н",
+      "significance": "moderate",
+      "firstChapter": 17
+    },
+    {
+      "type": "location",
+      "name": "Библиотека",
+      "description": "Место действия, описанное как гигантская яма с книжными полками на всех этажах.",
+      "significance": "moderate",
+      "firstChapter": 21
+    },
+    {
+      "type": "item",
+      "name": "Сундук из оникса",
+      "description": "Сундук из оникса. Роль в этой главе: предмет, которым дорожит правитель-колдун.",
+      "significance": "minor",
+      "firstChapter": 34
+    },
+    {
+      "type": "rule",
+      "name": "Проклятие шестой королевы",
+      "description": "Проклятие. Роль в этой главе: объясняет облик и положение шестой королевы.",
+      "significance": "minor",
+      "firstChapter": 34
+    },
+    {
+      "type": "item",
+      "name": "Корона",
+      "description": "Важный предмет, упоминается в контексте выбора главной героиней и символизирует её статус.",
+      "significance": "minor",
+      "firstChapter": 42
+    },
+    {
+      "type": "item",
+      "name": "Противоядие для 'фэйской немощи'",
+      "description": "Создание Нианой, необходимое для того, чтобы сделать людей невосприимчивыми к 'фэйской немощи'.",
+      "significance": "minor",
+      "firstChapter": 46
+    }
+  ],
+  "world": {
+    "characters": [
+      {
+        "type": "character",
+        "name": "Амрена",
+        "description": "Персонаж с серебристым взглядом, выражающим почтение перед верховной правительницей. По-видимому, су",
+        "significance": "major",
+        "firstChapter": 15
+      },
+      {
+        "type": "character",
+        "name": "Ризанд",
+        "description": "Персонаж, который внезапно появляется и вызывает сильную эмоциональную реакцию у главного персонажа.",
+        "significance": "major",
+        "firstChapter": 15
+      },
+      {
+        "type": "character",
+        "name": "Азриель",
+        "description": "Союзник Фейры, участвует в схватке.",
+        "significance": "major",
+        "firstChapter": 14
+      },
+      {
+        "type": "character",
+        "name": "Кассиан",
+        "description": "Союзник Фейры, иллирианский воин.",
+        "significance": "major",
+        "firstChapter": 14
+      },
+      {
+        "type": "character",
+        "name": "Ласен",
+        "description": "Персонаж Ласен. Союзник Фейры.",
+        "significance": "major",
+        "firstChapter": 11
+      },
+      {
+        "type": "character",
+        "name": "Вариан",
+        "description": "Персонаж, который переживал потерю и испытывал радость от победы.",
+        "significance": "moderate",
+        "firstChapter": 77
+      },
+      {
+        "type": "character",
+        "name": "Драконий",
+        "description": "Драконий. Вопрос о Вэссе. Роль в этой главе - командует армадой.",
+        "significance": "moderate",
+        "firstChapter": 73
+      },
+      {
+        "type": "character",
+        "name": "Ианта",
+        "description": "Персонаж с устойчивым прозвищем. Имитируемая личность.",
+        "significance": "moderate",
+        "firstChapter": 66
+      },
+      {
+        "type": "character",
+        "name": "Хелион",
+        "description": "Верховный правитель Двора дня, участник переговоров.",
+        "significance": "moderate",
+        "firstChapter": 48
+      },
+      {
+        "type": "character",
+        "name": "Эрис",
+        "description": "Старший сын Берона, наследник верховного правителя.",
+        "significance": "moderate",
+        "firstChapter": 13
+      }
+    ],
+    "locations": [
+      {
+        "type": "location",
+        "name": "Котел",
+        "description": "Место действия, каменистый холм с формой блюдца.",
+        "significance": "major",
+        "firstChapter": 74
+      },
+      {
+        "type": "location",
+        "name": "Дом ветра",
+        "description": "Просторная гостиная с красными каменными стенами и выходом на город. Ключевые детали - солнце, вид н",
+        "significance": "moderate",
+        "firstChapter": 17
+      },
+      {
+        "type": "location",
+        "name": "Библиотека",
+        "description": "Место действия, описанное как гигантская яма с книжными полками на всех этажах.",
+        "significance": "moderate",
+        "firstChapter": 21
+      },
+      {
+        "type": "location",
+        "name": "Поле битвы",
+        "description": "Место предстоящей битвы между армией Риз и армией Сонного королевства.",
+        "significance": "moderate",
+        "firstChapter": 70
+      },
+      {
+        "type": "location",
+        "name": "Веларис",
+        "description": "Город Звездного света, где происходит главная часть действия.",
+        "significance": "moderate",
+        "firstChapter": 15
+      },
+      {
+        "type": "location",
+        "name": "Подгорье",
+        "description": "Одно из измерений в мире Притиании.",
+        "significance": "moderate",
+        "firstChapter": 11
+      }
+    ],
+    "items": [
+      {
+        "type": "item",
+        "name": "Книга Дуновений",
+        "description": "Книга, которая лежит у Амрены на ночном столике. Ключевые свойства - способность говорить и содержан",
+        "significance": "moderate",
+        "firstChapter": 17
+      },
+      {
+        "type": "item",
+        "name": "Противоядие для 'фэйской немощи'",
+        "description": "Создание Нианой, необходимое для того, чтобы сделать людей невосприимчивыми к 'фэйской немощи'.",
+        "significance": "minor",
+        "firstChapter": 46
+      },
+      {
+        "type": "item",
+        "name": "Корона",
+        "description": "Важный предмет, упоминается в контексте выбора главной героиней и символизирует её статус.",
+        "significance": "minor",
+        "firstChapter": 42
+      },
+      {
+        "type": "item",
+        "name": "Сундук из оникса",
+        "description": "Сундук из оникса. Роль в этой главе: предмет, которым дорожит правитель-колдун.",
+        "significance": "minor",
+        "firstChapter": 34
+      }
+    ],
+    "rules": [
+      {
+        "type": "rule",
+        "name": "Сонное королевство",
+        "description": "Государство, стремящееся к войне и попытках разрушить стену. Ключевые правила - однозначная вера в н",
+        "significance": "moderate",
+        "firstChapter": 17
+      },
+      {
+        "type": "rule",
+        "name": "Проклятие шестой королевы",
+        "description": "Проклятие. Роль в этой главе: объясняет облик и положение шестой королевы.",
+        "significance": "minor",
+        "firstChapter": 34
+      },
+      {
+        "type": "rule",
+        "name": "Проклятие Вэссы",
+        "description": "Вэсса превращается в огненную птицу днем и королевство Вэссы ночью.",
+        "significance": "minor",
+        "firstChapter": 79
+      }
+    ]
+  },
+  "contradictions": [
+    {
+      "entity": "Ризанд",
+      "issue": "В одной главе Ризанд действует в настоящем, в другой описан как фигура прошлого.",
+      "canon": "Ризанд участвует в текущих событиях книги.",
+      "severity": "high"
+    },
+    {
+      "entity": "Фейра",
+      "issue": "В главе 3 глаза героини зелёные, в главе 12 — серые.",
+      "canon": "Цвет глаз — неизменная примета.",
+      "severity": "medium"
+    }
+  ]
+}

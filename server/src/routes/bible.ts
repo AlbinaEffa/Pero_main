@@ -231,14 +231,21 @@ router.post('/recheck/chapter/:chapterId',
 
       // ── Step 2: Determine extraction strategy ────────────────────────────────
       const approvedEntities = await db
-        .select({ id: schema.storyEntities.id, name: schema.storyEntities.name, type: schema.storyEntities.type, description: schema.storyEntities.description })
+        .select({ id: schema.storyEntities.id, name: schema.storyEntities.name, type: schema.storyEntities.type,
+                  description: schema.storyEntities.description, significance: schema.storyEntities.significance,
+                  attributes: schema.storyEntities.attributes })
         .from(schema.storyEntities)
         .where(and(eq(schema.storyEntities.projectId, projectId), eq(schema.storyEntities.status, 'approved')));
 
+      // Срез Мира под главу: «известные сущности» в промпте recheck — только релевантные сцене
+      // (present ∪ major ∪ POV), не весь Мир. Дедуп всё равно держит резолвер (матчит по всем
+      // approved при записи), поэтому срез безопасен — список в промпте лишь подсказка.
+      const relevantEntities = selectWorldSlice({ entities: approvedEntities, links: [], chapterText: plainText, pov: knownPov }).entities;
+
       // POV-системное (Фаза 2): если рассказчик главы уже известен — называем его модели,
       // чтобы факты от первого лица («я поранил руку») приписывались ему, а не терялись.
-      const prompt = (storedHash || approvedEntities.length > 0)
-        ? buildRecheckPrompt(approvedEntities, knownPov)
+      const prompt = (storedHash || relevantEntities.length > 0)
+        ? buildRecheckPrompt(relevantEntities, knownPov)
         : BASE_EXTRACTION_PROMPT + povContextBlock(knownPov);
 
       // Инкрементальный recheck: при наличии базлайна хешей абзацев и изменении МЕНЬШИНСТВА

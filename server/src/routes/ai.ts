@@ -176,28 +176,67 @@ async function embedQuery(text: string): Promise<number[] | null> {
   return embedder.embed(text, 'query');
 }
 
-/** Retrieve top-k semantically relevant chunks for a query in a project */
+/**
+ * Top-k релевантных фрагментов для запроса — ГИБРИДНЫЙ ретрив (статья «From RAG to Memory»):
+ * вектор (смысл) + лексика (термин-точное, русский FTS), слитые fuse_score'ом. Короткий
+ * пользовательский запрос чата — ровно тот кейс, где лексика ловит то, что косинус пропустил
+ * (имя/термин), а вектор — перефраз. Лексическая ветка best-effort: при отсутствии 'russian'
+ * FTS-конфига молча падает в вектор-only. queryText опционален (без него — чистый вектор).
+ */
 async function retrieveSemanticChunks(
   userId: string,
   projectId: string,
   queryVec: number[],
-  topK = 5
+  topK = 5,
+  queryText?: string,
 ): Promise<string[]> {
+  const vecStr = `[${queryVec.join(',')}]`;
+  const POOL = topK * 3; // шире пул под слияние, потом срез до topK
   try {
-    const vecStr = `[${queryVec.join(',')}]`;
-    const rows = await pool.query<{ chunk_text: string }>(
-      `SELECT chunk_text
+    const vec = await pool.query<{ chunk_text: string; dist: number }>(
+      `SELECT chunk_text, (embedding <=> $3::vector) AS dist
          FROM semantic_memory
-        WHERE project_id = $1
-          AND user_id    = $2
-          AND embedding  IS NOT NULL
+        WHERE project_id = $1 AND user_id = $2 AND embedding IS NOT NULL
         ORDER BY embedding <=> $3::vector
         LIMIT $4`,
-      [projectId, userId, vecStr, topK]
+      [projectId, userId, vecStr, POOL]
     );
-    return rows.rows.map(r => r.chunk_text);
+
+    // Лексика (русский FTS) — best-effort: при отсутствии конфига молча падаем в вектор-only.
+    let lex: { chunk_text: string; lr: number }[] = [];
+    if (queryText && queryText.trim()) {
+      try {
+        const r = await pool.query<{ chunk_text: string; lr: number }>(
+          `SELECT chunk_text, ts_rank(to_tsvector('russian', chunk_text), plainto_tsquery('russian', $3)) AS lr
+             FROM semantic_memory
+            WHERE project_id = $1 AND user_id = $2
+              AND to_tsvector('russian', chunk_text) @@ plainto_tsquery('russian', $3)
+            ORDER BY lr DESC
+            LIMIT $4`,
+          [projectId, userId, queryText.trim(), POOL]
+        );
+        lex = r.rows;
+      } catch (le: any) {
+        if (!['42P01', '42703', '42883', '42704', '0A000'].includes(le?.code)) {
+          console.warn('Lexical retrieval failed:', le?.message ?? le);
+        }
+      }
+    }
+
+    // Слияние fuse_score: оба сигнала → 0.4·вектор + 0.6·лексика; один → его собственный (recall).
+    const maxLex = lex.reduce((m, r) => Math.max(m, Number(r.lr)), 0);
+    const merged = new Map<string, { v?: number; l?: number }>();
+    for (const r of vec.rows) merged.set(r.chunk_text, { ...merged.get(r.chunk_text), v: Number(r.dist) });
+    for (const r of lex)      merged.set(r.chunk_text, { ...merged.get(r.chunk_text), l: Number(r.lr) });
+    const scored = [...merged.entries()].map(([text, s]) => {
+      const vSim = s.v != null ? 1 / (1 + s.v) : 0;
+      const lSim = s.l != null && maxLex > 0 ? s.l / maxLex : 0;
+      const fused = s.v != null && s.l != null ? 0.4 * vSim + 0.6 * lSim : Math.max(vSim, lSim);
+      return { text, fused };
+    });
+    scored.sort((a, b) => b.fused - a.fused);
+    return scored.slice(0, topK).map(s => s.text);
   } catch (e: any) {
-    // Gracefully skip if pgvector not installed or table missing
     if (!['42P01', '42703', '42883'].includes(e?.code)) {
       console.warn('Semantic retrieval failed:', e?.message ?? e);
     }
@@ -279,7 +318,7 @@ async function buildChatContents(
     } else {
       const queryVec = await embedQuery(message.trim());
       if (queryVec) {
-        const chunks = await retrieveSemanticChunks(userId, validProjectId, queryVec);
+        const chunks = await retrieveSemanticChunks(userId, validProjectId, queryVec, 5, message.trim());
         if (chunks.length > 0) {
           semanticBlock = `=== РЕЛЕВАНТНЫЕ ФРАГМЕНТЫ РУКОПИСИ ===\n${chunks.map((c, i) => `[${i + 1}] ${c}`).join('\n\n')}`;
         }
@@ -662,7 +701,7 @@ router.post('/dictation/normalize',
 
         const queryVec = await embedQuery(input);
         if (queryVec) {
-          const chunks = await retrieveSemanticChunks(req.user.userId, validProjectId, queryVec, 3);
+          const chunks = await retrieveSemanticChunks(req.user.userId, validProjectId, queryVec, 3, input);
           if (chunks.length > 0) {
             semanticBlock = `=== РЕЛЕВАНТНЫЕ ФРАГМЕНТЫ РУКОПИСИ ===\n${chunks.map((c, i) => `[${i + 1}] ${c}`).join('\n\n')}`;
           }

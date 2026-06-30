@@ -65,6 +65,17 @@ async function jobsCleanup() {
   );
 }
 
+async function tracesCleanup() {
+  const days = parseInt(arg('days', '60')!);
+  console.log(`Deleting extraction traces older than ${days} days...`);
+  await run(
+    'traces:cleanup',
+    `DELETE FROM extraction_traces
+     WHERE created_at < NOW() - ($1 || ' days')::INTERVAL`,
+    [String(days)]
+  );
+}
+
 async function embeddingsCleanup() {
   console.log('Deleting embeddings for deleted chapters...');
   await run(
@@ -243,6 +254,7 @@ async function vacuum() {
 
 const commands: Record<string, () => Promise<void>> = {
   'jobs:cleanup':        jobsCleanup,
+  'traces:cleanup':      tracesCleanup,
   'embeddings:cleanup':  embeddingsCleanup,
   'chat:cleanup':        chatCleanup,
   'project:reindex':     projectReindex,

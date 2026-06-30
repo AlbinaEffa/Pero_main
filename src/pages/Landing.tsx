@@ -88,6 +88,19 @@ export default function Landing() {
             <p className="text-[13px] text-ink/60">
               Без карты · docx, fb2, epub, pdf, txt · Тексты не используются для обучения моделей
             </p>
+            {/* Три отличия от рынка (из конкурентного анализа): морфология · не генератор · честная цена */}
+            <div className="flex flex-wrap gap-2 mt-5">
+              {[
+                'Понимает русскую морфологию — склонения, кто рассказывает',
+                'Не пишет за вас — Перо помнит и проверяет, прозу пишете вы',
+                'Фиксированная цена — без кредитов и счётчиков',
+              ].map(t => (
+                <span key={t} className="inline-flex items-center gap-1.5 text-[12px] text-ink/70 bg-[#E7EAE3] px-3 py-1.5 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] shrink-0" />
+                  {t}
+                </span>
+              ))}
+            </div>
           </div>
 
           {/* Витрина: живая карточка библии */}

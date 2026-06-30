@@ -707,6 +707,7 @@ export default function Editor() {
         }
         rawContent = sanitizeChapterContent(rawContent);
         editor.commands.setContent(rawContent);
+        setContentNonce(n => n + 1); // пересчитать «в кадре»/упоминания на новом тексте главы
         // Apply pending search highlight after content is in the editor.
         // rAF gives ProseMirror one paint cycle to update the DOM before we scroll.
         const hl = pendingHighlightRef.current;
@@ -934,6 +935,10 @@ export default function Editor() {
   }, [bibleEntities, approvedEntities]);
 
   // Chapter scope tier 1: entities explicitly extracted FROM this chapter
+  // Контент главы грузится в editor мутацией (ref editor НЕ меняется) — бампаем nonce после
+  // setContent, чтобы «в кадре»/упоминания пересчитались на новом тексте (иначе «никого» навсегда).
+  const [contentNonce, setContentNonce] = useState(0);
+
   const chapterLinkedEntities = useMemo(() => {
     if (!chapterId) return [];
     return allApprovedEntities.filter(e => e.chapterId === chapterId);
@@ -961,7 +966,7 @@ export default function Editor() {
     }
     ordered.sort((a, b) => a.at - b.at);
     return { chapterMentionedEntities: mentioned, chapterEntitiesByAppearance: ordered.map(x => x.e) };
-  }, [allApprovedEntities, chapterLinkedEntities, editor]);
+  }, [allApprovedEntities, chapterLinkedEntities, editor, contentNonce]);
 
   // Contradiction detection: same name (case-insensitive) with differing descriptions
   // Нестыковки, помеченные автором как «не нестыковка» — больше не флагаем (B1).

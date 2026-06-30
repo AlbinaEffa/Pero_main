@@ -8,6 +8,7 @@
 import { useMemo } from 'react';
 import { GitBranch, LayoutTemplate, Plus } from 'lucide-react';
 import { Entity, EntityLink, EntityEvent, Chapter } from './types';
+import { entityMatch } from './editorUtils';
 import type { PlotThread } from './ThreadsLens';
 
 export interface ChapterBeat { key: string; label: string; pct: number; chapterId: string | null; chapterTitle: string | null }
@@ -53,7 +54,9 @@ export function SkeletonLens({ chapters, entities, events, links, threads = [], 
     return m;
   }, [chapterBeats]);
 
-  // chapterId → Set<entityId> (инверсия присутствия).
+  // chapterId → Set<entityId>. Присутствие = структурно (entities/events/links.chapterId) +
+  // ЛЕКСИЧЕСКИ (имя сущности встречается в тексте главы) — тот же entityMatch, что «в кадре» в
+  // редакторе. Так колонка «В кадре» заполнена и для ещё-не-прочитанных глав, а не молчит прочерком.
   const presenceByChapter = useMemo(() => {
     const map = new Map<string, Set<string>>();
     const add = (cid: string | null | undefined, eid: string) => {
@@ -64,8 +67,16 @@ export function SkeletonLens({ chapters, entities, events, links, threads = [], 
     entities.forEach(e => add(e.chapterId, e.id));
     events.forEach(ev => add(ev.chapterId, ev.entityId));
     links.forEach(l => { add(l.chapterId, l.sourceEntityId); add(l.chapterId, l.targetEntityId); });
+    for (const c of chapters) {
+      if (!c.content) continue;
+      const text = c.content.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/gi, ' ').toLowerCase();
+      const words: { w: string; at: number }[] = [];
+      const re = /[а-яёa-z0-9'-]+/gi; let m: RegExpExecArray | null;
+      while ((m = re.exec(text))) words.push({ w: m[0], at: m.index });
+      for (const e of entities) if (entityMatch(e.name, words, text).mentioned) add(c.id, e.id);
+    }
     return map;
-  }, [entities, events, links]);
+  }, [entities, events, links, chapters]);
 
   const entityById = useMemo(() => new Map(entities.map(e => [e.id, e])), [entities]);
   const entityNames = useMemo(() => new Set(entities.map(e => (e.name ?? '').trim().toLowerCase())), [entities]);

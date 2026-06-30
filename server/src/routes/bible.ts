@@ -23,6 +23,7 @@ import {
   EXTRACTION_SCHEMA, BASE_EXTRACTION_PROMPT, buildStoryBibleContext, buildContradictionPrompt, povContextBlock,
 } from '../lib/extractionPrompts.js';
 import { classifyChapterPov, buildPovDetectPrompt } from '../lib/povResolution.js';
+import { selectWorldSlice } from '../lib/worldSlice.js';
 import { AUTHOR_POV } from '../lib/chapterPov.js';
 
 const router = express.Router();
@@ -1486,7 +1487,9 @@ router.post('/:projectId/contradictions/scan-chapter',
     if (plainText.split(/\s+/).filter(Boolean).length < 50) return res.json({ issues: [] });
 
     const links = await db.select().from(schema.entityLinks).where(eq(schema.entityLinks.projectId, projectId));
-    const storyBible = buildStoryBibleContext(entities, links);
+    // Срез Мира под эту главу: present ∪ major ∪ POV (контекст растёт со сценой, не с книгой).
+    const slice = selectWorldSlice({ entities, links, chapterText: plainText, pov: chapter.povCharacter });
+    const storyBible = buildStoryBibleContext(slice.entities, slice.links);
     // RAG: подтягиваем близкие по смыслу места из ДРУГИХ глав (синопсис как запрос, иначе текст).
     const related = await retrieveCrossChapterPassages(projectId, chapterId, chapter.summary || plainText, 6);
     const prompt = buildContradictionPrompt(storyBible, chapter.title, plainText.slice(0, 12000), related, chapter.povCharacter);

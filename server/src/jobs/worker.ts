@@ -30,6 +30,7 @@ import {
   EXTRACTION_SCHEMA, BASE_EXTRACTION_PROMPT, buildStoryBibleContext, buildContradictionPrompt, povContextBlock, type RawContradiction,
 } from '../lib/extractionPrompts.js';
 import { retrieveCrossChapterPassages, retrieveCrossBookPassages } from '../lib/semanticRetrieval.js';
+import { selectWorldSlice } from '../lib/worldSlice.js';
 
 const POLL_INTERVAL_MS   = 5_000;  // check for new jobs every 5 seconds
 const STUCK_JOB_MINUTES  = 5;      // running jobs older than this are assumed crashed
@@ -306,7 +307,7 @@ async function handleScanContradictions(
     return;
   }
 
-  const storyBible = buildStoryBibleContext(entities, links);
+  // Срез Мира строим ПЕР-ГЛАВНО внутри цикла (раньше слали весь Мир каждой главе — рос с книгой).
 
   // E3: если книга в серии — подтянуть канон из ПРЕДЫДУЩИХ книг (series_order меньше текущего),
   // чтобы ловить нестыковки МЕЖДУ книгами. Нужен заданный порядок книги.
@@ -352,6 +353,9 @@ async function handleScanContradictions(
     const crossBook = earlierBookIds.length
       ? (await retrieveCrossBookPassages(earlierBookIds, ch.plainText, 4)).map(p => `[Из книги «${p.bookTitle ?? '?'}»] ${p.chunkText}`)
       : [];
+    // Срез Мира под ЭТУ главу: present ∪ major ∪ POV (контекст растёт со сценой, не с книгой).
+    const slice = selectWorldSlice({ entities, links, chapterText: ch.plainText, pov: ch.povCharacter });
+    const storyBible = buildStoryBibleContext(slice.entities, slice.links);
     const prompt = buildContradictionPrompt(storyBible, ch.title, ch.plainText.slice(0, CONTRADICTION_CHAPTER_CHAR_CAP), [...related, ...priorCanonLines, ...crossBook], ch.povCharacter);
 
     try {

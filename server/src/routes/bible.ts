@@ -363,7 +363,9 @@ router.post('/recheck/batch',
 
       // Fetch approved entities once for all chapters
       const approvedEntities = await db
-        .select({ id: schema.storyEntities.id, name: schema.storyEntities.name, type: schema.storyEntities.type, description: schema.storyEntities.description })
+        .select({ id: schema.storyEntities.id, name: schema.storyEntities.name, type: schema.storyEntities.type,
+                  description: schema.storyEntities.description, significance: schema.storyEntities.significance,
+                  attributes: schema.storyEntities.attributes })
         .from(schema.storyEntities)
         .where(and(eq(schema.storyEntities.projectId, projectId), eq(schema.storyEntities.status, 'approved')));
 
@@ -395,7 +397,18 @@ router.post('/recheck/batch',
           plainText: ch.plainText.slice(0, 6000),
         }));
 
-        const batchPrompt = buildBatchRecheckPrompt(approvedEntities, batchInput);
+        // Срез Мира под батч = ОБЪЕДИНЕНИЕ срезов глав батча (один список «известных сущностей»
+        // на N глав). Шлём не весь Мир, а present ∪ major ∪ POV по этим главам; дедуп держит
+        // резолвер при записи. По id, чтобы не дублировать.
+        const unionById = new Map<string, typeof approvedEntities[number]>();
+        for (const ch of batch) {
+          for (const e of selectWorldSlice({ entities: approvedEntities, links: [], chapterText: ch.plainText, pov: ch.povCharacter }).entities) {
+            unionById.set(e.id, e);
+          }
+        }
+        const batchEntities = [...unionById.values()];
+
+        const batchPrompt = buildBatchRecheckPrompt(batchEntities, batchInput);
 
         let batchResponse;
         try {

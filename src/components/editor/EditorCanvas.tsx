@@ -1369,13 +1369,13 @@ export function EditorCanvas({
         className={`absolute inset-0 px-8 md:px-16 overflow-y-auto hide-scrollbar scroll-smooth transition-[padding] duration-300 ${isFocusMode ? 'pt-8' : 'pt-28'}`}
         style={reserveCommentGutter ? { paddingRight: 372 } : undefined}
       >
-        <div className={`${widthClass} mx-auto relative h-full transition-all duration-500`}>
-          <div className={`${editorFontClass} mb-10 ${isFocusMode ? 'mt-2' : 'mt-4'} flex items-baseline gap-4 text-[#1e2d1f]/90`}>
+        <div className={`${widthClass} mx-auto relative h-full transition-all duration-500 @container/title`}>
+          <div className={`${editorFontClass} mb-10 ${isFocusMode ? 'mt-2' : 'mt-4'} flex items-baseline gap-4 min-w-0 text-[#1e2d1f]/90`}>
             <div className="relative shrink-0">
               <button
                 onClick={() => setIsChapterTypeMenuOpen(o => !o)}
                 title="Тип главы"
-                className="group inline-flex items-baseline gap-1.5 text-[2.35rem] leading-tight tracking-[-0.02em] font-medium rounded-lg px-1.5 -mx-1.5 hover:bg-[#1e2d1f]/[0.04] transition-colors"
+                className="group inline-flex items-baseline gap-1.5 text-[2.35rem] @max-[600px]/title:text-[1.5rem] leading-tight tracking-[-0.02em] font-medium rounded-lg px-1.5 -mx-1.5 hover:bg-[#1e2d1f]/[0.04] transition-colors"
               >
                 {chapterPrefix}
                 <ChevronDown size={20} className="self-center text-[#1e2d1f]/25 group-hover:text-[#1e2d1f]/60 transition-colors" />
@@ -1409,13 +1409,13 @@ export function EditorCanvas({
                 </>
               )}
             </div>
-            <span className="text-[2rem] leading-none text-[#1e2d1f]/16 shrink-0 translate-y-[-0.04em]">|</span>
+            <span className="text-[2rem] @max-[600px]/title:text-[1.25rem] leading-none text-[#1e2d1f]/16 shrink-0 translate-y-[-0.04em]">|</span>
             <input
               ref={chapterTitleInputRef}
               value={chapterTitleSuffix}
               onChange={(e) => onChapterTitleSuffixChange?.(e.target.value)}
               placeholder="Введите название главы"
-              className="min-w-[18rem] flex-1 bg-transparent border-none outline-none text-[2.35rem] leading-tight tracking-[-0.02em] font-medium placeholder:text-[#1e2d1f]/25"
+              className="min-w-0 flex-1 bg-transparent border-none outline-none text-[2.35rem] @max-[600px]/title:text-[1.5rem] leading-tight tracking-[-0.02em] font-medium placeholder:text-[#1e2d1f]/25"
               style={{ fontFamily: 'inherit' }}
             />
           </div>

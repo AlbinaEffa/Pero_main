@@ -328,11 +328,21 @@ export interface AiRelation {
   relation?: string;
 }
 
+/** Сводка решений промоут-гейта по одному прогону извлечения (для extraction_traces). */
+export interface ExtractionTraceStats {
+  entitiesIn:   number;  // сколько сущностей вернула модель (до фильтра)
+  metaFiltered: number;  // отсеяно как мета/мусор (НЕ POV-самоупоминание)
+  salvaged:     number;  // спасено POV-резолвом (фантом «я»/«героиня» → POV-герой)
+  deduped:      number;  // тихо слито в существующую сущность (варианты написания)
+  newPending:   number;  // создано новых pending-находок
+}
+
 export interface ProcessResult {
   newSuggestions:    (typeof schema.storyEntities.$inferSelect)[];
   updateSuggestions: (typeof schema.bibleUpdateSuggestions.$inferSelect)[];
   newLinks:  number;
   newEvents: number;
+  trace:     ExtractionTraceStats;
 }
 
 const VALID_EVENT_TYPES = new Set(['conflict', 'relationship', 'status', 'revelation', 'other']);
@@ -399,11 +409,16 @@ export async function processExtractionResults(
   // Прочий мусор (эхо полей промпта, 3-е лицо, антагонист-плейсхолдер) — по-прежнему отсев.
   const narrator = (pov ?? '').trim();
   const canSalvage = !!narrator && narrator !== AUTHOR_POV;
+  // Счётчики решений промоут-гейта — для extraction_traces (телеметрия, в промпт НЕ идут).
+  const entitiesIn = (entities ?? []).length;
+  let metaFiltered = 0, salvaged = 0, deduped = 0;
   entities = (entities ?? []).flatMap(e => {
     if (!isMetaEntity(e)) return [e];
     if (canSalvage && isSelfReferenceName(e.name)) {
+      salvaged++;
       return [{ ...e, name: narrator, type: e.type || 'character' }];
     }
+    metaFiltered++;
     return [];
   });
 
@@ -472,6 +487,7 @@ export async function processExtractionResults(
       const fuzzy = approvedNorm.get(`${entity.type || 'character'}|${normalizeNameRu(entity.name)}`);
       if (fuzzy && fuzzy.name.trim().toLowerCase() !== key) {
         existing = fuzzy;
+        deduped++;
         nameToId.set(key, fuzzy.id);                     // резолвить связи/события на выжившего
         const aliases = aliasesOf(fuzzy.attributes);
         if (!aliases.some(a => a.trim().toLowerCase() === key)) {
@@ -643,5 +659,39 @@ export async function processExtractionResults(
     }
   }
 
-  return { newSuggestions, updateSuggestions, newLinks, newEvents };
+  return {
+    newSuggestions, updateSuggestions, newLinks, newEvents,
+    trace: { entitiesIn, metaFiltered, salvaged, deduped, newPending: newSuggestions.length },
+  };
+}
+
+/**
+ * Записать снимок прогона извлечения (extraction_traces). Fire-and-forget: НЕ блокирует
+ * ответ и не валит извлечение при сбое записи. raw_response обрезается. Телеметрия — в
+ * промпт НЕ идёт.
+ */
+export function recordExtractionTrace(input: {
+  projectId: string | null;
+  chapterId: string | null;
+  jobId?: string | null;
+  route: string;
+  model?: string | null;
+  povUsed?: string | null;
+  rawResponse?: string | null;
+  outcome: ExtractionTraceStats;
+  inputTokens?: number;
+  outputTokens?: number;
+}): void {
+  db.insert(schema.extractionTraces).values({
+    projectId:    input.projectId,
+    chapterId:    input.chapterId,
+    jobId:        input.jobId ?? null,
+    route:        input.route,
+    model:        input.model ?? null,
+    povUsed:      input.povUsed ?? null,
+    rawResponse:  input.rawResponse ? input.rawResponse.slice(0, 4000) : null,
+    outcome:      input.outcome,
+    inputTokens:  input.inputTokens ?? 0,
+    outputTokens: input.outputTokens ?? 0,
+  }).catch(e => console.warn('[trace] write failed:', (e as Error)?.message));
 }

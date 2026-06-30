@@ -16,7 +16,7 @@ import { checkBibleChapterLimit } from '../lib/planLimits.js';
 import { enqueueJob } from '../jobs/queue.js';
 import {
   isValidUUID, cleanJsonResponse,
-  processExtractionResults, sanitizePov, sanitizeSynopsis, isLowInfoChapterTitle, canonicalizePov,
+  processExtractionResults, recordExtractionTrace, sanitizePov, sanitizeSynopsis, isLowInfoChapterTitle, canonicalizePov,
   type AiEntity, type AiRelation,
 } from '../lib/extraction.js';
 import {
@@ -122,9 +122,16 @@ router.post('/extract',
           chapterTitle = rows[0]?.title ?? null;
         }
 
-        const { newSuggestions, updateSuggestions, newLinks, newEvents } = await processExtractionResults(
+        const procResult = await processExtractionResults(
           entities, relations, projectId, chapterId ?? null, chapterTitle, plainText, sanitizePov(parsed.pov) || knownPov,
         );
+        const { newSuggestions, updateSuggestions, newLinks, newEvents } = procResult;
+        recordExtractionTrace({
+          projectId, chapterId: chapterId ?? null, route: 'bible:extract',
+          model: ai?.chatModel ?? null, povUsed: sanitizePov(parsed.pov) || knownPov, rawResponse: raw,
+          outcome: procResult.trace,
+          inputTokens: response.usage?.inputTokens ?? 0, outputTokens: response.usage?.outputTokens ?? 0,
+        });
 
         if (chapterId && isValidUUID(chapterId)) {
           try {
@@ -260,9 +267,16 @@ router.post('/recheck/chapter/:chapterId',
 
       // POV для спасения само-упоминаний: свежий из ответа, иначе уже известный по главе.
       const resolvedPov = sanitizePov(parsed.pov) || knownPov;
-      const { newSuggestions, updateSuggestions, newLinks, newEvents } = await processExtractionResults(
+      const procResult = await processExtractionResults(
         entities, relations, projectId, chapterId, chapterTitle, plainText, resolvedPov,
       );
+      const { newSuggestions, updateSuggestions, newLinks, newEvents } = procResult;
+      recordExtractionTrace({
+        projectId, chapterId, route: 'bible:recheck',
+        model: ai?.chatModel ?? null, povUsed: resolvedPov, rawResponse: raw,
+        outcome: procResult.trace,
+        inputTokens: response.usage?.inputTokens ?? 0, outputTokens: response.usage?.outputTokens ?? 0,
+      });
 
       // Update freshness metadata
       try {
@@ -961,6 +975,28 @@ router.post('/:projectId/resolve-pov',
     });
   } catch (error) {
     console.error('Error resolving POV:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/bible/:projectId/traces?chapterId=&limit= — телеметрия извлечения (отладка качества ИИ).
+// Снимки прогонов: ответ модели + решения промоут-гейта + токены. В промпт НЕ участвует.
+router.get('/:projectId/traces', authenticateToken, async (req: AuthedRequest, res) => {
+  try {
+    const { projectId } = req.params;
+    if (!isValidUUID(projectId)) return res.status(400).json({ error: 'Invalid project ID' });
+    if (!(await assertProjectOwnership(projectId, req.user.userId))) return res.status(403).json({ error: 'Access denied' });
+    const chapterId = typeof req.query.chapterId === 'string' && isValidUUID(req.query.chapterId) ? req.query.chapterId : null;
+    const limit = Math.min(Math.max(parseInt(String(req.query.limit ?? '50'), 10) || 50, 1), 200);
+
+    const where = chapterId
+      ? and(eq(schema.extractionTraces.projectId, projectId), eq(schema.extractionTraces.chapterId, chapterId))
+      : eq(schema.extractionTraces.projectId, projectId);
+    const traces = await db.select().from(schema.extractionTraces)
+      .where(where).orderBy(desc(schema.extractionTraces.createdAt)).limit(limit);
+    res.json({ traces });
+  } catch (error) {
+    console.error('Error fetching extraction traces:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

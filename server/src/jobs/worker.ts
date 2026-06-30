@@ -22,7 +22,7 @@ import { guardChat, guardEmbed } from '../lib/aiGuard.js';
 import { pool as sharedPool } from '../db/client.js';
 import { getAIProvider, getEmbeddingProvider, type AIProvider } from '../lib/aiProvider.js';
 import {
-  cleanJsonResponse, processExtractionResults, sanitizePov,
+  cleanJsonResponse, processExtractionResults, recordExtractionTrace, sanitizePov,
   sanitizeSynopsis, isLowInfoChapterTitle,
   type AiEntity, type AiRelation,
 } from '../lib/extraction.js';
@@ -167,9 +167,15 @@ async function handleExtractEntities(
 
   // Общий конвейер: pending-сущности, update suggestions для одобренных,
   // аддитивное обогащение атрибутов, entity_links и entity_events — с дедупом.
-  await processExtractionResults(
+  const procResult = await processExtractionResults(
     entities, relations, projectId, payload.chapterId, chapterTitle, plainText, pov || knownPov,
   );
+  recordExtractionTrace({
+    projectId, chapterId: payload.chapterId, route: 'worker:extract',
+    model: aiClient?.chatModel ?? null, povUsed: pov || knownPov, rawResponse: raw,
+    outcome: procResult.trace,
+    inputTokens: response.usage?.inputTokens ?? 0, outputTokens: response.usage?.outputTokens ?? 0,
+  });
 
   // Отметить главу как проанализированную (+ POV, синопсис, и имя главы, если было «сырым»).
   const chapterUpdate: Record<string, unknown> = { lastExtractedAt: new Date() };

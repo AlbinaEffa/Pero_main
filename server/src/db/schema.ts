@@ -313,6 +313,25 @@ export const costLogs = pgTable('cost_logs', {
   createdAt:        timestamp('created_at').defaultNow().notNull(),
 });
 
+// Extraction traces — телеметрия прогонов извлечения (НЕ подаётся в промпт). Снимок:
+// что вернула модель (raw_response, обрезанный), какой POV подан, и решения промоут-гейта
+// (outcome). Для отладки качества ИИ (китайский/JSON/over-classify) и метрики здоровья
+// извлечения. Пишется fire-and-forget на 3 call-site'ах извлечения.
+export const extractionTraces = pgTable('extraction_traces', {
+  id:           uuid('id').primaryKey().defaultRandom(),
+  projectId:    uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }),
+  chapterId:    uuid('chapter_id').references(() => chapters.id, { onDelete: 'set null' }),
+  jobId:        uuid('job_id'),                 // связь с jobs (worker-путь), без FK-каскада
+  route:        text('route').notNull(),        // worker:extract | bible:extract | bible:recheck
+  model:        text('model'),
+  povUsed:      text('pov_used'),               // какой POV подан в промпт (Фаза 2/3)
+  rawResponse:  text('raw_response'),            // ответ модели, обрезанный
+  outcome:      jsonb('outcome').notNull().default({}), // ExtractionTraceStats
+  inputTokens:  integer('input_tokens').notNull().default(0),
+  outputTokens: integer('output_tokens').notNull().default(0),
+  createdAt:    timestamp('created_at').defaultNow().notNull(),
+});
+
 // Bible Update Suggestions — proposed description changes for already-approved entities
 // Created by /extract and /recheck when AI returns a known entity with new information.
 export const bibleUpdateSuggestions = pgTable('bible_update_suggestions', {

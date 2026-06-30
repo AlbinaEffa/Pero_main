@@ -18,6 +18,7 @@
 
 import 'dotenv/config';
 import pkg from 'pg';
+import { wordCount } from '../lib/html.js';
 
 const { Pool } = pkg;
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -63,6 +64,26 @@ async function jobsCleanup() {
        AND updated_at < NOW() - ($1 || ' days')::INTERVAL`,
     [String(days)]
   );
+}
+
+async function wordsRecompute() {
+  // Пересчитывает chapters.word_count из текущего контента (тем же wordCount, что фронт/PUT),
+  // чтобы Dashboard (хранёное SUM) совпадал с пересчётом на лету (Скелет). Чинит дрейф счётчика.
+  const projectId = arg('project');
+  console.log(`Recomputing chapter word_count${projectId ? ` for project ${projectId}` : ' (all projects)'}…`);
+  const { rows } = await pool.query<{ id: string; content: string | null }>(
+    projectId
+      ? 'SELECT id, content FROM chapters WHERE project_id = $1'
+      : 'SELECT id, content FROM chapters',
+    projectId ? [projectId] : [],
+  );
+  let updated = 0;
+  for (const r of rows) {
+    const wc = wordCount(r.content ?? '');
+    const res = await pool.query('UPDATE chapters SET word_count = $1 WHERE id = $2 AND word_count IS DISTINCT FROM $1', [wc, r.id]);
+    updated += res.rowCount ?? 0;
+  }
+  console.log(`[words:recompute] ${updated} of ${rows.length} chapter(s) updated`);
 }
 
 async function tracesCleanup() {
@@ -254,6 +275,7 @@ async function vacuum() {
 
 const commands: Record<string, () => Promise<void>> = {
   'jobs:cleanup':        jobsCleanup,
+  'words:recompute':     wordsRecompute,
   'traces:cleanup':      tracesCleanup,
   'embeddings:cleanup':  embeddingsCleanup,
   'chat:cleanup':        chatCleanup,

@@ -18,16 +18,19 @@ const DEMO_TO = '/demo';
 
 // ── Сравнение с конкурентами (по публичным данным, июнь 2026) ────────────────
 type Cell = 'yes' | 'no' | 'partial';
-const COMPARE_ROWS: { label: string; pero: Cell; mythril: Cell; novelcrafter: Cell; campfire: Cell; note?: string }[] = [
-  { label: 'Мир строится сам из готовой рукописи', pero: 'yes', mythril: 'yes', novelcrafter: 'no', campfire: 'no', note: 'NovelCrafter и Campfire — ручное заполнение' },
-  { label: 'Понимает русский текст', pero: 'yes', mythril: 'partial', novelcrafter: 'partial', campfire: 'partial' },
-  { label: 'Редактор и Мир в одном окне', pero: 'yes', mythril: 'no', novelcrafter: 'yes', campfire: 'partial', note: 'Mythril — «второй экран» к чужому редактору' },
-  { label: 'Соавтор-ИИ, знающий вашу книгу', pero: 'yes', mythril: 'no', novelcrafter: 'partial', campfire: 'no' },
-  { label: 'Связи и таймлайны персонажей', pero: 'yes', mythril: 'yes', novelcrafter: 'no', campfire: 'partial' },
-  { label: 'Диктовка с расстановкой знаков', pero: 'yes', mythril: 'no', novelcrafter: 'no', campfire: 'no' },
-  { label: 'Импорт fb2 и epub', pero: 'yes', mythril: 'no', novelcrafter: 'partial', campfire: 'no' },
-  { label: 'Цены в рублях, оплата картой РФ', pero: 'yes', mythril: 'no', novelcrafter: 'no', campfire: 'no' },
-  { label: 'Не обучает модели на ваших текстах', pero: 'yes', mythril: 'yes', novelcrafter: 'partial', campfire: 'partial' },
+// Sudowrite — конкурент №1 (2026): догнал по авто-извлечению (Import Novel) и континуитету
+// (Feedback), но генератор, англо-центричный, кредитная оплата. Значения — по ресерчу 06.2026.
+const COMPARE_ROWS: { label: string; pero: Cell; sudowrite: Cell; mythril: Cell; novelcrafter: Cell; campfire: Cell; note?: string }[] = [
+  { label: 'Мир строится сам из готовой рукописи', pero: 'yes', sudowrite: 'partial', mythril: 'yes', novelcrafter: 'no', campfire: 'no', note: 'Sudowrite Import — только 5–7 главных героев; NovelCrafter/Campfire — вручную' },
+  { label: 'Понимает русский текст', pero: 'yes', sudowrite: 'partial', mythril: 'partial', novelcrafter: 'partial', campfire: 'partial', note: 'Sudowrite иногда сваливается в английский; русскую морфологию нативно не разбирает никто' },
+  { label: 'Редактор и Мир в одном окне', pero: 'yes', sudowrite: 'yes', mythril: 'no', novelcrafter: 'yes', campfire: 'partial', note: 'Mythril — «второй экран» к чужому редактору' },
+  { label: 'Соавтор-ИИ, знающий вашу книгу', pero: 'yes', sudowrite: 'yes', mythril: 'no', novelcrafter: 'partial', campfire: 'no' },
+  { label: 'Связи и таймлайны персонажей', pero: 'yes', sudowrite: 'partial', mythril: 'yes', novelcrafter: 'no', campfire: 'partial', note: 'У Sudowrite есть таймлайн серии, но нет графа связей' },
+  { label: 'Не пишет прозу за вас (аналитик, не генератор)', pero: 'yes', sudowrite: 'no', mythril: 'yes', novelcrafter: 'no', campfire: 'yes', note: 'Перо помнит и проверяет — прозу пишете вы' },
+  { label: 'Диктовка с расстановкой знаков', pero: 'yes', sudowrite: 'no', mythril: 'no', novelcrafter: 'no', campfire: 'no' },
+  { label: 'Импорт fb2 и epub', pero: 'yes', sudowrite: 'no', mythril: 'no', novelcrafter: 'partial', campfire: 'no' },
+  { label: 'Цены в рублях, оплата картой РФ', pero: 'yes', sudowrite: 'no', mythril: 'no', novelcrafter: 'no', campfire: 'no', note: 'Sudowrite — кредитная оплата в долларах' },
+  { label: 'Не обучает модели на ваших текстах', pero: 'yes', sudowrite: 'yes', mythril: 'yes', novelcrafter: 'partial', campfire: 'partial' },
 ];
 
 function CellIcon({ v }: { v: Cell }) {
@@ -216,13 +219,14 @@ export default function Landing() {
           <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-3">Честное сравнение</h2>
           <p className="text-ink/55 mb-10 max-w-2xl">Инструменты для писателей есть. Для русскоязычного автора с готовой рукописью — выбор короткий.</p>
           <div className="overflow-x-auto -mx-6 px-6" style={{ scrollbarWidth: 'none' }}>
-            <table className="w-full min-w-[640px] text-sm border-separate" style={{ borderSpacing: 0 }}>
+            <table className="w-full min-w-[760px] text-sm border-separate" style={{ borderSpacing: 0 }}>
               <thead>
                 <tr className="text-left">
-                  <th className="pb-4 pr-4 font-medium text-ink/60 text-[13px] w-[34%]"></th>
+                  <th className="pb-4 pr-4 font-medium text-ink/60 text-[13px] w-[30%]"></th>
                   <th className="pb-4 px-3 text-center">
                     <span className="inline-flex items-center gap-1.5 font-serif text-lg font-semibold"><PeroMark size={16} />Перо</span>
                   </th>
+                  <th className="pb-4 px-3 text-center font-medium text-ink/55">Sudowrite</th>
                   <th className="pb-4 px-3 text-center font-medium text-ink/55">Mythril</th>
                   <th className="pb-4 px-3 text-center font-medium text-ink/55">NovelCrafter</th>
                   <th className="pb-4 px-3 text-center font-medium text-ink/55">Campfire</th>
@@ -233,6 +237,7 @@ export default function Landing() {
                   <tr key={r.label} className={i % 2 === 0 ? 'bg-white/70' : ''}>
                     <td className="py-3 pr-4 pl-3 text-ink/75 rounded-l-xl" title={r.note}>{r.label}</td>
                     <td className="py-3 px-3 text-center bg-[#E7EAE3]/60">{<CellIcon v={r.pero} />}</td>
+                    <td className="py-3 px-3 text-center"><CellIcon v={r.sudowrite} /></td>
                     <td className="py-3 px-3 text-center"><CellIcon v={r.mythril} /></td>
                     <td className="py-3 px-3 text-center"><CellIcon v={r.novelcrafter} /></td>
                     <td className="py-3 px-3 text-center rounded-r-xl"><CellIcon v={r.campfire} /></td>

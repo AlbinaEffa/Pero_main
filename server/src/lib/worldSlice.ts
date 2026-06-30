@@ -32,6 +32,7 @@ export interface WorldSliceStats {
   dropped: number;     // не вошло (срезано)
   budgetChars: number;
   usedChars: number;   // оценка размера среза
+  presentNames: string[]; // имена present-сущностей (лексический сигнал для кросс-главного RAG)
 }
 
 const SIG_RANK: Record<string, number> = { major: 0, moderate: 1, minor: 2 };
@@ -106,6 +107,7 @@ export function selectWorldSlice<E extends SliceEntity, L extends SliceLink>(opt
       total: entities.length, present: present.size, major: majorCount, povIncluded,
       included: included.size, dropped: entities.length - included.size,
       budgetChars, usedChars,
+      presentNames: [...present].map(e => e.name),
     },
   };
 }

@@ -347,15 +347,15 @@ async function handleScanContradictions(
 
   let scanned = 0;
   for (const ch of withText) {
-    // RAG: близкие по смыслу места из ДРУГИХ глав (для сверки по всей книге, а не только с Миром).
-    const related = await retrieveCrossChapterPassages(projectId, ch.id, ch.plainText, 6);
+    // Срез Мира под ЭТУ главу: present ∪ major ∪ POV (контекст растёт со сценой, не с книгой).
+    const slice = selectWorldSlice({ entities, links, chapterText: ch.plainText, pov: ch.povCharacter });
+    const storyBible = buildStoryBibleContext(slice.entities, slice.links);
+    // RAG (гибрид): близкие по смыслу места из ДРУГИХ глав + лексика по именам present-героев.
+    const related = await retrieveCrossChapterPassages(projectId, ch.id, ch.plainText, 6, slice.stats.presentNames);
     // E3: канон из предыдущих книг серии, помечен «[Из книги «X»]» — чтобы ИИ ловил межкнижные нестыковки.
     const crossBook = earlierBookIds.length
       ? (await retrieveCrossBookPassages(earlierBookIds, ch.plainText, 4)).map(p => `[Из книги «${p.bookTitle ?? '?'}»] ${p.chunkText}`)
       : [];
-    // Срез Мира под ЭТУ главу: present ∪ major ∪ POV (контекст растёт со сценой, не с книгой).
-    const slice = selectWorldSlice({ entities, links, chapterText: ch.plainText, pov: ch.povCharacter });
-    const storyBible = buildStoryBibleContext(slice.entities, slice.links);
     const prompt = buildContradictionPrompt(storyBible, ch.title, ch.plainText.slice(0, CONTRADICTION_CHAPTER_CHAR_CAP), [...related, ...priorCanonLines, ...crossBook], ch.povCharacter);
 
     try {

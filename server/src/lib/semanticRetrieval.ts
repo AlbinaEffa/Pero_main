@@ -136,28 +136,68 @@ export async function retrieveCrossChapterPassages(
   chapterId: string,
   queryText: string,
   topK = 6,
+  lexicalTerms?: string[],
 ): Promise<string[]> {
   const embedder = getEmbeddingProvider();
   if (!embedder || !queryText.trim()) return [];
   const vec = await embedder.embed(queryText.slice(0, 2000), 'query');
   if (!vec) return [];
+  const POOL = topK * 3;
+  // POV-aware (Фаза 4): фрагмент из главы с ДРУГИМ рассказчиком помечаем «(глава от лица X)» —
+  // чтобы модель не считала «я разных рассказчиков» противоречием.
+  const tag = (text: string, pov: string | null) => {
+    const p = (pov ?? '').trim();
+    return p && p !== 'Автор' ? `(глава от лица «${p}») ${text}` : text;
+  };
   try {
-    // POV-aware (Фаза 4): тянем POV исходной главы. Фрагмент из главы с другим рассказчиком
-    // помечаем «(глава от лица X)», чтобы модель НЕ считала «я разных рассказчиков»
-    // противоречием — первое лицо в каждой главе относится к СВОЕМУ POV-герою.
-    const { rows } = await pool.query<{ chunk_text: string; pov_character: string | null }>(
-      `SELECT sm.chunk_text, c.pov_character
+    const vecRes = await pool.query<{ chunk_text: string; pov_character: string | null; dist: number }>(
+      `SELECT sm.chunk_text, c.pov_character, (sm.embedding <=> $3::vector) AS dist
          FROM semantic_memory sm
          LEFT JOIN chapters c ON c.id = sm.chapter_id
         WHERE sm.project_id = $1 AND sm.chapter_id <> $2 AND sm.embedding IS NOT NULL
         ORDER BY sm.embedding <=> $3::vector
         LIMIT $4`,
-      [projectId, chapterId, `[${vec.join(',')}]`, topK],
+      [projectId, chapterId, `[${vec.join(',')}]`, POOL],
     );
-    return rows.map(r => {
-      const pov = (r.pov_character ?? '').trim();
-      return pov && pov !== 'Автор' ? `(глава от лица «${pov}») ${r.chunk_text}` : r.chunk_text;
+
+    // Гибрид (Фаза 4): лексика по ИМЕНАМ present-сущностей — фрагменты из ДРУГИХ глав про тех
+    // же героев, которые косинус мог не поднять. best-effort (нет 'russian' FTS → только вектор).
+    let lexRes: { chunk_text: string; pov_character: string | null; lr: number }[] = [];
+    const terms = [...new Set((lexicalTerms ?? [])
+      .flatMap(n => n.toLowerCase().split(/[^а-яёa-z0-9]+/i))
+      .filter(t => t.length >= 3))];
+    if (terms.length) {
+      try {
+        const r = await pool.query<{ chunk_text: string; pov_character: string | null; lr: number }>(
+          `SELECT sm.chunk_text, c.pov_character,
+                  ts_rank(to_tsvector('russian', sm.chunk_text), to_tsquery('russian', $3)) AS lr
+             FROM semantic_memory sm
+             LEFT JOIN chapters c ON c.id = sm.chapter_id
+            WHERE sm.project_id = $1 AND sm.chapter_id <> $2
+              AND to_tsvector('russian', sm.chunk_text) @@ to_tsquery('russian', $3)
+            ORDER BY lr DESC
+            LIMIT $4`,
+          [projectId, chapterId, terms.join(' | '), POOL],
+        );
+        lexRes = r.rows;
+      } catch (le: any) {
+        if (!['42P01', '42703', '42883', '42704', '0A000'].includes(le?.code)) console.warn('cross-chapter lexical failed:', le?.message ?? le);
+      }
+    }
+
+    // Слияние fuse_score (как в чате): оба сигнала → 0.4·вектор + 0.6·лексика; один → свой.
+    const maxLex = lexRes.reduce((m, r) => Math.max(m, Number(r.lr)), 0);
+    const merged = new Map<string, { pov: string | null; v?: number; l?: number }>();
+    for (const r of vecRes.rows) merged.set(r.chunk_text, { pov: r.pov_character, ...merged.get(r.chunk_text), v: Number(r.dist) });
+    for (const r of lexRes)      merged.set(r.chunk_text, { pov: r.pov_character, ...merged.get(r.chunk_text), l: Number(r.lr) });
+    const scored = [...merged.entries()].map(([text, s]) => {
+      const vSim = s.v != null ? 1 / (1 + s.v) : 0;
+      const lSim = s.l != null && maxLex > 0 ? s.l / maxLex : 0;
+      const fused = s.v != null && s.l != null ? 0.4 * vSim + 0.6 * lSim : Math.max(vSim, lSim);
+      return { text, pov: s.pov, fused };
     });
+    scored.sort((a, b) => b.fused - a.fused);
+    return scored.slice(0, topK).map(s => tag(s.text, s.pov));
   } catch (e: any) {
     if (!['42P01', '42703', '42883'].includes(e?.code)) console.warn('cross-chapter retrieval failed:', e?.message ?? e);
     return [];

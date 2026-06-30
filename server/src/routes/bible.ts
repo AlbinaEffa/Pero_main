@@ -1497,8 +1497,8 @@ router.post('/:projectId/contradictions/scan-chapter',
     // Срез Мира под эту главу: present ∪ major ∪ POV (контекст растёт со сценой, не с книгой).
     const slice = selectWorldSlice({ entities, links, chapterText: plainText, pov: chapter.povCharacter });
     const storyBible = buildStoryBibleContext(slice.entities, slice.links);
-    // RAG: подтягиваем близкие по смыслу места из ДРУГИХ глав (синопсис как запрос, иначе текст).
-    const related = await retrieveCrossChapterPassages(projectId, chapterId, chapter.summary || plainText, 6);
+    // RAG (гибрид): близкие по смыслу места из ДРУГИХ глав + лексика по именам present-героев.
+    const related = await retrieveCrossChapterPassages(projectId, chapterId, chapter.summary || plainText, 6, slice.stats.presentNames);
     const prompt = buildContradictionPrompt(storyBible, chapter.title, plainText.slice(0, 12000), related, chapter.povCharacter);
 
     const response = await guardChat(

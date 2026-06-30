@@ -11,6 +11,26 @@
  * narrative-главы от первого лица, а не на всю книгу подряд.
  */
 import { isServiceChapter, AUTHOR_POV } from './chapterPov.js';
+import { normalizeNameRu } from './extraction.js';
+
+/**
+ * Детерминированный POV из имени-заголовка (без AI). Мультиперспективные книги (романтези и т.п.)
+ * часто помечают главу именем рассказчика отдельным первым абзацем («Ризанд», «Фейра»). Если первый
+ * абзац/строка главы — РОВНО имя approved-персонажа, это POV-маркер. Возвращает каноническое имя или null.
+ */
+export function povFromOpeningName(chapterContent: string, approvedCharNames: string[]): string | null {
+  const firstP = (chapterContent || '').match(/<p>([\s\S]*?)<\/p>/i);
+  const firstLine = firstP
+    ? firstP[1].replace(/<[^>]+>/g, '').replace(/&[a-z]+;/gi, ' ').trim()
+    : (chapterContent || '').replace(/<[^>]+>/g, ' ').split(/[\n.!?]/)[0].trim();
+  if (!firstLine || firstLine.length > 40) return null;
+  const norm = normalizeNameRu(firstLine);
+  if (!norm) return null;
+  for (const name of approvedCharNames) {
+    if (normalizeNameRu(name) === norm) return name; // канон-имя сущности
+  }
+  return null;
+}
 
 /** Местоимения первого лица — маркеры повествования от «я». */
 const FIRST_PERSON = new Set([

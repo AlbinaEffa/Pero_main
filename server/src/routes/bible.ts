@@ -22,7 +22,7 @@ import {
 import {
   EXTRACTION_SCHEMA, BASE_EXTRACTION_PROMPT, buildStoryBibleContext, buildContradictionPrompt, povContextBlock,
 } from '../lib/extractionPrompts.js';
-import { classifyChapterPov, buildPovDetectPrompt } from '../lib/povResolution.js';
+import { classifyChapterPov, buildPovDetectPrompt, povFromOpeningName } from '../lib/povResolution.js';
 import { selectWorldSlice } from '../lib/worldSlice.js';
 import { AUTHOR_POV } from '../lib/chapterPov.js';
 
@@ -940,7 +940,14 @@ router.post('/:projectId/resolve-pov',
       .where(eq(schema.chapters.projectId, projectId))
       .orderBy(asc(schema.chapters.order));
 
-    let byAuthor = 0, skippedNone = 0, alreadyHad = 0;
+    // Approved-персонажи (имя+алиасы) — для POV-из-имени-заголовка (без AI) и канонизации детект-POV.
+    const approvedChars = await db
+      .select({ name: schema.storyEntities.name, attributes: schema.storyEntities.attributes })
+      .from(schema.storyEntities)
+      .where(and(eq(schema.storyEntities.projectId, projectId), eq(schema.storyEntities.type, 'character'), eq(schema.storyEntities.status, 'approved')));
+    const charNames = approvedChars.map(c => c.name);
+
+    let byAuthor = 0, byOpening = 0, skippedNone = 0, alreadyHad = 0;
     const toDetect: { id: string; text: string }[] = [];
     for (const ch of chapters) {
       if (onlyMissing && ch.povCharacter) { alreadyHad++; continue; }
@@ -952,22 +959,23 @@ router.post('/:projectId/resolve-pov',
       } else if (plan === 'none') {
         skippedNone++;
       } else {
-        toDetect.push({ id: ch.id, text });
+        // POV-из-имени-заголовка (без AI): мультиперспективные книги помечают главу именем рассказчика.
+        const opening = povFromOpeningName(ch.content ?? '', charNames);
+        if (opening) {
+          await db.update(schema.chapters).set({ povCharacter: opening }).where(eq(schema.chapters.id, ch.id));
+          byOpening++;
+        } else {
+          toDetect.push({ id: ch.id, text });
+        }
       }
     }
 
-    // Фокусный AI-детект рассказчика — только для first-person narrative-глав.
+    // Фокусный AI-детект рассказчика — только для оставшихся first-person narrative-глав.
     let byDetect = 0, detectFailed = 0;
     const detectList = toDetect.slice(0, RESOLVE_POV_MAX_DETECT);
     if (detectList.length > 0 && !ai) {
-      return res.status(503).json({ error: 'AI service is not configured', byAuthor, skippedNone, alreadyHad, needDetect: detectList.length });
+      return res.status(503).json({ error: 'AI service is not configured', byAuthor, byOpening, skippedNone, alreadyHad, needDetect: detectList.length });
     }
-    // Approved-персонажи (имя+алиасы) для канонизации детект-POV к сущности Каталога (Фаза 4).
-    const approvedChars = detectList.length > 0
-      ? await db.select({ name: schema.storyEntities.name, attributes: schema.storyEntities.attributes })
-          .from(schema.storyEntities)
-          .where(and(eq(schema.storyEntities.projectId, projectId), eq(schema.storyEntities.type, 'character'), eq(schema.storyEntities.status, 'approved')))
-      : [];
     for (let i = 0; i < detectList.length; i += RESOLVE_POV_CONCURRENCY) {
       const batch = detectList.slice(i, i + RESOLVE_POV_CONCURRENCY);
       await Promise.all(batch.map(async ({ id, text }) => {
@@ -990,7 +998,7 @@ router.post('/:projectId/resolve-pov',
 
     res.json({
       total: chapters.length,
-      byAuthor, byDetect, thirdPersonOrStub: skippedNone, alreadyHad,
+      byAuthor, byOpening, byDetect, thirdPersonOrStub: skippedNone, alreadyHad,
       detectAttempted: detectList.length, detectFailed,
       detectSkippedOverCap: Math.max(0, toDetect.length - detectList.length),
     });

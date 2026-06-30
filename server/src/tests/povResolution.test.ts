@@ -2,7 +2,7 @@
  * POV Фаза 3 — детерминированный классификатор книжного резолва POV (без БД/AI).
  */
 import { describe, it, expect } from 'vitest';
-import { classifyChapterPov, firstPersonRatio, deterministicBookPov, buildPovDetectPrompt } from '../lib/povResolution.js';
+import { classifyChapterPov, firstPersonRatio, deterministicBookPov, buildPovDetectPrompt, povFromOpeningName } from '../lib/povResolution.js';
 
 const FIRST = 'Я проснулась на рассвете. Меня лихорадило, и я не могла держать меч. Мы с ним вышли в сад, нас никто не видел. Я знала, что мне предстоит. '.repeat(8);
 const THIRD = 'Фейра проснулась на рассвете. Ризанд смотрел на неё с тревогой. Они вышли в сад, где их никто не видел. Кассиан ждал у ворот, держа меч наготове. '.repeat(8);
@@ -37,6 +37,22 @@ describe('classifyChapterPov', () => {
     const r = classifyChapterPov({ chapterType: 'chapter', text: THIRD });
     expect(r.plan).toBe('none');
     expect(r.person).toBe('third');
+  });
+});
+
+describe('povFromOpeningName — POV из имени-заголовка (без AI)', () => {
+  const chars = ['Ризанд', 'Фейра', 'Кассиан'];
+  it('первый абзац = имя персонажа → POV', () => {
+    expect(povFromOpeningName('<p>Ризанд</p><p>Грохот барабанов…</p>', chars)).toBe('Ризанд');
+    expect(povFromOpeningName('<p>Фейра</p><p>Я проснулась…</p>', chars)).toBe('Фейра');
+  });
+  it('вариант написания (е/э) матчится к канону сущности', () => {
+    expect(povFromOpeningName('<p>Ласен</p><p>…</p>', ['Ласэн'])).toBe('Ласэн');
+  });
+  it('первый абзац — НЕ имя → null (не ложный POV)', () => {
+    expect(povFromOpeningName('<p>Грохот боевых барабанов сменился криками.</p>', chars)).toBeNull();
+    expect(povFromOpeningName('<p>Глава первая</p>', chars)).toBeNull();
+    expect(povFromOpeningName('', chars)).toBeNull();
   });
 });
 

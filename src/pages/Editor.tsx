@@ -1764,6 +1764,8 @@ export default function Editor() {
               isDictationProcessing ? 'Обрабатываю диктовку…'
               : (isDictating && !interimTranscript ? 'Слушаю…' : '')
             }
+            onStartDictation={toggleListening}
+            isDictationSupported={isSupported}
             onOpenSettings={() => { setIsSettingsOpen(true); setIsChaptersDrawerOpen(false); }}
             onOpenSearch={() => setIsSearchOpen(true)}
             onOpenExport={() => setIsExportOpen(true)}

@@ -7,7 +7,7 @@ import {
   Undo2, Redo2, Download, Search, ChevronDown, PanelLeft, PanelRight,
   Link2, AlignLeft, AlignCenter, AlignRight, AlignJustify, Code, ListIndentIncrease,
   CornerDownLeft, ExternalLink, Trash2, Highlighter, CircleOff, Quote, StretchHorizontal, Check,
-  MoreHorizontal
+  MoreHorizontal, Mic
 } from 'lucide-react';
 
 import type { HighlightColor } from './HighlightMarkExtension';
@@ -42,6 +42,10 @@ interface Props {
   reserveCommentGutter?: boolean;
   isDictating: boolean;
   interimTranscript: string;
+  /** Запустить диктовку из приглашения в пустой главе (#6). */
+  onStartDictation?: () => void;
+  /** Поддерживается ли диктовка в этом браузере (иначе приглашение без микрофона). */
+  isDictationSupported?: boolean;
   onOpenSettings: () => void;
   onOpenSearch?: () => void;
   onOpenExport?: () => void;
@@ -111,6 +115,8 @@ export function EditorCanvas({
   reserveCommentGutter = false,
   isDictating,
   interimTranscript,
+  onStartDictation,
+  isDictationSupported,
   onOpenSettings,
   onOpenSearch,
   onOpenExport,
@@ -131,6 +137,17 @@ export function EditorCanvas({
   // узкий ноут), уезжают в это меню. Что прячется — решают container-queries (@container/tb),
   // меню лишь зеркалит спрятанное. Подробности у разметки тулбара ниже.
   const [isOverflowMenuOpen, setIsOverflowMenuOpen] = useState(false);
+  // Пустая ли глава — для приглашения писать/диктовать (#6). Реактивно: editor.isEmpty
+  // меняется на первом вводе и при загрузке новой главы (setContent эмитит 'update').
+  const [isEmptyChapter, setIsEmptyChapter] = useState(true);
+  useEffect(() => {
+    if (!editor) return;
+    const sync = () => setIsEmptyChapter(editor.isEmpty);
+    sync();
+    editor.on('update', sync);
+    editor.on('create', sync);
+    return () => { editor.off('update', sync); editor.off('create', sync); };
+  }, [editor]);
   // Сноски главы (как в Word): маркер в тексте, текст редактируется в области внизу.
   // Список = отражение узлов-маркеров (id/текст + сквозной номер); пересчёт на каждую транзакцию.
   const [footnotes, setFootnotes] = useState<{ id: string; content: string; number: number }[]>([]);
@@ -1424,6 +1441,24 @@ export function EditorCanvas({
                 Форматирование выделенного — в верхнем тулбаре. */}
             <EditorFirstRunHints />
             <EditorContent editor={editor} />
+            {/* #6: пустая глава — не голый холст. Мягкое приглашение писать/диктовать.
+                Прячем при загрузке контента и во время самой диктовки (там свой статус). */}
+            {isEmptyChapter && !isLoadingContent && !isDictating && (
+              <div className="mt-8 flex flex-col items-start gap-3 select-none animate-[fadeIn_240ms_ease-out]">
+                <p className="text-[15px] text-[#1e2d1f]/40 leading-relaxed font-sans">
+                  Чистый лист. Начните печатать — Перо прочитает написанное и запомнит вашу историю.
+                </p>
+                {isDictationSupported && onStartDictation && (
+                  <button
+                    onClick={onStartDictation}
+                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#A14F44]/8 hover:bg-[#A14F44]/14 text-[#A14F44] text-[13px] font-medium font-sans transition-colors"
+                  >
+                    <Mic size={15} strokeWidth={2} />
+                    …или продиктуйте — Перо запишет за вами
+                  </button>
+                )}
+              </div>
+            )}
             {/* Живые слова диктовки появляются призраком у курсора (DictationGhostExtension).
                 Здесь — только тихий статус «слушаю / обрабатываю». */}
             {interimTranscript && (

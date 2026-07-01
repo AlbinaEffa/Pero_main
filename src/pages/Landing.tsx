@@ -41,13 +41,14 @@ function CellIcon({ v }: { v: Cell }) {
 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-[var(--color-paper)] text-[var(--color-ink)] flex flex-col font-sans">
+    <div className="min-h-screen bg-[var(--color-paper)] text-[var(--color-ink)] flex flex-col font-sans overflow-x-hidden">
 
       {/* ── Header ── */}
       <header className="flex items-center justify-between px-6 lg:px-12 py-5 border-b border-ink/8 sticky top-0 bg-[var(--color-paper)]/90 backdrop-blur-md z-40">
         <span className="text-ink"><PeroLogo size={24} /></span>
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
           <a href="#how" className="hover:text-[var(--color-accent)] transition-colors">Как работает</a>
+          <a href="#lenses" className="hover:text-[var(--color-accent)] transition-colors">Как выглядит</a>
           <a href="#compare" className="hover:text-[var(--color-accent)] transition-colors">Сравнение</a>
           <a href="#pricing" className="hover:text-[var(--color-accent)] transition-colors">Цены</a>
           <Link to={CTA_TO} className="hover:text-[var(--color-accent)] transition-colors">Войти</Link>
@@ -135,6 +136,23 @@ export default function Landing() {
           </div>
         </section>
 
+        {/* ── Полоса-пруф (честные факты-возможности в первом скролле, вместо фейковых отзывов) ── */}
+        <section className="border-y border-ink/8 bg-white/40">
+          <div className="max-w-5xl mx-auto px-6 py-8 grid grid-cols-2 md:grid-cols-4 gap-y-6 gap-x-4 text-center">
+            {[
+              { big: '2 минуты', small: 'от загрузки до карты мира' },
+              { big: 'от 100 000 слов', small: 'романы и серии целиком' },
+              { big: '4 типа', small: 'герои · локации · предметы · правила' },
+              { big: '5 форматов', small: 'docx · fb2 · epub · pdf · txt' },
+            ].map((s, i) => (
+              <div key={s.big} className={i < 3 ? 'md:border-r border-ink/10' : ''}>
+                <p className="font-serif text-2xl md:text-3xl font-semibold text-ink/85">{s.big}</p>
+                <p className="text-[12.5px] text-ink/55 mt-1 leading-snug">{s.small}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* ── Боли ── */}
         <section className="border-y border-ink/8 bg-white/50">
           <div className="max-w-5xl mx-auto px-6 py-16">
@@ -152,6 +170,20 @@ export default function Landing() {
                 <p className="font-serif italic text-lg text-ink/75 leading-relaxed mb-2">«Заведу вики по миру… потом»</p>
                 <p className="text-[13px] text-ink/55">Таблица персонажей заброшена на третьей неделе — её надо вести руками.</p>
               </blockquote>
+            </div>
+
+            {/* Трансформация: те же три боли — сняты (before → after) */}
+            <div className="mt-10 grid md:grid-cols-3 gap-x-10 gap-y-4">
+              {[
+                'Спросили Перо — оно помнит имя, главу и всё, что о нём известно.',
+                'Перо ловит противоречие в тексте раньше читателя — с цитатой и главой.',
+                'Мир собрался сам из рукописи. Ничего не ведёте руками.',
+              ].map(t => (
+                <p key={t} className="flex gap-2.5 text-[14px] text-ink/70 leading-relaxed">
+                  <Check size={17} className="text-[#4D6B4D] shrink-0 mt-0.5" strokeWidth={2.5} />
+                  <span><b className="text-ink/85 font-semibold">С Пером:</b> {t}</span>
+                </p>
+              ))}
             </div>
           </div>
         </section>
@@ -177,6 +209,80 @@ export default function Landing() {
               </li>
             ))}
           </ol>
+        </section>
+
+        {/* ── Как это выглядит: визуал флагманской линзы «Присутствие» (моат = линзы строятся сами) ── */}
+        <section id="lenses" className="border-y border-ink/8 bg-white/50">
+          <div className="max-w-5xl mx-auto px-6 py-20 grid lg:grid-cols-[1.15fr_0.85fr] gap-12 items-center">
+            {/* Мок линзы «Присутствие»: кто в какой главе (сетка сущность × глава) */}
+            <div className="bg-white rounded-3xl border border-ink/8 shadow-[0_16px_50px_rgba(30,45,31,0.09)] p-6 select-none" aria-hidden="true">
+              <div className="flex items-center gap-2 mb-5">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-ink/55">Линза «Присутствие»</span>
+                <span className="text-[10px] text-ink/40">кто в какой главе</span>
+              </div>
+              {(() => {
+                const CH = 8;
+                const ROWS = [
+                  { name: 'Весна',          pig: '#9E4338', cells: [1,1,1,1,1,1,1,1] },
+                  { name: 'Корней',         pig: '#9E4338', cells: [0,1,1,1,0,0,1,1] },
+                  { name: 'Степь',          pig: '#4D6B4D', cells: [1,0,1,1,1,0,0,1] },
+                  { name: 'Отвар забвения', pig: '#91682E', cells: [0,0,0,1,0,0,1,1] },
+                ];
+                return (
+                  <div className="grid gap-y-2.5" style={{ gridTemplateColumns: `120px repeat(${CH}, minmax(0,1fr))` }}>
+                    <span />
+                    {Array.from({ length: CH }, (_, i) => (
+                      <span key={i} className="text-[10px] text-ink/40 text-center tabular-nums">{i + 1}</span>
+                    ))}
+                    {ROWS.map(r => (
+                      <div key={r.name} className="contents">
+                        <span className="flex items-center gap-1.5 text-[12.5px] text-ink/75 truncate pr-2">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: r.pig }} />
+                          {r.name}
+                        </span>
+                        {r.cells.map((on, i) => (
+                          <span key={i} className="flex justify-center">
+                            <span
+                              className="w-2.5 h-2.5 rounded-full"
+                              style={{ background: on ? r.pig : 'transparent', border: on ? 'none' : '1.5px solid rgba(30,45,31,0.12)', opacity: on ? 0.9 : 1 }}
+                            />
+                          </span>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+              <p className="text-[11.5px] text-ink/50 mt-5 leading-relaxed border-t border-ink/6 pt-4">
+                «Отвар забвения» появился в гл. 4 и выстрелил в гл. 7 — ружьё Чехова видно на самой линзе.
+                Степь пропадает в гл. 6–7: провисание сразу заметно.
+              </p>
+            </div>
+
+            {/* Почему это ров: линзы строятся сами, кликабельны в текст, ловят нестыковки на виде */}
+            <div>
+              <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-5 leading-tight">Мир — не список, а живые линзы</h2>
+              <p className="text-ink/60 leading-relaxed mb-7">
+                Конкуренты рисуют схемы руками. Перо строит виды <b className="text-ink/80 font-semibold">сами из вашей прозы</b> —
+                и держит их живыми, пока вы пишете.
+              </p>
+              <ul className="space-y-4">
+                {[
+                  { t: 'Строятся сами', d: 'Присутствие, связи, таймлайны, арки — из текста, а не из ручных таблиц.' },
+                  { t: 'Клик — и вы в тексте', d: 'Узел или строка линзы ведёт прямо в сцену, где это написано.' },
+                  { t: 'Нестыковки прямо на виде', d: 'Противоречие подсвечивается на самой линзе — не в отдельном отчёте.' },
+                ].map(x => (
+                  <li key={x.t} className="flex gap-3">
+                    <Check size={18} className="text-[#4D6B4D] shrink-0 mt-0.5" strokeWidth={2.5} />
+                    <span><b className="font-semibold">{x.t}.</b> <span className="text-ink/60">{x.d}</span></span>
+                  </li>
+                ))}
+              </ul>
+              <Link to="/demo/sample" className="inline-flex items-center gap-2 mt-8 text-[15px] font-medium text-[var(--color-accent)] hover:gap-3 transition-all">
+                Посмотреть на живом примере <MoveRight size={18} />
+              </Link>
+            </div>
+          </div>
         </section>
 
         {/* ── Возможности (редакционно, без иконок-в-кружочках) ── */}

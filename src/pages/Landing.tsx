@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   MoveRight, Check, Minus, BookOpen, Sparkles, Mic,
   ShieldCheck, PlayCircle, AlertTriangle, Feather,
+  Focus, Target, History, Download,
 } from 'lucide-react';
 import { PeroMark, PeroLogo } from '../components/Logo';
 
@@ -229,7 +230,31 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* ══ БИТ 1 — Мир проявляется сам ══ */}
+        {/* ══ ЧТО ЭТО — настоящий редактор для длинной прозы (студийная суть сразу после геро) ══ */}
+        <section className="max-w-5xl mx-auto px-6 py-20">
+          <h2 className="font-serif text-3xl md:text-[40px] font-semibold mb-3 leading-tight">Настоящий редактор для длинной прозы</h2>
+          <p className="text-ink/55 mb-12 max-w-xl">Не заметка и не чат с ИИ. Студия, где комфортно вести роман на сорок глав — а Перо тихо помнит и проверяет по ходу.</p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[
+              { icon: Focus,    t: 'Невесомое письмо',    d: 'Текст — комната. Хром прячется, вы остаётесь один на один с главой.' },
+              { icon: Mic,      t: 'Диктовка по-русски',  d: 'Говорите — Перо расставит знаки и подставит имена из вашего мира.' },
+              { icon: BookOpen, t: 'Главы, сцены, части',  d: 'Вся структура книги под рукой: перетаскивание, типы разделов, сноски.' },
+              { icon: Target,   t: 'Цели и автосейв',      d: 'Счётчик слов, прогресс по главам, ничего не теряется.' },
+              { icon: History,  t: 'Ревизии',              d: 'История версий главы — вернуться к любому черновику без страха.' },
+              { icon: Download, t: 'Экспорт',              d: 'docx и markdown, когда пора отправлять текст читателю или редактору.' },
+            ].map((f, i) => (
+              <div key={f.t} data-fx="rise" style={{ transitionDelay: `${i * 0.06}s` }} className="bg-white rounded-2xl border border-ink/8 p-6">
+                <div className="w-10 h-10 rounded-xl bg-[#E7EAE3] flex items-center justify-center mb-4">
+                  <f.icon size={19} className="text-[var(--color-accent)]" strokeWidth={1.9} />
+                </div>
+                <h3 className="font-semibold text-[16px] mb-1.5">{f.t}</h3>
+                <p className="text-[14px] text-ink/55 leading-relaxed">{f.d}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ══ БИТ 1 — Перо читает по ходу письма и собирает мир сам ══ */}
         <section id="story" className="border-y border-ink/8 bg-white/50">
           <div className="max-w-5xl mx-auto px-6 py-20">
             <h2 className="font-serif text-3xl md:text-[40px] font-semibold mb-3 leading-tight">Перо читает — и мир проявляется сам</h2>

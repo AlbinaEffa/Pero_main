@@ -41,7 +41,7 @@ function CellIcon({ v }: { v: Cell }) {
 // ── Страница рукописи: тёплый лист + serif-проза (левая колонка сторителлинг-битов) ──
 function ProsePage({ chapter, children }: { chapter: string; children: React.ReactNode }) {
   return (
-    <div className="relative bg-[#FBF7EF] rounded-2xl border border-ink/8 shadow-[0_10px_36px_rgba(30,45,31,0.06)] px-7 py-7">
+    <div className="reveal relative bg-[#FBF7EF] rounded-2xl border border-ink/8 shadow-[0_10px_36px_rgba(30,45,31,0.06)] px-7 py-7">
       <p className="text-[10.5px] font-sans font-semibold uppercase tracking-[0.18em] text-ink/40 mb-4">{chapter}</p>
       <div className="font-serif text-[20px] leading-[1.7] text-ink/80 space-y-3">{children}</div>
       {/* курсор чтения Пера */}
@@ -58,7 +58,32 @@ const PIG = { character: '#9E4338', location: '#4D6B4D', item: '#91682E', rule: 
 export default function Landing() {
   return (
     <div className="min-h-screen bg-[var(--color-paper)] text-[var(--color-ink)] flex flex-col font-sans overflow-x-hidden">
-      <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        /* Тренд 2026: scroll-driven reveal (CSS, без JS) — биты «проявляются», пока Перо читает.
+           Прогрессивное улучшение: прячем-и-проявляем ТОЛЬКО там, где браузер умеет view-timeline;
+           иначе контент просто виден (никаких скрытых блоков). */
+        @keyframes revealUp { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
+        @keyframes growX { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+        @media (prefers-reduced-motion: no-preference) {
+          @supports (animation-timeline: view()) {
+            .reveal { animation: revealUp linear both; animation-timeline: view(); animation-range: entry; }
+          }
+          @supports (animation-timeline: scroll()) {
+            .read-progress { transform-origin: left center; animation: growX linear both; animation-timeline: scroll(root block); }
+          }
+        }
+      `}</style>
+
+      {/* Тренд 2026: reading-progress вверху — «Перо читает» по мере скролла (CSS scroll-timeline) */}
+      <div aria-hidden="true" className="read-progress fixed top-0 left-0 right-0 h-[2px] bg-[var(--color-accent)] z-50 origin-left scale-x-0" />
+
+      {/* Тренд 2026: тактильная текстура «ручной бумаги» — тонкое зерно поверх пергамента */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 -z-10 opacity-[0.04] mix-blend-multiply"
+        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")` }}
+      />
 
       {/* ── Header ── */}
       <header className="flex items-center justify-between px-6 lg:px-12 py-5 border-b border-ink/8 sticky top-0 bg-[var(--color-paper)]/90 backdrop-blur-md z-40">
@@ -83,7 +108,7 @@ export default function Landing() {
               <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)]" />
               Закрытая бета · Author.Today · Litnet
             </span>
-            <h1 className="font-serif text-5xl md:text-6xl lg:text-[64px] font-semibold leading-[1.04] mb-6">
+            <h1 className="font-serif text-[3.25rem] md:text-6xl lg:text-[74px] font-semibold leading-[1.0] tracking-[-0.02em] mb-6">
               У вас есть мир.<br />Перо не даёт ему&nbsp;исчезнуть.
             </h1>
             <p className="text-lg text-ink/65 leading-relaxed max-w-lg mb-9">
@@ -130,8 +155,7 @@ export default function Landing() {
                 ].map((c, i) => (
                   <div
                     key={c.name}
-                    className="bg-white rounded-2xl border border-ink/8 shadow-[0_8px_28px_rgba(30,45,31,0.06)] px-5 py-4"
-                    style={{ animation: `fadeIn 500ms ease-out ${i * 90}ms both` }}
+                    className="reveal bg-white rounded-2xl border border-ink/8 shadow-[0_8px_28px_rgba(30,45,31,0.06)] px-5 py-4"
                   >
                     <div className="flex items-center gap-2 mb-1.5">
                       <span className="w-2 h-2 rounded-full" style={{ background: PIG[c.type as keyof typeof PIG] }} />
@@ -165,7 +189,7 @@ export default function Landing() {
           </div>
 
           {/* Мок линзы «Присутствие» */}
-          <div className="bg-white rounded-3xl border border-ink/8 shadow-[0_16px_50px_rgba(30,45,31,0.09)] p-6 select-none" aria-hidden="true">
+          <div className="reveal bg-white rounded-3xl border border-ink/8 shadow-[0_16px_50px_rgba(30,45,31,0.09)] p-6 select-none" aria-hidden="true">
             <div className="flex items-center gap-2 mb-5">
               <span className="text-[10px] font-bold uppercase tracking-widest text-ink/55">Линза «Присутствие»</span>
               <span className="text-[10px] text-ink/40">кто в какой главе</span>
@@ -219,7 +243,7 @@ export default function Landing() {
             </div>
 
             <div>
-              <div className="bg-white rounded-2xl border border-[#9E4338]/60 shadow-[0_12px_40px_rgba(158,67,56,0.12)] px-6 py-5 mb-6">
+              <div className="reveal bg-white rounded-2xl border border-[#9E4338]/60 shadow-[0_12px_40px_rgba(158,67,56,0.12)] px-6 py-5 mb-6">
                 <div className="flex items-center gap-2 mb-2 text-[#9E4338]">
                   <AlertTriangle size={17} />
                   <span className="text-[11px] font-bold uppercase tracking-widest">Противоречие</span>

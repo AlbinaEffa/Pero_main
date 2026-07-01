@@ -263,7 +263,7 @@ export function WorldCompanion({
           {/* Статус чтения */}
           <div className="flex items-center gap-2">
             {isExtracting ? (
-              <span className="flex items-center gap-1.5 text-[#91682E]"><Loader2 size={14} className="animate-spin" /> Перо читает главу…</span>
+              <ReadingFeed />
             ) : freshness === 'fresh' ? (
               <span className="flex items-center gap-1.5 text-[#4D6B4D]"><CheckCircle2 size={14} /> Перо прочитало главу</span>
             ) : (
@@ -422,5 +422,29 @@ export function WorldCompanion({
       )}
     </div>
     </div>
+  );
+}
+
+// #7: живая лента ожидания ИИ. Извлечение — один запрос без стриминга стадий, поэтому
+// проговариваем реальные этапы работы Пера по таймеру, пока идёт «Прочитать». Даёт ощущение
+// движения (извлечение долгое) вместо немого спиннера. Стадии — в порядке конвейера извлечения.
+const READING_STAGES = [
+  'Читаю главу целиком…',
+  'Нахожу персонажей, локации, предметы…',
+  'Связываю находки с Миром…',
+  'Сверяю факты — ищу нестыковки…',
+  'Собираю синопсис главы…',
+];
+function ReadingFeed() {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setI(v => (v + 1) % READING_STAGES.length), 2200);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <span className="flex items-center gap-1.5 text-[#91682E] min-w-0">
+      <Loader2 size={14} className="animate-spin shrink-0" />
+      <span key={i} className="truncate animate-[fadeIn_260ms_ease-out]">{READING_STAGES[i]}</span>
+    </span>
   );
 }

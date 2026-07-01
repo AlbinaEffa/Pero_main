@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  MoveRight, Check, Minus, Upload, BookOpen, Sparkles, Mic,
-  ShieldCheck, PlayCircle, AlertTriangle, Feather, ArrowDown,
+  MoveRight, Check, Minus, BookOpen, Sparkles, Mic,
+  ShieldCheck, PlayCircle, AlertTriangle, Feather,
 } from 'lucide-react';
 import { PeroMark, PeroLogo } from '../components/Logo';
 
@@ -138,7 +138,7 @@ export default function Landing() {
           <Link to={CTA_TO} className="hover:text-[var(--color-accent)] transition-colors">Войти</Link>
         </nav>
         <Link to={DEMO_TO} className="bg-ink text-[#f5f0e8] px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-ink/85 transition-colors">
-          Загрузить рукопись
+          Начать писать
         </Link>
       </header>
 
@@ -152,50 +152,59 @@ export default function Landing() {
               Закрытая бета · для авторов романов и серий
             </span>
             <h1 className="font-serif text-[3.25rem] md:text-6xl lg:text-[70px] font-semibold leading-[1.02] tracking-[-0.02em] mb-6">
-              Перо читает ваш роман — и само собирает его&nbsp;Мир
+              Пишите роман — Перо помнит ваш&nbsp;мир
             </h1>
-            <p className="text-lg text-ink/65 leading-relaxed max-w-lg mb-9">
-              Персонажи, места, связи, таймлайны — Перо достаёт их прямо из вашей прозы,
-              складывает в живой Мир и ловит противоречия. Прозу пишете вы.
+            <p className="text-lg text-ink/65 leading-relaxed max-w-lg mb-7">
+              Студия для длинных историй: главы, диктовка, фокус, экспорт. Пока вы пишете,
+              Перо держит в памяти весь ваш мир — героев, места, связи — и ловит противоречия.
+              Прозу пишете вы.
             </p>
+            {/* Писательская суть — сразу видно, что это инструмент, где ПИШУТ */}
+            <div className="flex flex-wrap gap-2 mb-8">
+              {['Диктовка по-русски', 'Фокус-режим', 'Главы и сцены', 'Экспорт в docx'].map(t => (
+                <span key={t} className="inline-flex items-center gap-1.5 text-[12px] text-ink/70 bg-[#E7EAE3] px-3 py-1.5 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] shrink-0" />{t}
+                </span>
+              ))}
+            </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <Link to={DEMO_TO} className="flex items-center gap-2.5 bg-ink text-[#f5f0e8] px-8 py-4 rounded-2xl text-lg font-medium hover:bg-ink/85 transition-colors">
-                Загрузить рукопись <MoveRight size={20} />
+                Начать писать <MoveRight size={20} />
               </Link>
               <Link to="/demo/sample" className="flex items-center gap-2.5 px-7 py-4 rounded-2xl border border-ink/20 text-lg font-medium text-ink/80 hover:border-ink/40 hover:text-ink transition-colors">
                 <PlayCircle size={20} /> Смотреть на примере
               </Link>
             </div>
-            <p className="text-[13px] text-ink/55 mt-4">Без карты · docx, fb2, epub, pdf, txt · Тексты не идут на обучение моделей</p>
+            <p className="text-[13px] text-ink/55 mt-4">Уже есть рукопись? Импорт docx, fb2, epub, pdf, txt — Перо мгновенно догонит.</p>
           </div>
 
-          {/* Визуал-трансформация: рукопись → Перо читает → карточка Мира + нестыковка (замысел в одном взгляде) */}
+          {/* Визуал: ВЫ ПИШЕТЕ главу → Перо рядом помнит мир и ловит нестыковку (продукт = письмо, ИИ = память) */}
           <div className="relative select-none" aria-hidden="true">
-            {/* ВХОД — страница рукописи (Перо «сканирует» лучом, имена прорисовываются) */}
+            {/* ХОЛСТ ПИСЬМА — вы печатаете главу (мигающий курсор), Перо читает по ходу */}
             <div data-fx="rise" className="relative bg-[#FBF7EF] rounded-2xl border border-ink/8 shadow-[0_10px_36px_rgba(30,45,31,0.06)] px-6 py-5 rotate-[-1.2deg] z-10 overflow-hidden">
               <span className="reading-beam" aria-hidden="true" />
-              <p className="relative text-[10px] font-semibold uppercase tracking-[0.18em] text-ink/40 mb-2.5">Ваша рукопись · глава 2</p>
+              <p className="relative text-[10px] font-semibold uppercase tracking-[0.18em] text-ink/40 mb-2.5">Глава 12 · вы пишете</p>
               <p className="relative font-serif text-[17px] leading-[1.6] text-ink/80">
-                Над костром булькал <span className="name-draw" style={{ color: PIG.item }}>отвар забвения</span>. <span className="name-draw" style={{ color: PIG.character }}>Весна</span> помешивала травы короткими движениями.
+                <span className="name-draw" style={{ color: PIG.character }}>Весна</span> обернулась, и её серые глаза потемнели от гнева<span className="inline-block w-[2px] h-[1.05em] bg-ink/70 align-[-2px] ml-0.5 animate-pulse" />
               </p>
             </div>
 
-            {/* связка */}
+            {/* связка — Перо не «после», а рядом: помнит и проверяет по ходу письма */}
             <div className="flex items-center justify-center gap-2 py-2 text-[13px] font-medium text-[var(--color-accent)]">
-              <Feather size={14} /> Перо читает <ArrowDown size={14} />
+              <Feather size={14} /> Перо рядом — помнит и проверяет
             </div>
 
-            {/* ВЫХОД — карточка Мира */}
+            {/* ПАМЯТЬ — что Перо держит о герое (собралось само, пока вы писали) */}
             <div data-fx="rise" style={{ transitionDelay: '0.22s' }} className="relative bg-white rounded-2xl border border-ink/8 shadow-[0_18px_50px_rgba(30,45,31,0.12)] px-6 py-5 rotate-[0.8deg]">
               <div className="flex items-center gap-1.5 mb-2">
                 <span className="text-[9px] font-bold tracking-widest px-2 py-0.5 rounded-md" style={{ background: '#F1DFDA', color: PIG.character }}>ПЕРСОНАЖ</span>
-                <span className="text-[9px] font-semibold px-2 py-0.5 rounded-md bg-[#EBE4EE] text-[#71597F]">Ключевой</span>
+                <span className="text-[9px] font-semibold px-2 py-0.5 rounded-md bg-[#EBE4EE] text-[#71597F]">Перо помнит</span>
               </div>
               <h3 className="font-serif text-2xl font-semibold mb-0.5">Весна</h3>
-              <p className="text-[11px] text-ink/55 mb-3">Впервые: глава 1 · собрано Пером</p>
+              <p className="text-[11px] text-ink/55 mb-3">Появилась в главе 1 · 12 сцен</p>
               <div className="space-y-1.5 text-[12.5px]">
+                <div className="flex gap-3"><span className="text-ink/50 w-16 shrink-0 font-semibold text-[10.5px] pt-0.5 uppercase tracking-wider">Глаза</span><span className="text-ink/75">зелёные <span className="text-ink/45">(глава 3)</span></span></div>
                 <div className="flex gap-3"><span className="text-ink/50 w-16 shrink-0 font-semibold text-[10.5px] pt-0.5 uppercase tracking-wider">Речь</span><span className="text-ink/75">короткие фразы, степные присловья</span></div>
-                <div className="flex gap-3"><span className="text-ink/50 w-16 shrink-0 font-semibold text-[10.5px] pt-0.5 uppercase tracking-wider">Секрет</span><span className="text-ink/75">варит отвар забвения — дар бабки</span></div>
               </div>
               <div className="mt-3 pt-3 border-t border-ink/6 flex items-center gap-2.5">
                 <span className="text-[9.5px] uppercase tracking-widest text-ink/45 shrink-0">В главах</span>
@@ -207,14 +216,14 @@ export default function Landing() {
               </div>
             </div>
 
-            {/* НЕСТЫКОВКА — «выскакивает» последней (обёртка держит наклон, чтобы pop не съел transform) */}
-            <div className="absolute -bottom-6 -left-2 lg:-left-6 max-w-[250px] -rotate-[1.5deg]">
+            {/* НЕСТЫКОВКА — Перо ловит прямо во время письма («серые» ≠ «зелёные» из гл.3) */}
+            <div className="absolute -bottom-6 -left-2 lg:-left-6 max-w-[260px] -rotate-[1.5deg]">
               <div data-fx="pop" style={{ transitionDelay: '0.55s' }} className="bg-white rounded-xl border border-[#9E4338]/60 shadow-[0_12px_36px_rgba(158,67,56,0.14)] px-4 py-3">
                 <div className="flex items-center gap-1.5 mb-1 text-[#9E4338]">
                   <AlertTriangle size={13} />
-                  <span className="text-[10px] font-bold uppercase tracking-widest">Противоречие</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Перо заметил</span>
                 </div>
-                <p className="text-[12.5px] text-ink/70 leading-snug">Гл. 3 глаза зелёные, гл. 12 — серые.</p>
+                <p className="text-[12.5px] text-ink/70 leading-snug">Вы написали «серые», а в главе 3 глаза Весны — зелёные.</p>
               </div>
             </div>
           </div>
@@ -370,17 +379,17 @@ export default function Landing() {
           <div className="max-w-4xl mx-auto px-6 py-20 text-center">
             <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#9DB5A1] mb-5">Это была чужая книга</p>
             <h2 className="font-serif text-4xl md:text-5xl font-semibold leading-tight mb-6">
-              Вашу — Перо прочитает так&nbsp;же
+              Пора писать&nbsp;свою
             </h2>
             <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 text-[15px] text-[#f5f0e8]/70 mb-9">
-              <span>2 минуты до карты мира</span>
+              <span>Пишите или диктуйте</span>
               <span className="opacity-40">·</span>
-              <span>романы от 100 000 слов</span>
+              <span>Романы и серии от 100 000 слов</span>
               <span className="opacity-40">·</span>
-              <span>docx · fb2 · epub · pdf · txt</span>
+              <span>Экспорт в docx</span>
             </div>
             <Link to={DEMO_TO} className="inline-flex items-center gap-2.5 bg-[#f5f0e8] text-ink px-9 py-4 rounded-2xl text-lg font-semibold hover:bg-white transition-colors">
-              Загрузить свою рукопись <MoveRight size={20} />
+              Начать писать <MoveRight size={20} />
             </Link>
           </div>
         </section>
@@ -389,10 +398,10 @@ export default function Landing() {
         <section className="max-w-5xl mx-auto px-6 py-16">
           <ol className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
-              { n: '1', icon: Upload, t: 'Загрузите', d: 'docx, fb2, epub, pdf, txt — главу или всю серию.' },
-              { n: '2', icon: BookOpen, t: 'Перо читает', d: 'Герои, места, предметы, связи — сами из текста.' },
-              { n: '3', icon: Check, t: 'Одобряете', d: 'ИИ предлагает — решаете вы. Ничего без вашего «да».' },
-              { n: '4', icon: Sparkles, t: 'Пишете дальше', d: 'Перо дополняет мир и ловит противоречия.' },
+              { n: '1', icon: Mic, t: 'Пишете или диктуете', d: 'Главы, сцены, фокус-режим. Или импортируете готовое.' },
+              { n: '2', icon: BookOpen, t: 'Перо читает по ходу', d: 'Герои, места, связи — сами из вашего текста.' },
+              { n: '3', icon: Check, t: 'Одобряете находки', d: 'ИИ предлагает — решаете вы. Ничего без вашего «да».' },
+              { n: '4', icon: Sparkles, t: 'Перо помнит и проверяет', d: 'Дополняет мир и ловит противоречия, пока вы пишете.' },
             ].map(s => (
               <li key={s.n}>
                 <div className="flex items-center gap-2.5 mb-2.5">
@@ -454,7 +463,7 @@ export default function Landing() {
                   <li key={f} className="flex gap-2.5"><Check size={16} className="text-[#4D6B4D] shrink-0 mt-0.5" />{f}</li>
                 ))}
               </ul>
-              <Link to={DEMO_TO} className="block text-center border border-ink/15 rounded-xl py-3 font-medium hover:bg-[#E8E2D5]/50 transition-colors">Загрузить рукопись</Link>
+              <Link to={DEMO_TO} className="block text-center border border-ink/15 rounded-xl py-3 font-medium hover:bg-[#E8E2D5]/50 transition-colors">Начать писать</Link>
             </div>
             <div className="bg-ink text-[#f5f0e8] rounded-3xl p-8 shadow-lg relative overflow-hidden">
               <h3 className="font-serif text-2xl font-semibold mb-1">Pro</h3>
@@ -510,7 +519,7 @@ export default function Landing() {
           </h2>
           <p className="text-ink/55 mb-9">Бесплатно, без карты. Через две минуты увидите карту своего мира.</p>
           <Link to={DEMO_TO} className="inline-flex items-center gap-2.5 bg-ink text-[#f5f0e8] px-9 py-4 rounded-2xl text-lg font-medium hover:bg-ink/85 transition-colors">
-            Загрузить рукопись <MoveRight size={20} />
+            Начать писать <MoveRight size={20} />
           </Link>
         </section>
       </main>

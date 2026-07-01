@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import {
   MoveRight, Check, Minus, Upload, BookOpen, Sparkles, Mic,
-  ShieldCheck, PlayCircle, AlertTriangle, Feather,
+  ShieldCheck, PlayCircle, AlertTriangle, Feather, ArrowDown,
 } from 'lucide-react';
 import { PeroMark, PeroLogo } from '../components/Logo';
 
@@ -101,19 +101,19 @@ export default function Landing() {
 
       <main className="flex-1">
 
-        {/* ══ ОТКРЫТИЕ ══ */}
-        <section className="max-w-6xl mx-auto px-6 pt-20 lg:pt-28 pb-20 grid lg:grid-cols-[1fr_1fr] gap-14 items-center">
+        {/* ══ ОТКРЫТИЕ — сразу раскрываем замысел: рукопись → Перо само собирает Мир → ловит нестыковки ══ */}
+        <section className="max-w-6xl mx-auto px-6 pt-20 lg:pt-24 pb-24 grid lg:grid-cols-[1.05fr_0.95fr] gap-14 items-center">
           <div>
             <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#E7EAE3] text-[var(--color-accent)] mb-7">
               <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)]" />
-              Закрытая бета · Author.Today · Litnet
+              Закрытая бета · для авторов романов и серий
             </span>
-            <h1 className="font-serif text-[3.25rem] md:text-6xl lg:text-[74px] font-semibold leading-[1.0] tracking-[-0.02em] mb-6">
-              У вас есть мир.<br />Перо не даёт ему&nbsp;исчезнуть.
+            <h1 className="font-serif text-[3.25rem] md:text-6xl lg:text-[70px] font-semibold leading-[1.02] tracking-[-0.02em] mb-6">
+              Перо читает ваш роман — и само собирает его&nbsp;Мир
             </h1>
             <p className="text-lg text-ink/65 leading-relaxed max-w-lg mb-9">
-              Загрузите рукопись — Перо прочитает её и запомнит вашу историю целиком.
-              Дальше пишете вы, а помнит оно.
+              Персонажи, места, связи, таймлайны — Перо достаёт их прямо из вашей прозы,
+              складывает в живой Мир и ловит противоречия. Прозу пишете вы.
             </p>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <Link to={DEMO_TO} className="flex items-center gap-2.5 bg-ink text-[#f5f0e8] px-8 py-4 rounded-2xl text-lg font-medium hover:bg-ink/85 transition-colors">
@@ -126,11 +126,51 @@ export default function Landing() {
             <p className="text-[13px] text-ink/55 mt-4">Без карты · docx, fb2, epub, pdf, txt · Тексты не идут на обучение моделей</p>
           </div>
 
-          {/* Первая страница книги — метафора задаётся сразу */}
-          <div className="lg:pl-6">
-            <ProsePage chapter="Пыль дорог · Глава 1">
-              <p>Пыль дорог легла на плечи Весны. Она не оглянулась — позади не осталось никого, кто помнил бы её имя.</p>
-            </ProsePage>
+          {/* Визуал-трансформация: рукопись → Перо читает → карточка Мира + нестыковка (замысел в одном взгляде) */}
+          <div className="relative select-none" aria-hidden="true">
+            {/* ВХОД — страница рукописи */}
+            <div className="reveal relative bg-[#FBF7EF] rounded-2xl border border-ink/8 shadow-[0_10px_36px_rgba(30,45,31,0.06)] px-6 py-5 rotate-[-1.2deg] z-10">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ink/40 mb-2.5">Ваша рукопись · глава 2</p>
+              <p className="font-serif text-[17px] leading-[1.6] text-ink/80">
+                Над костром булькал <span style={{ color: PIG.item }}>отвар забвения</span>. <span style={{ color: PIG.character }}>Весна</span> помешивала травы короткими движениями.
+              </p>
+            </div>
+
+            {/* связка */}
+            <div className="flex items-center justify-center gap-2 py-2 text-[13px] font-medium text-[var(--color-accent)]">
+              <Feather size={14} /> Перо читает <ArrowDown size={14} />
+            </div>
+
+            {/* ВЫХОД — карточка Мира */}
+            <div className="reveal relative bg-white rounded-2xl border border-ink/8 shadow-[0_18px_50px_rgba(30,45,31,0.12)] px-6 py-5 rotate-[0.8deg]">
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="text-[9px] font-bold tracking-widest px-2 py-0.5 rounded-md" style={{ background: '#F1DFDA', color: PIG.character }}>ПЕРСОНАЖ</span>
+                <span className="text-[9px] font-semibold px-2 py-0.5 rounded-md bg-[#EBE4EE] text-[#71597F]">Ключевой</span>
+              </div>
+              <h3 className="font-serif text-2xl font-semibold mb-0.5">Весна</h3>
+              <p className="text-[11px] text-ink/55 mb-3">Впервые: глава 1 · собрано Пером</p>
+              <div className="space-y-1.5 text-[12.5px]">
+                <div className="flex gap-3"><span className="text-ink/50 w-16 shrink-0 font-semibold text-[10.5px] pt-0.5 uppercase tracking-wider">Речь</span><span className="text-ink/75">короткие фразы, степные присловья</span></div>
+                <div className="flex gap-3"><span className="text-ink/50 w-16 shrink-0 font-semibold text-[10.5px] pt-0.5 uppercase tracking-wider">Секрет</span><span className="text-ink/75">варит отвар забвения — дар бабки</span></div>
+              </div>
+              <div className="mt-3 pt-3 border-t border-ink/6 flex items-center gap-2.5">
+                <span className="text-[9.5px] uppercase tracking-widest text-ink/45 shrink-0">В главах</span>
+                <div className="flex gap-1">
+                  {[1,1,1,1,1,1,1,1].map((_, i) => (
+                    <span key={i} className="w-2 h-2 rounded-full" style={{ background: PIG.character, opacity: 0.85 }} />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* НЕСТЫКОВКА — плавающая метка */}
+            <div className="reveal absolute -bottom-6 -left-2 lg:-left-6 bg-white rounded-xl border border-[#9E4338]/60 shadow-[0_12px_36px_rgba(158,67,56,0.14)] px-4 py-3 max-w-[250px] -rotate-[1.5deg]">
+              <div className="flex items-center gap-1.5 mb-1 text-[#9E4338]">
+                <AlertTriangle size={13} />
+                <span className="text-[10px] font-bold uppercase tracking-widest">Противоречие</span>
+              </div>
+              <p className="text-[12.5px] text-ink/70 leading-snug">Гл. 3 глаза зелёные, гл. 12 — серые.</p>
+            </div>
           </div>
         </section>
 

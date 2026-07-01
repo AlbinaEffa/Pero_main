@@ -1,15 +1,16 @@
 import { Link } from 'react-router-dom';
 import {
   MoveRight, Check, Minus, Upload, BookOpen, Sparkles, Mic,
-  ShieldCheck, Link2, Activity, Clock, PlayCircle,
+  ShieldCheck, PlayCircle, AlertTriangle, Feather,
 } from 'lucide-react';
 import { PeroMark, PeroLogo } from '../components/Logo';
 
 /**
- * Лендинг под позиционирование (PRD P0.7).
- * Один месседж: «Перо само ведёт Мир вашей истории».
- * CTA: «Загрузить рукопись бесплатно». Отстройка: русский язык,
- * библия+редактор+соавтор в одном, локальные цены, приватность.
+ * Лендинг — сторителлинг-скролл (сторителлинг сквозь весь верх, минимум марк-прозы).
+ * Метафора: продукт ЧИТАЕТ истории → сам лендинг — история одной книги «Пыль дорог»,
+ * которую Перо читает у посетителя на глазах. Мир проявляется сам → «Присутствие»
+ * заполняется → Перо ловит нестыковку → вы пишете, Перо помнит → теперь ВАША книга.
+ * Утилитарные секции (сравнение/цены/сомнения/приватность) сохранены, но ужаты под тон.
  */
 
 const CTA_TO = '/login';
@@ -18,8 +19,6 @@ const DEMO_TO = '/demo';
 
 // ── Сравнение с конкурентами (по публичным данным, июнь 2026) ────────────────
 type Cell = 'yes' | 'no' | 'partial';
-// Sudowrite — конкурент №1 (2026): догнал по авто-извлечению (Import Novel) и континуитету
-// (Feedback), но генератор, англо-центричный, кредитная оплата. Значения — по ресерчу 06.2026.
 const COMPARE_ROWS: { label: string; pero: Cell; sudowrite: Cell; mythril: Cell; novelcrafter: Cell; campfire: Cell; note?: string }[] = [
   { label: 'Мир строится сам из готовой рукописи', pero: 'yes', sudowrite: 'partial', mythril: 'yes', novelcrafter: 'no', campfire: 'no', note: 'Sudowrite Import — только 5–7 главных героев; NovelCrafter/Campfire — вручную' },
   { label: 'Понимает русский текст', pero: 'yes', sudowrite: 'partial', mythril: 'partial', novelcrafter: 'partial', campfire: 'partial', note: 'Sudowrite иногда сваливается в английский; русскую морфологию нативно не разбирает никто' },
@@ -39,16 +38,33 @@ function CellIcon({ v }: { v: Cell }) {
   return <Minus size={14} className="text-ink/25 mx-auto" />;
 }
 
+// ── Страница рукописи: тёплый лист + serif-проза (левая колонка сторителлинг-битов) ──
+function ProsePage({ chapter, children }: { chapter: string; children: React.ReactNode }) {
+  return (
+    <div className="relative bg-[#FBF7EF] rounded-2xl border border-ink/8 shadow-[0_10px_36px_rgba(30,45,31,0.06)] px-7 py-7">
+      <p className="text-[10.5px] font-sans font-semibold uppercase tracking-[0.18em] text-ink/40 mb-4">{chapter}</p>
+      <div className="font-serif text-[20px] leading-[1.7] text-ink/80 space-y-3">{children}</div>
+      {/* курсор чтения Пера */}
+      <span className="mt-4 inline-flex items-center gap-1.5 text-[12px] font-sans text-[var(--color-accent)]">
+        <Feather size={13} /> Перо читает<span className="inline-block w-[2px] h-[13px] bg-[var(--color-accent)] animate-pulse ml-0.5" />
+      </span>
+    </div>
+  );
+}
+
+// Пигменты типов сущностей (как в приложении)
+const PIG = { character: '#9E4338', location: '#4D6B4D', item: '#91682E', rule: '#54627F' };
+
 export default function Landing() {
   return (
     <div className="min-h-screen bg-[var(--color-paper)] text-[var(--color-ink)] flex flex-col font-sans overflow-x-hidden">
+      <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }`}</style>
 
       {/* ── Header ── */}
       <header className="flex items-center justify-between px-6 lg:px-12 py-5 border-b border-ink/8 sticky top-0 bg-[var(--color-paper)]/90 backdrop-blur-md z-40">
         <span className="text-ink"><PeroLogo size={24} /></span>
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
-          <a href="#how" className="hover:text-[var(--color-accent)] transition-colors">Как работает</a>
-          <a href="#lenses" className="hover:text-[var(--color-accent)] transition-colors">Как выглядит</a>
+          <a href="#story" className="hover:text-[var(--color-accent)] transition-colors">Как это работает</a>
           <a href="#compare" className="hover:text-[var(--color-accent)] transition-colors">Сравнение</a>
           <a href="#pricing" className="hover:text-[var(--color-accent)] transition-colors">Цены</a>
           <Link to={CTA_TO} className="hover:text-[var(--color-accent)] transition-colors">Войти</Link>
@@ -60,412 +76,329 @@ export default function Landing() {
 
       <main className="flex-1">
 
-        {/* ── Hero ── */}
-        <section className="max-w-6xl mx-auto px-6 pt-20 lg:pt-28 pb-16 grid lg:grid-cols-[1.1fr_0.9fr] gap-14 items-center">
+        {/* ══ ОТКРЫТИЕ ══ */}
+        <section className="max-w-6xl mx-auto px-6 pt-20 lg:pt-28 pb-20 grid lg:grid-cols-[1fr_1fr] gap-14 items-center">
           <div>
-            <div className="flex items-center gap-3 mb-6">
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#E7EAE3] text-[var(--color-accent)]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)]" />
-                Закрытая бета
-              </span>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent)]">
-                Для авторов романов и серий · Author.Today · Litnet
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#E7EAE3] text-[var(--color-accent)] mb-7">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)]" />
+              Закрытая бета · Author.Today · Litnet
+            </span>
+            <h1 className="font-serif text-5xl md:text-6xl lg:text-[64px] font-semibold leading-[1.04] mb-6">
+              У вас есть мир.<br />Перо не даёт ему&nbsp;исчезнуть.
+            </h1>
+            <p className="text-lg text-ink/65 leading-relaxed max-w-lg mb-9">
+              Загрузите рукопись — Перо прочитает её и запомнит вашу историю целиком.
+              Дальше пишете вы, а помнит оно.
+            </p>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <Link to={DEMO_TO} className="flex items-center gap-2.5 bg-ink text-[#f5f0e8] px-8 py-4 rounded-2xl text-lg font-medium hover:bg-ink/85 transition-colors">
+                Загрузить рукопись <MoveRight size={20} />
+              </Link>
+              <Link to="/demo/sample" className="flex items-center gap-2.5 px-7 py-4 rounded-2xl border border-ink/20 text-lg font-medium text-ink/80 hover:border-ink/40 hover:text-ink transition-colors">
+                <PlayCircle size={20} /> Смотреть на примере
+              </Link>
+            </div>
+            <p className="text-[13px] text-ink/55 mt-4">Без карты · docx, fb2, epub, pdf, txt · Тексты не идут на обучение моделей</p>
+          </div>
+
+          {/* Первая страница книги — метафора задаётся сразу */}
+          <div className="lg:pl-6">
+            <ProsePage chapter="Пыль дорог · Глава 1">
+              <p>Пыль дорог легла на плечи Весны. Она не оглянулась — позади не осталось никого, кто помнил бы её имя.</p>
+            </ProsePage>
+          </div>
+        </section>
+
+        {/* ══ БИТ 1 — Мир проявляется сам ══ */}
+        <section id="story" className="border-y border-ink/8 bg-white/50">
+          <div className="max-w-5xl mx-auto px-6 py-20">
+            <h2 className="font-serif text-3xl md:text-[40px] font-semibold mb-3 leading-tight">Перо читает — и мир проявляется сам</h2>
+            <p className="text-ink/55 mb-12 max-w-xl">Вы не заводите ни одной карточки. Перо вытаскивает героев, места и предметы прямо из вашей прозы.</p>
+
+            <div className="grid lg:grid-cols-[1fr_1fr] gap-8 items-center">
+              <ProsePage chapter="Глава 2 · У костра">
+                <p>Над костром тихо булькал <span className="text-[#91682E]">отвар забвения</span> — последний дар бабки. <span className="text-[#9E4338]">Весна</span> помешивала травы короткими, злыми движениями.</p>
+                <p>— Не пей, — сказал <span className="text-[#9E4338]">Корней</span>. Но она уже подносила ковш к губам.</p>
+              </ProsePage>
+
+              {/* Карточки, «извлечённые» Пером */}
+              <div className="space-y-3">
+                {[
+                  { type: 'character', chip: 'Персонаж', name: 'Весна', line: 'Речь — короткие фразы. Секрет: варит отвар забвения.' },
+                  { type: 'item', chip: 'Предмет', name: 'Отвар забвения', line: 'Последний дар бабки. Впервые: глава 2.' },
+                  { type: 'character', chip: 'Персонаж', name: 'Корней', line: 'Вынужденный союзник Весны.' },
+                ].map((c, i) => (
+                  <div
+                    key={c.name}
+                    className="bg-white rounded-2xl border border-ink/8 shadow-[0_8px_28px_rgba(30,45,31,0.06)] px-5 py-4"
+                    style={{ animation: `fadeIn 500ms ease-out ${i * 90}ms both` }}
+                  >
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="w-2 h-2 rounded-full" style={{ background: PIG[c.type as keyof typeof PIG] }} />
+                      <span className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: PIG[c.type as keyof typeof PIG] }}>{c.chip}</span>
+                    </div>
+                    <h3 className="font-serif text-xl font-semibold mb-0.5">{c.name}</h3>
+                    <p className="text-[13px] text-ink/60 leading-snug">{c.line}</p>
+                  </div>
+                ))}
+                <p className="text-[13px] text-ink/50 pt-1 flex items-center gap-2">
+                  <Feather size={14} className="text-[var(--color-accent)]" /> Три карточки. Ноль ручной работы.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ══ БИТ 2 — Мир оживает: «Присутствие» ══ */}
+        <section className="max-w-5xl mx-auto px-6 py-20 grid lg:grid-cols-[0.85fr_1.15fr] gap-12 items-center">
+          <div>
+            <h2 className="font-serif text-3xl md:text-[40px] font-semibold mb-4 leading-tight">Восьмая глава.<br />Перо помнит всех.</h2>
+            <p className="text-ink/60 leading-relaxed mb-6">
+              Мир — не список, а живые линзы над вашей прозой. «Присутствие» показывает, кто в какой главе —
+              и делает видимым то, что легко упустить.
+            </p>
+            <ul className="space-y-3 text-[15px]">
+              <li className="flex gap-2.5"><Check size={18} className="text-[#4D6B4D] shrink-0 mt-0.5" strokeWidth={2.5} /><span><b className="font-semibold">Ружьё Чехова.</b> <span className="text-ink/60">Отвар мелькнул в гл. 4 и выстрелил в гл. 7.</span></span></li>
+              <li className="flex gap-2.5"><Check size={18} className="text-[#4D6B4D] shrink-0 mt-0.5" strokeWidth={2.5} /><span><b className="font-semibold">Провисание.</b> <span className="text-ink/60">Степь пропадает в гл. 6–7 — сразу заметно.</span></span></li>
+              <li className="flex gap-2.5"><Check size={18} className="text-[#4D6B4D] shrink-0 mt-0.5" strokeWidth={2.5} /><span><b className="font-semibold">Клик — и вы в тексте.</b> <span className="text-ink/60">Строка ведёт прямо в сцену.</span></span></li>
+            </ul>
+          </div>
+
+          {/* Мок линзы «Присутствие» */}
+          <div className="bg-white rounded-3xl border border-ink/8 shadow-[0_16px_50px_rgba(30,45,31,0.09)] p-6 select-none" aria-hidden="true">
+            <div className="flex items-center gap-2 mb-5">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-ink/55">Линза «Присутствие»</span>
+              <span className="text-[10px] text-ink/40">кто в какой главе</span>
+            </div>
+            {(() => {
+              const CH = 8;
+              const ROWS = [
+                { name: 'Весна',          pig: PIG.character, cells: [1,1,1,1,1,1,1,1] },
+                { name: 'Корней',         pig: PIG.character, cells: [0,1,1,1,0,0,1,1] },
+                { name: 'Степь',          pig: PIG.location,  cells: [1,0,1,1,1,0,0,1] },
+                { name: 'Отвар забвения', pig: PIG.item,      cells: [0,0,0,1,0,0,1,1] },
+              ];
+              return (
+                <div className="grid gap-y-2.5" style={{ gridTemplateColumns: `120px repeat(${CH}, minmax(0,1fr))` }}>
+                  <span />
+                  {Array.from({ length: CH }, (_, i) => (
+                    <span key={i} className="text-[10px] text-ink/40 text-center tabular-nums">{i + 1}</span>
+                  ))}
+                  {ROWS.map(r => (
+                    <div key={r.name} className="contents">
+                      <span className="flex items-center gap-1.5 text-[12.5px] text-ink/75 truncate pr-2">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: r.pig }} />
+                        {r.name}
+                      </span>
+                      {r.cells.map((on, i) => (
+                        <span key={i} className="flex justify-center">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full"
+                            style={{ background: on ? r.pig : 'transparent', border: on ? 'none' : '1.5px solid rgba(30,45,31,0.12)', opacity: on ? 0.9 : 1 }}
+                          />
+                        </span>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+        </section>
+
+        {/* ══ БИТ 3 — Перо ловит то, что пропустили вы (пик) ══ */}
+        <section className="border-y border-ink/8 bg-white/50">
+          <div className="max-w-5xl mx-auto px-6 py-20 grid lg:grid-cols-[1fr_1fr] gap-10 items-center">
+            <div className="space-y-4">
+              <ProsePage chapter="Глава 3">
+                <p>Её <span className="underline decoration-[#4D6B4D]/50 decoration-2 underline-offset-4">зелёные</span> глаза сузились, поймав отблеск костра.</p>
+              </ProsePage>
+              <ProsePage chapter="Глава 12 · 40 000 слов спустя">
+                <p><span className="underline decoration-wavy decoration-[#9E4338] decoration-2 underline-offset-4">Серые</span> глаза Весны потемнели от гнева.</p>
+              </ProsePage>
+            </div>
+
+            <div>
+              <div className="bg-white rounded-2xl border border-[#9E4338]/60 shadow-[0_12px_40px_rgba(158,67,56,0.12)] px-6 py-5 mb-6">
+                <div className="flex items-center gap-2 mb-2 text-[#9E4338]">
+                  <AlertTriangle size={17} />
+                  <span className="text-[11px] font-bold uppercase tracking-widest">Противоречие</span>
+                </div>
+                <p className="text-[15px] text-ink/80 leading-relaxed">
+                  В главе 3 глаза Весны <b>зелёные</b>, в главе 12 — <b>серые</b>.
+                </p>
+                <p className="text-[12.5px] text-ink/50 mt-2">Перо · с цитатой и номером главы</p>
+              </div>
+              <h2 className="font-serif text-3xl md:text-[38px] font-semibold leading-tight mb-3">
+                Читатель нашёл бы это в комментариях.
+              </h2>
+              <p className="text-ink/60 leading-relaxed">
+                Перо находит раньше — сверяет каждую новую главу со всем, что вы уже написали.
+                Сорок тысяч слов между сценами для него не помеха.
               </p>
             </div>
-            <h1 className="font-serif text-5xl md:text-6xl lg:text-[64px] font-semibold leading-[1.05] mb-7">
-              Перо само ведёт Мир вашей&nbsp;истории
-            </h1>
-            <p className="text-lg text-ink/65 leading-relaxed max-w-xl mb-9">
-              Какого цвета были глаза героини в первой книге? Не листайте тридцать глав.
-              Загрузите рукопись — Перо прочитает её и само построит мир: персонажи, локации,
-              связи, таймлайны. Вы пишете дальше — Перо помнит и ловит противоречия.
-            </p>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
-              <Link to={DEMO_TO} className="flex items-center gap-2.5 bg-ink text-[#f5f0e8] px-8 py-4 rounded-2xl text-lg font-medium hover:bg-ink/85 transition-colors">
-                Загрузить рукопись бесплатно
-                <MoveRight size={20} />
-              </Link>
-              <Link to="/demo/sample" className="flex items-center gap-2.5 px-8 py-4 rounded-2xl border border-ink/20 text-lg font-medium text-ink/80 hover:border-ink/40 hover:text-ink transition-colors">
-                <PlayCircle size={20} />
-                Посмотреть на примере — без регистрации
-              </Link>
-            </div>
-            <p className="text-[13px] text-ink/60">
-              Без карты · docx, fb2, epub, pdf, txt · Тексты не используются для обучения моделей
-            </p>
-            {/* Три отличия от рынка (из конкурентного анализа): морфология · не генератор · честная цена */}
-            <div className="flex flex-wrap gap-2 mt-5">
-              {[
-                'Понимает русскую морфологию — склонения, кто рассказывает',
-                'Не пишет за вас — Перо помнит и проверяет, прозу пишете вы',
-                'Фиксированная цена — без кредитов и счётчиков',
-              ].map(t => (
-                <span key={t} className="inline-flex items-center gap-1.5 text-[12px] text-ink/70 bg-[#E7EAE3] px-3 py-1.5 rounded-full">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] shrink-0" />
-                  {t}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Витрина: живая карточка библии */}
-          <div className="relative select-none" aria-hidden="true">
-            <div className="bg-white rounded-3xl border border-ink/8 shadow-[0_20px_60px_rgba(30,45,31,0.10)] p-7 rotate-[1.2deg]">
-              <div className="flex items-center gap-1.5 mb-4">
-                <span className="text-[9px] font-bold tracking-widest px-2 py-0.5 rounded-md bg-[#F1DFDA] text-[#9E4338]">ПЕРСОНАЖ</span>
-                <span className="text-[9px] font-semibold px-2 py-0.5 rounded-md bg-[#EBE4EE] text-[#71597F]">Ключевой</span>
-              </div>
-              <h3 className="font-serif text-3xl font-semibold mb-1">Весна</h3>
-              <p className="text-[11px] text-ink/55 mb-4">Впервые: Глава 1 · Пыль дорог</p>
-              <div className="space-y-2.5 text-[13px]">
-                <div className="flex gap-3"><span className="text-ink/55 w-20 shrink-0 font-semibold text-[11px] pt-0.5">Речь</span><span className="text-ink/75">короткие фразы, степные присловья</span></div>
-                <div className="flex gap-3"><span className="text-ink/55 w-20 shrink-0 font-semibold text-[11px] pt-0.5">Секрет</span><span className="text-ink/75">варит отвар забвения — последний дар бабки</span></div>
-                <div className="flex gap-3"><span className="text-ink/55 w-20 shrink-0 font-semibold text-[11px] pt-0.5">Связи</span><span className="text-ink/75">Корней — <span className="text-ink/60">вынужденный союзник</span> · Степь — <span className="text-ink/60">дом</span></span></div>
-              </div>
-              <div className="mt-5 pt-4 border-t border-ink/6">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-ink/55 mb-2.5">Таймлайн</p>
-                <div className="space-y-2 text-[12px] text-ink/70">
-                  <p><span className="inline-block w-2 h-2 rounded-full bg-[#4D6B4D] mr-2" />Приезд всадника — гл. 2</p>
-                  <p><span className="inline-block w-2 h-2 rounded-full bg-[#91682E] mr-2" />Степной суд — гл. 4</p>
-                </div>
-              </div>
-            </div>
-            <div className="absolute -bottom-12 -left-4 lg:-left-10 bg-white rounded-2xl border border-[#9E4338]/70 shadow-lg px-5 py-3.5 -rotate-[1.5deg] max-w-[300px]">
-              <p className="text-[13px] leading-snug"><b className="text-[#9E4338]">Противоречие.</b> <span className="text-ink/65">В гл. 3 глаза Весны зелёные, в гл. 12 — серые.</span></p>
-            </div>
           </div>
         </section>
 
-        {/* ── Полоса-пруф (честные факты-возможности в первом скролле, вместо фейковых отзывов) ── */}
-        <section className="border-y border-ink/8 bg-white/40">
-          <div className="max-w-5xl mx-auto px-6 py-8 grid grid-cols-2 md:grid-cols-4 gap-y-6 gap-x-4 text-center">
+        {/* ══ БИТ 4 — Вы пишете, Перо помнит (не генератор) ══ */}
+        <section className="max-w-4xl mx-auto px-6 py-20 text-center">
+          <Feather size={30} className="text-[var(--color-accent)] mx-auto mb-6" />
+          <p className="font-serif text-3xl md:text-[40px] font-semibold leading-snug mb-5">
+            Перо не пишет за вас ни строчки.<br />Оно помнит каждую, что написали вы.
+          </p>
+          <p className="text-ink/60 leading-relaxed max-w-xl mx-auto">
+            Sudowrite и подобные генерируют текст вместо автора. Перо устроено наоборот:
+            вы пишете — оно читает, помнит ваш мир и охраняет ваш стиль. Серьёзному автору
+            нужна не замена, а память.
+          </p>
+        </section>
+
+        {/* ══ ПОВОРОТ — теперь ваша книга ══ */}
+        <section className="border-y border-ink/8 bg-ink text-[#f5f0e8]">
+          <div className="max-w-4xl mx-auto px-6 py-20 text-center">
+            <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#9DB5A1] mb-5">Это была чужая книга</p>
+            <h2 className="font-serif text-4xl md:text-5xl font-semibold leading-tight mb-6">
+              Вашу — Перо прочитает так&nbsp;же
+            </h2>
+            <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 text-[15px] text-[#f5f0e8]/70 mb-9">
+              <span>2 минуты до карты мира</span>
+              <span className="opacity-40">·</span>
+              <span>романы от 100 000 слов</span>
+              <span className="opacity-40">·</span>
+              <span>docx · fb2 · epub · pdf · txt</span>
+            </div>
+            <Link to={DEMO_TO} className="inline-flex items-center gap-2.5 bg-[#f5f0e8] text-ink px-9 py-4 rounded-2xl text-lg font-semibold hover:bg-white transition-colors">
+              Загрузить свою рукопись <MoveRight size={20} />
+            </Link>
+          </div>
+        </section>
+
+        {/* ── Как это работает (тонкая перестраховка после истории) ── */}
+        <section className="max-w-5xl mx-auto px-6 py-16">
+          <ol className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
-              { big: '2 минуты', small: 'от загрузки до карты мира' },
-              { big: 'от 100 000 слов', small: 'романы и серии целиком' },
-              { big: '4 типа', small: 'герои · локации · предметы · правила' },
-              { big: '5 форматов', small: 'docx · fb2 · epub · pdf · txt' },
-            ].map((s, i) => (
-              <div key={s.big} className={i < 3 ? 'md:border-r border-ink/10' : ''}>
-                <p className="font-serif text-2xl md:text-3xl font-semibold text-ink/85">{s.big}</p>
-                <p className="text-[12.5px] text-ink/55 mt-1 leading-snug">{s.small}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Боли ── */}
-        <section className="border-y border-ink/8 bg-white/50">
-          <div className="max-w-5xl mx-auto px-6 py-16">
-            <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-10">Знакомо?</h2>
-            <div className="grid md:grid-cols-3 gap-x-10 gap-y-8">
-              <blockquote className="border-l-2 border-ink/15 pl-5">
-                <p className="font-serif italic text-lg text-ink/75 leading-relaxed mb-2">«Как звали трактирщика из седьмой главы?..»</p>
-                <p className="text-[13px] text-ink/55">Полчаса листаете собственную книгу вместо того, чтобы писать.</p>
-              </blockquote>
-              <blockquote className="border-l-2 border-ink/15 pl-5">
-                <p className="font-serif italic text-lg text-ink/75 leading-relaxed mb-2">«Автор, у вас герой погиб в пятой главе, а в седьмой он разговаривает»</p>
-                <p className="text-[13px] text-ink/55">Читатели в комментариях находят противоречия раньше вас.</p>
-              </blockquote>
-              <blockquote className="border-l-2 border-ink/15 pl-5">
-                <p className="font-serif italic text-lg text-ink/75 leading-relaxed mb-2">«Заведу вики по миру… потом»</p>
-                <p className="text-[13px] text-ink/55">Таблица персонажей заброшена на третьей неделе — её надо вести руками.</p>
-              </blockquote>
-            </div>
-
-            {/* Трансформация: те же три боли — сняты (before → after) */}
-            <div className="mt-10 grid md:grid-cols-3 gap-x-10 gap-y-4">
-              {[
-                'Спросили Перо — оно помнит имя, главу и всё, что о нём известно.',
-                'Перо ловит противоречие в тексте раньше читателя — с цитатой и главой.',
-                'Мир собрался сам из рукописи. Ничего не ведёте руками.',
-              ].map(t => (
-                <p key={t} className="flex gap-2.5 text-[14px] text-ink/70 leading-relaxed">
-                  <Check size={17} className="text-[#4D6B4D] shrink-0 mt-0.5" strokeWidth={2.5} />
-                  <span><b className="text-ink/85 font-semibold">С Пером:</b> {t}</span>
-                </p>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── Как работает ── */}
-        <section id="how" className="max-w-5xl mx-auto px-6 py-20">
-          <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-3">Две минуты — и у книги есть карта мира</h2>
-          <p className="text-ink/55 mb-12 max-w-2xl">Ничего не нужно заполнять руками. Перо читает то, что вы уже написали.</p>
-          <ol className="grid md:grid-cols-4 gap-8">
-            {[
-              { n: '1', icon: Upload, t: 'Загрузите рукопись', d: 'docx, fb2, epub, pdf или txt — хоть одну главу, хоть всю серию.' },
-              { n: '2', icon: BookOpen, t: 'Перо читает книгу', d: 'Глава за главой — у вас на глазах появляются персонажи, локации, предметы, правила мира.' },
-              { n: '3', icon: Check, t: 'Вы одобряете факты', d: 'ИИ предлагает — решаете вы. Ни одна строчка не попадёт в Мир без вашего «да».' },
-              { n: '4', icon: Sparkles, t: 'Пишете дальше', d: 'Перо следит за новыми главами, дополняет профили и подсвечивает противоречия.' },
+              { n: '1', icon: Upload, t: 'Загрузите', d: 'docx, fb2, epub, pdf, txt — главу или всю серию.' },
+              { n: '2', icon: BookOpen, t: 'Перо читает', d: 'Герои, места, предметы, связи — сами из текста.' },
+              { n: '3', icon: Check, t: 'Одобряете', d: 'ИИ предлагает — решаете вы. Ничего без вашего «да».' },
+              { n: '4', icon: Sparkles, t: 'Пишете дальше', d: 'Перо дополняет мир и ловит противоречия.' },
             ].map(s => (
               <li key={s.n}>
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="font-serif text-4xl font-semibold text-[var(--color-accent)]">{s.n}</span>
-                  <s.icon size={18} className="text-ink/55" />
+                <div className="flex items-center gap-2.5 mb-2.5">
+                  <span className="font-serif text-3xl font-semibold text-[var(--color-accent)]">{s.n}</span>
+                  <s.icon size={17} className="text-ink/55" />
                 </div>
-                <h3 className="font-semibold text-[16px] mb-1.5">{s.t}</h3>
-                <p className="text-[14px] text-ink/55 leading-relaxed">{s.d}</p>
+                <h3 className="font-semibold text-[15px] mb-1">{s.t}</h3>
+                <p className="text-[13.5px] text-ink/55 leading-relaxed">{s.d}</p>
               </li>
             ))}
           </ol>
         </section>
 
-        {/* ── Как это выглядит: визуал флагманской линзы «Присутствие» (моат = линзы строятся сами) ── */}
-        <section id="lenses" className="border-y border-ink/8 bg-white/50">
-          <div className="max-w-5xl mx-auto px-6 py-20 grid lg:grid-cols-[1.15fr_0.85fr] gap-12 items-center">
-            {/* Мок линзы «Присутствие»: кто в какой главе (сетка сущность × глава) */}
-            <div className="bg-white rounded-3xl border border-ink/8 shadow-[0_16px_50px_rgba(30,45,31,0.09)] p-6 select-none" aria-hidden="true">
-              <div className="flex items-center gap-2 mb-5">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-ink/55">Линза «Присутствие»</span>
-                <span className="text-[10px] text-ink/40">кто в какой главе</span>
-              </div>
-              {(() => {
-                const CH = 8;
-                const ROWS = [
-                  { name: 'Весна',          pig: '#9E4338', cells: [1,1,1,1,1,1,1,1] },
-                  { name: 'Корней',         pig: '#9E4338', cells: [0,1,1,1,0,0,1,1] },
-                  { name: 'Степь',          pig: '#4D6B4D', cells: [1,0,1,1,1,0,0,1] },
-                  { name: 'Отвар забвения', pig: '#91682E', cells: [0,0,0,1,0,0,1,1] },
-                ];
-                return (
-                  <div className="grid gap-y-2.5" style={{ gridTemplateColumns: `120px repeat(${CH}, minmax(0,1fr))` }}>
-                    <span />
-                    {Array.from({ length: CH }, (_, i) => (
-                      <span key={i} className="text-[10px] text-ink/40 text-center tabular-nums">{i + 1}</span>
-                    ))}
-                    {ROWS.map(r => (
-                      <div key={r.name} className="contents">
-                        <span className="flex items-center gap-1.5 text-[12.5px] text-ink/75 truncate pr-2">
-                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: r.pig }} />
-                          {r.name}
-                        </span>
-                        {r.cells.map((on, i) => (
-                          <span key={i} className="flex justify-center">
-                            <span
-                              className="w-2.5 h-2.5 rounded-full"
-                              style={{ background: on ? r.pig : 'transparent', border: on ? 'none' : '1.5px solid rgba(30,45,31,0.12)', opacity: on ? 0.9 : 1 }}
-                            />
-                          </span>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-              <p className="text-[11.5px] text-ink/50 mt-5 leading-relaxed border-t border-ink/6 pt-4">
-                «Отвар забвения» появился в гл. 4 и выстрелил в гл. 7 — ружьё Чехова видно на самой линзе.
-                Степь пропадает в гл. 6–7: провисание сразу заметно.
-              </p>
-            </div>
-
-            {/* Почему это ров: линзы строятся сами, кликабельны в текст, ловят нестыковки на виде */}
-            <div>
-              <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-5 leading-tight">Мир — не список, а живые линзы</h2>
-              <p className="text-ink/60 leading-relaxed mb-7">
-                Конкуренты рисуют схемы руками. Перо строит виды <b className="text-ink/80 font-semibold">сами из вашей прозы</b> —
-                и держит их живыми, пока вы пишете.
-              </p>
-              <ul className="space-y-4">
-                {[
-                  { t: 'Строятся сами', d: 'Присутствие, связи, таймлайны, арки — из текста, а не из ручных таблиц.' },
-                  { t: 'Клик — и вы в тексте', d: 'Узел или строка линзы ведёт прямо в сцену, где это написано.' },
-                  { t: 'Нестыковки прямо на виде', d: 'Противоречие подсвечивается на самой линзе — не в отдельном отчёте.' },
-                ].map(x => (
-                  <li key={x.t} className="flex gap-3">
-                    <Check size={18} className="text-[#4D6B4D] shrink-0 mt-0.5" strokeWidth={2.5} />
-                    <span><b className="font-semibold">{x.t}.</b> <span className="text-ink/60">{x.d}</span></span>
-                  </li>
-                ))}
-              </ul>
-              <Link to="/demo/sample" className="inline-flex items-center gap-2 mt-8 text-[15px] font-medium text-[var(--color-accent)] hover:gap-3 transition-all">
-                Посмотреть на живом примере <MoveRight size={18} />
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        {/* ── Возможности (редакционно, без иконок-в-кружочках) ── */}
-        <section className="border-y border-ink/8 bg-white/50">
-          <div className="max-w-5xl mx-auto px-6 py-20 space-y-14">
-            <div className="grid md:grid-cols-[1fr_1.2fr] gap-8 items-baseline">
-              <h3 className="font-serif text-2xl md:text-3xl font-semibold">Профили глубже, чем у редактора в издательстве</h3>
-              <p className="text-ink/60 leading-relaxed">Не только внешность и роль: предыстория, мотивация, манера речи, секреты. <span className="inline-flex items-center gap-1 text-ink/60"><Link2 size={13} />связи</span> между героями и <span className="inline-flex items-center gap-1 text-ink/60"><Activity size={13} />таймлайн</span> арки каждого персонажа по главам — кто с кем, что и когда случилось.</p>
-            </div>
-            <div className="grid md:grid-cols-[1fr_1.2fr] gap-8 items-baseline">
-              <h3 className="font-serif text-2xl md:text-3xl font-semibold">Перо — соавтор, который читал вашу книгу</h3>
-              <p className="text-ink/60 leading-relaxed">ИИ-чат и правки текста с полным знанием вашего Мира: он не перепутает имена, не забудет, что было в пятой главе, и говорит репликами ваших героев — потому что знает их манеру речи. Перо не пишет за вас — оно помнит за вас.</p>
-            </div>
-            <div className="grid md:grid-cols-[1fr_1.2fr] gap-8 items-baseline">
-              <h3 className="font-serif text-2xl md:text-3xl font-semibold">Редактор для длинной прозы — в том же окне</h3>
-              <p className="text-ink/60 leading-relaxed">Главы, сцены, цели по словам, автосохранение, ревизии. <span className="inline-flex items-center gap-1 text-ink/60"><Mic size={13} />Диктовка</span> по-русски с расстановкой знаков и подстановкой имён из вашей истории. Экспорт в docx и markdown, когда пора отправлять текст.</p>
-            </div>
-          </div>
-        </section>
-
-        {/* ── Не генератор ── */}
-        <section className="max-w-5xl mx-auto px-6 py-16">
-          <div className="bg-white rounded-3xl border border-ink/8 px-8 py-10 md:px-12 text-center">
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-ink/55 mb-4">
-              Чтобы не было путаницы
-            </p>
-            <p className="font-serif text-2xl md:text-[32px] font-semibold leading-snug max-w-3xl mx-auto mb-4">
-              Это не генератор историй. Перо не напишет за вас ни строчки —
-              оно помнит каждую, что написали вы.
-            </p>
-            <p className="text-ink/60 leading-relaxed max-w-2xl mx-auto">
-              Sudowrite, Novely и подобные пишут текст вместо автора. Перо устроено наоборот:
-              вы пишете — оно читает, помнит ваш мир и охраняет ваш стиль и права.
-              Серьёзному автору нужен не соавтор-замена, а память.
-            </p>
-          </div>
-        </section>
-
         {/* ── Сравнение ── */}
-        <section id="compare" className="max-w-5xl mx-auto px-6 py-20">
-          <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-3">Честное сравнение</h2>
-          <p className="text-ink/55 mb-10 max-w-2xl">Инструменты для писателей есть. Для русскоязычного автора с готовой рукописью — выбор короткий.</p>
-          <div className="overflow-x-auto -mx-6 px-6" style={{ scrollbarWidth: 'none' }}>
-            <table className="w-full min-w-[760px] text-sm border-separate" style={{ borderSpacing: 0 }}>
-              <thead>
-                <tr className="text-left">
-                  <th className="pb-4 pr-4 font-medium text-ink/60 text-[13px] w-[30%]"></th>
-                  <th className="pb-4 px-3 text-center">
-                    <span className="inline-flex items-center gap-1.5 font-serif text-lg font-semibold"><PeroMark size={16} />Перо</span>
-                  </th>
-                  <th className="pb-4 px-3 text-center font-medium text-ink/55">Sudowrite</th>
-                  <th className="pb-4 px-3 text-center font-medium text-ink/55">Mythril</th>
-                  <th className="pb-4 px-3 text-center font-medium text-ink/55">NovelCrafter</th>
-                  <th className="pb-4 px-3 text-center font-medium text-ink/55">Campfire</th>
-                </tr>
-              </thead>
-              <tbody>
-                {COMPARE_ROWS.map((r, i) => (
-                  <tr key={r.label} className={i % 2 === 0 ? 'bg-white/70' : ''}>
-                    <td className="py-3 pr-4 pl-3 text-ink/75 rounded-l-xl" title={r.note}>{r.label}</td>
-                    <td className="py-3 px-3 text-center bg-[#E7EAE3]/60">{<CellIcon v={r.pero} />}</td>
-                    <td className="py-3 px-3 text-center"><CellIcon v={r.sudowrite} /></td>
-                    <td className="py-3 px-3 text-center"><CellIcon v={r.mythril} /></td>
-                    <td className="py-3 px-3 text-center"><CellIcon v={r.novelcrafter} /></td>
-                    <td className="py-3 px-3 text-center rounded-r-xl"><CellIcon v={r.campfire} /></td>
+        <section id="compare" className="border-y border-ink/8 bg-white/50">
+          <div className="max-w-5xl mx-auto px-6 py-20">
+            <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-3">Честное сравнение</h2>
+            <p className="text-ink/55 mb-10 max-w-2xl">Инструменты для писателей есть. Для русскоязычного автора с готовой рукописью — выбор короткий.</p>
+            <div className="overflow-x-auto -mx-6 px-6" style={{ scrollbarWidth: 'none' }}>
+              <table className="w-full min-w-[760px] text-sm border-separate" style={{ borderSpacing: 0 }}>
+                <thead>
+                  <tr className="text-left">
+                    <th className="pb-4 pr-4 font-medium text-ink/60 text-[13px] w-[30%]"></th>
+                    <th className="pb-4 px-3 text-center"><span className="inline-flex items-center gap-1.5 font-serif text-lg font-semibold"><PeroMark size={16} />Перо</span></th>
+                    <th className="pb-4 px-3 text-center font-medium text-ink/55">Sudowrite</th>
+                    <th className="pb-4 px-3 text-center font-medium text-ink/55">Mythril</th>
+                    <th className="pb-4 px-3 text-center font-medium text-ink/55">NovelCrafter</th>
+                    <th className="pb-4 px-3 text-center font-medium text-ink/55">Campfire</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {COMPARE_ROWS.map((r, i) => (
+                    <tr key={r.label} className={i % 2 === 0 ? 'bg-white/70' : ''}>
+                      <td className="py-3 pr-4 pl-3 text-ink/75 rounded-l-xl" title={r.note}>{r.label}</td>
+                      <td className="py-3 px-3 text-center bg-[#E7EAE3]/60"><CellIcon v={r.pero} /></td>
+                      <td className="py-3 px-3 text-center"><CellIcon v={r.sudowrite} /></td>
+                      <td className="py-3 px-3 text-center"><CellIcon v={r.mythril} /></td>
+                      <td className="py-3 px-3 text-center"><CellIcon v={r.novelcrafter} /></td>
+                      <td className="py-3 px-3 text-center rounded-r-xl"><CellIcon v={r.campfire} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-[11.5px] text-ink/55 mt-4">По публичным данным продуктов, июнь 2026. «Частично» — функция есть, но ограничена или требует ручной работы.</p>
           </div>
-          <p className="text-[11.5px] text-ink/55 mt-4">По публичным данным продуктов, июнь 2026. «Частично» — функция есть, но ограничена или требует ручной работы.</p>
-        </section>
-
-        {/* ── От автора / бета ── */}
-        <section className="max-w-3xl mx-auto px-6 py-16 text-center">
-          <PeroMark size={28} className="text-[var(--color-accent)] mx-auto mb-5" />
-          <p className="font-serif text-2xl md:text-3xl font-semibold leading-snug mb-4">
-            Перо делает автор — для авторов, которые устали терять собственный мир
-          </p>
-          <p className="text-ink/65 leading-relaxed max-w-xl mx-auto">
-            Сейчас идёт закрытая бета: небольшая группа авторов с Author.Today и Litnet
-            проверяет Перо на своих рукописях, а я правлю продукт по их фидбеку.
-            Без громких обещаний — только то, что уже работает на вашей книге.
-          </p>
         </section>
 
         {/* ── Цены ── */}
-        <section id="pricing" className="border-y border-ink/8 bg-white/50">
-          <div className="max-w-4xl mx-auto px-6 py-20">
-            <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-3 text-center">Начните бесплатно — на своей рукописи</h2>
-            <p className="text-ink/55 mb-12 text-center">Полный цикл «импорт → Мир → проверка» доступен без оплаты.</p>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-white rounded-3xl border border-ink/8 p-8">
-                <h3 className="font-serif text-2xl font-semibold mb-1">Бесплатный</h3>
-                <p className="font-serif text-4xl font-semibold mb-6">0 ₽</p>
-                <ul className="space-y-2.5 text-[14px] text-ink/70 mb-8">
-                  {['1 активный проект', 'Авто-Мир до 30 глав', '20 ИИ-действий в день', 'Импорт docx, fb2, epub, pdf, txt', 'Экспорт txt и markdown'].map(f => (
-                    <li key={f} className="flex gap-2.5"><Check size={16} className="text-[#4D6B4D] shrink-0 mt-0.5" />{f}</li>
-                  ))}
-                </ul>
-                <Link to={DEMO_TO} className="block text-center border border-ink/15 rounded-xl py-3 font-medium hover:bg-[#E8E2D5]/50 transition-colors">
-                  Загрузить рукопись
-                </Link>
-              </div>
-              <div className="bg-ink text-[#f5f0e8] rounded-3xl p-8 shadow-lg relative overflow-hidden">
-                <h3 className="font-serif text-2xl font-semibold mb-1">Pro</h3>
-                <p className="font-serif text-4xl font-semibold mb-6">599 ₽<span className="text-base font-normal opacity-60"> /мес</span></p>
-                <ul className="space-y-2.5 text-[14px] text-[#f5f0e8]/85 mb-3">
-                  {['Проекты и главы без лимитов', '300 ИИ-действий в день', 'Отчёт противоречий по всей книге', 'Диктовка с ИИ-обработкой', 'Экспорт в docx и zip-бэкап'].map(f => (
-                    <li key={f} className="flex gap-2.5"><Check size={16} className="text-[#4D6B4D] shrink-0 mt-0.5" />{f}</li>
-                  ))}
-                  <li className="flex gap-2.5 text-[#f5f0e8]/55"><Clock size={16} className="shrink-0 mt-0.5 opacity-70" />Публичная страница Мира по ссылке — скоро</li>
-                </ul>
-                <Link to={CTA_TO} className="block text-center bg-[#f5f0e8] text-ink rounded-xl py-3 font-semibold hover:bg-white transition-colors">
-                  Попробовать Pro
-                </Link>
-                <p className="text-[11.5px] opacity-50 mt-3 text-center">Оплата картой РФ через ЮKassa · без автопродления</p>
-              </div>
+        <section id="pricing" className="max-w-4xl mx-auto px-6 py-20">
+          <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-3 text-center">Начните бесплатно — на своей рукописи</h2>
+          <p className="text-ink/55 mb-12 text-center">Полный цикл «импорт → Мир → проверка» доступен без оплаты.</p>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="bg-white rounded-3xl border border-ink/8 p-8">
+              <h3 className="font-serif text-2xl font-semibold mb-1">Бесплатный</h3>
+              <p className="font-serif text-4xl font-semibold mb-6">0 ₽</p>
+              <ul className="space-y-2.5 text-[14px] text-ink/70 mb-8">
+                {['1 активный проект', 'Авто-Мир до 30 глав', '20 ИИ-действий в день', 'Импорт docx, fb2, epub, pdf, txt', 'Экспорт txt и markdown'].map(f => (
+                  <li key={f} className="flex gap-2.5"><Check size={16} className="text-[#4D6B4D] shrink-0 mt-0.5" />{f}</li>
+                ))}
+              </ul>
+              <Link to={DEMO_TO} className="block text-center border border-ink/15 rounded-xl py-3 font-medium hover:bg-[#E8E2D5]/50 transition-colors">Загрузить рукопись</Link>
+            </div>
+            <div className="bg-ink text-[#f5f0e8] rounded-3xl p-8 shadow-lg relative overflow-hidden">
+              <h3 className="font-serif text-2xl font-semibold mb-1">Pro</h3>
+              <p className="font-serif text-4xl font-semibold mb-6">599 ₽<span className="text-base font-normal opacity-60"> /мес</span></p>
+              <ul className="space-y-2.5 text-[14px] text-[#f5f0e8]/85 mb-8">
+                {['Проекты и главы без лимитов', '300 ИИ-действий в день', 'Отчёт противоречий по всей книге', 'Диктовка с ИИ-обработкой', 'Экспорт в docx и zip-бэкап'].map(f => (
+                  <li key={f} className="flex gap-2.5"><Check size={16} className="text-[#4D6B4D] shrink-0 mt-0.5" />{f}</li>
+                ))}
+              </ul>
+              <Link to={CTA_TO} className="block text-center bg-[#f5f0e8] text-ink rounded-xl py-3 font-semibold hover:bg-white transition-colors">Попробовать Pro</Link>
+              <p className="text-[11.5px] opacity-50 mt-3 text-center">Оплата картой РФ через ЮKassa · без автопродления</p>
             </div>
           </div>
         </section>
 
-        {/* ── Частые сомнения (снятие возражений) ── */}
-        <section className="max-w-3xl mx-auto px-6 py-20">
-          <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-10">Частые сомнения</h2>
+        {/* ── Частые сомнения (ужато до 4) ── */}
+        <section className="max-w-3xl mx-auto px-6 pb-4">
+          <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-8">Частые сомнения</h2>
           <div className="divide-y divide-ink/8">
             {[
-              {
-                q: 'ИИ испортит или украдёт мой стиль?',
-                a: 'Перо не пишет за вас — оно читает то, что написали вы, и помнит. Стиль остаётся вашим: Перо помогает не забыть детали мира, а не сочиняет вместо автора.',
-              },
-              {
-                q: 'А мои тексты не уйдут на обучение моделей?',
-                a: 'Нет. Рукописи не используются для обучения. Все права у автора, удаление проекта — безвозвратное.',
-              },
-              {
-                q: 'Снова заводить базу персонажей руками?',
-                a: 'Ничего не нужно вводить руками. Вы загружаете рукопись — Мир собирается сам. Вам остаётся только одобрять или править найденное.',
-              },
-              {
-                q: 'У меня уже 100 тысяч слов в Word — поздно?',
-                a: 'Наоборот, это лучший момент. Импорт docx/fb2/epub за пару минут превратит готовый текст в Мир со связями и таймлайнами.',
-              },
-              {
-                q: 'Дорого — и я не плачу в долларах.',
-                a: '599 ₽ в месяц, оплата российской картой, с чеком. А полный цикл «импорт → Мир → проверка» на одном проекте доступен бесплатно — попробуйте до оплаты.',
-              },
+              { q: 'ИИ украдёт мой стиль?', a: 'Перо не пишет за вас — оно читает написанное и помнит. Стиль остаётся вашим.' },
+              { q: 'Тексты уйдут на обучение?', a: 'Нет. Рукописи не используются для обучения. Все права у автора, удаление — безвозвратное.' },
+              { q: 'У меня уже 100 тысяч слов — поздно?', a: 'Наоборот, лучший момент. Импорт за пару минут превратит готовый текст в Мир со связями и таймлайнами.' },
+              { q: 'Дорого, и я не плачу в долларах.', a: '599 ₽/мес, российская карта, с чеком. Полный цикл на одном проекте — бесплатно.' },
             ].map(item => (
               <div key={item.q} className="py-5">
-                <h3 className="font-serif text-xl font-semibold mb-2">{item.q}</h3>
+                <h3 className="font-serif text-xl font-semibold mb-1.5">{item.q}</h3>
                 <p className="text-ink/65 leading-relaxed">{item.a}</p>
               </div>
             ))}
           </div>
         </section>
 
-        {/* ── Приватность ── */}
+        {/* ── Приватность + от автора (ужато) ── */}
         <section className="max-w-5xl mx-auto px-6 py-16">
-          <div className="bg-ink text-[#f5f0e8] rounded-3xl px-8 py-10 md:px-12 flex flex-col md:flex-row items-start md:items-center gap-6">
-            <ShieldCheck size={36} className="text-[#9DB5A1] shrink-0" />
+          <div className="bg-ink text-[#f5f0e8] rounded-3xl px-8 py-9 md:px-12 flex flex-col md:flex-row items-start md:items-center gap-6">
+            <ShieldCheck size={34} className="text-[#9DB5A1] shrink-0" />
             <div>
               <h3 className="font-serif text-2xl font-semibold mb-1.5">Ваши тексты — ваши</h3>
-              <p className="text-[#f5f0e8]/70 leading-relaxed text-[16px]">
-                Рукописи не используются для обучения моделей. Все права остаются у автора.
-                Удалили проект — он удалён безвозвратно.{' '}
-                <Link to="/privacy" className="underline underline-offset-2 text-[#f5f0e8]/90 hover:text-white transition-colors">
-                  Подробнее о приватности
-                </Link>
+              <p className="text-[#f5f0e8]/70 leading-relaxed">
+                Рукописи не идут на обучение моделей. Права остаются у автора, удаление — безвозвратное. Перо делает автор — для авторов Author.Today и Litnet, в закрытой бете.{' '}
+                <Link to="/privacy" className="underline underline-offset-2 text-[#f5f0e8]/90 hover:text-white transition-colors">Подробнее о приватности</Link>
               </p>
             </div>
           </div>
         </section>
 
-        {/* ── Финальный CTA ── */}
+        {/* ══ ФИНАЛ — закрытие истории ══ */}
         <section className="max-w-3xl mx-auto px-6 pt-8 pb-24 text-center">
           <PeroMark size={36} className="text-[var(--color-accent)] mx-auto mb-6" />
           <h2 className="font-serif text-4xl md:text-5xl font-semibold leading-tight mb-5">
-            Загрузите рукопись — через две минуты увидите карту своего мира
+            Ваш мир жив, пока о нём помнят.<br />Пусть помнит Перо.
           </h2>
-          <p className="text-ink/55 mb-9">Бесплатно, без карты. Перо помнит — автор пишет.</p>
+          <p className="text-ink/55 mb-9">Бесплатно, без карты. Через две минуты увидите карту своего мира.</p>
           <Link to={DEMO_TO} className="inline-flex items-center gap-2.5 bg-ink text-[#f5f0e8] px-9 py-4 rounded-2xl text-lg font-medium hover:bg-ink/85 transition-colors">
-            Загрузить рукопись бесплатно
-            <MoveRight size={20} />
+            Загрузить рукопись <MoveRight size={20} />
           </Link>
         </section>
       </main>

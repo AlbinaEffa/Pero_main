@@ -37,6 +37,7 @@ import { WritingStatsPanel } from '../components/editor/WritingStatsPanel';
 import { FindReplacePopup } from '../components/FindReplacePopup';
 import { SearchPanel } from '../components/editor/SearchPanel';
 import { SearchHighlightExtension } from '../components/editor/searchHighlightExtension';
+import { EntityHighlightExtension, entityHighlightKey, buildEntitySpecs } from '../components/editor/entityHighlightExtension';
 import { ContradictionHighlightExtension, contradictionHighlightKey } from '../components/editor/contradictionHighlightExtension';
 import { NameNudgeExtension, nameNudgeKey } from '../components/editor/NameNudgeExtension';
 import { DictationGhostExtension, dictationGhostKey } from '../components/editor/DictationGhostExtension';
@@ -63,6 +64,14 @@ import { Bookmark, X, AlertTriangle, ChevronUp, ChevronDown,
   StickyNote } from 'lucide-react';
 
 type EditorFontName = 'cormorant' | 'literata' | 'source-serif';
+
+// Пигменты типов сущностей для инлайн-подсветки/ховер-карточки (как в EntityDetailPanel/SelectionBar).
+const ENTITY_MENTION_PIGMENT: Record<string, string> = {
+  character: '#A14F44', location: '#4A5D4E', item: '#91682E', rule: '#54627F',
+};
+const ENTITY_MENTION_TYPE_LABEL: Record<string, string> = {
+  character: 'персонаж', location: 'локация', item: 'предмет', rule: 'правило мира',
+};
 
 
 
@@ -348,6 +357,7 @@ export default function Editor() {
         showOnlyCurrent: true,
       }),
       SearchHighlightExtension,
+      EntityHighlightExtension,
       ContradictionHighlightExtension,
       NameNudgeExtension,
       DictationGhostExtension,
@@ -968,6 +978,63 @@ export default function Editor() {
     return { chapterMentionedEntities: mentioned, chapterEntitiesByAppearance: ordered.map(x => x.e) };
   }, [allApprovedEntities, chapterLinkedEntities, editor, contentNonce]);
 
+  // #1 UX (Мир→в текст): инлайн-подсветка имён сущностей прямо в рукописи (тонкое подчёркивание →
+  // ховер-карточка → «Открыть в Мире»). Спеки пересобираются при смене списка сущностей и при
+  // загрузке новой главы (contentNonce). Скан текста — по meta, не на каждый keystroke.
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    const specs = buildEntitySpecs(allApprovedEntities);
+    try {
+      editor.view.dispatch(editor.state.tr.setMeta(entityHighlightKey, { type: 'set', specs }));
+    } catch { /* view недоступен при HMR/размонтировании */ }
+  }, [editor, allApprovedEntities, contentNonce]);
+
+  // Пере-скан через 700мс после того, как автор перестал печатать — свежевведённые имена подсветятся.
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    let t: ReturnType<typeof setTimeout>;
+    const onUpd = () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        if (editor.isDestroyed) return;
+        try { editor.view.dispatch(editor.state.tr.setMeta(entityHighlightKey, { type: 'rescan' })); }
+        catch { /* view недоступен */ }
+      }, 700);
+    };
+    editor.on('update', onUpd);
+    return () => { clearTimeout(t); editor.off('update', onUpd); };
+  }, [editor]);
+
+  // Ховер-карточка над подсвеченным именем: mouseover на .entity-mention → мини-карточка сущности.
+  const [mentionHover, setMentionHover] = useState<{ entity: Entity; top: number; left: number } | null>(null);
+  const mentionHoverHideRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    let dom: HTMLElement;
+    try { dom = editor.view.dom as HTMLElement; } catch { return; }
+    const onOver = (e: Event) => {
+      const el = (e.target as HTMLElement)?.closest?.('.entity-mention') as HTMLElement | null;
+      if (!el) return;
+      const id = el.getAttribute('data-entity-id');
+      const ent = allApprovedEntities.find(x => x.id === id);
+      if (!ent) return;
+      clearTimeout(mentionHoverHideRef.current);
+      const r = el.getBoundingClientRect();
+      setMentionHover({ entity: ent, top: r.bottom + 6, left: r.left });
+    };
+    const onOut = (e: Event) => {
+      if (!(e.target as HTMLElement)?.closest?.('.entity-mention')) return;
+      mentionHoverHideRef.current = setTimeout(() => setMentionHover(null), 220);
+    };
+    dom.addEventListener('mouseover', onOver);
+    dom.addEventListener('mouseout', onOut);
+    return () => {
+      clearTimeout(mentionHoverHideRef.current);
+      dom.removeEventListener('mouseover', onOver);
+      dom.removeEventListener('mouseout', onOut);
+    };
+  }, [editor, allApprovedEntities]);
+
   // Contradiction detection: same name (case-insensitive) with differing descriptions
   // Нестыковки, помеченные автором как «не нестыковка» — больше не флагаем (B1).
   const [dismissedContradictions, setDismissedContradictions] = useState<Set<string>>(() => {
@@ -1497,6 +1564,28 @@ export default function Editor() {
           border-bottom-color: rgba(161, 79, 68, 0.5);
         }
         .comment-mark[data-comment-source="pero"]:hover { background: rgba(161, 79, 68, 0.18); }
+        /* #1 UX: инлайн-подсветка имён сущностей «Мира» — тонкое подчёркивание в пигменте типа.
+           Декорация (не марка): документ не меняется. Тише комментариев/нестыковок, но наводит на
+           ховер-карточку. Пигменты: персонаж #A14F44 / локация #4A5D4E / предмет #91682E / правило #54627F. */
+        .entity-mention {
+          text-decoration: underline;
+          text-decoration-color: rgba(84, 98, 79, 0.32);
+          text-decoration-thickness: 1px;
+          text-decoration-skip-ink: none;
+          text-underline-offset: 3px;
+          transition: text-decoration-color 0.12s ease, background 0.12s ease;
+          border-radius: 2px;
+        }
+        .entity-mention:hover { background: rgba(84, 98, 79, 0.08); }
+        .entity-mention[data-entity-type="character"] { text-decoration-color: rgba(161, 79, 68, 0.4); }
+        .entity-mention[data-entity-type="character"]:hover { background: rgba(161, 79, 68, 0.1); }
+        .entity-mention[data-entity-type="location"] { text-decoration-color: rgba(74, 93, 78, 0.4); }
+        .entity-mention[data-entity-type="location"]:hover { background: rgba(74, 93, 78, 0.1); }
+        .entity-mention[data-entity-type="item"] { text-decoration-color: rgba(145, 104, 46, 0.42); }
+        .entity-mention[data-entity-type="item"]:hover { background: rgba(145, 104, 46, 0.1); }
+        .entity-mention[data-entity-type="rule"] { text-decoration-color: rgba(84, 98, 79, 0.4); }
+        .entity-mention[data-entity-type="rule"]:hover { background: rgba(84, 98, 79, 0.1); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: translateY(0); } }
         /* Живая диктовка — призрачный текст прямо у курсора (DictationGhostExtension).
            Наследует шрифт/размер абзаца, поэтому льётся в строку как настоящий текст. */
         .dictation-ghost {
@@ -2348,6 +2437,38 @@ export default function Editor() {
           onClose={() => setIsExportOpen(false)}
         />
       )}
+
+      {/* #1 UX: ховер-карточка над подсвеченным именем сущности в тексте */}
+      {mentionHover && (() => {
+        const pigment = ENTITY_MENTION_PIGMENT[mentionHover.entity.type] ?? '#54627F';
+        const typeLabel = ENTITY_MENTION_TYPE_LABEL[mentionHover.entity.type] ?? mentionHover.entity.type;
+        const left = Math.min(mentionHover.left, window.innerWidth - 300);
+        return (
+          <div
+            style={{ position: 'fixed', top: mentionHover.top, left: Math.max(8, left), zIndex: 60, width: 280 }}
+            className="rounded-lg border shadow-lg p-3 animate-[fadeIn_120ms_ease-out]"
+            onMouseEnter={() => clearTimeout(mentionHoverHideRef.current)}
+            onMouseLeave={() => setMentionHover(null)}
+          >
+            <div style={{ background: '#FBF7EF', borderColor: `${pigment}33` }} className="absolute inset-0 rounded-lg border -z-10" />
+            <div className="flex items-center gap-2">
+              <span style={{ background: pigment }} className="w-2 h-2 rounded-full shrink-0" />
+              <span className="font-medium text-[14px] text-[#1e2d1f] truncate">{mentionHover.entity.name}</span>
+              <span style={{ color: pigment, background: `${pigment}18` }} className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full shrink-0">{typeLabel}</span>
+            </div>
+            {mentionHover.entity.description && (
+              <p className="mt-1.5 text-[12px] leading-snug text-[#1e2d1f]/70 line-clamp-3">{mentionHover.entity.description}</p>
+            )}
+            <button
+              onClick={() => { const ent = mentionHover.entity; setMentionHover(null); setIsBibleOpen(false); setDetailEntity(ent); }}
+              style={{ color: pigment }}
+              className="mt-2 text-[12px] font-medium hover:underline"
+            >
+              Открыть в Мире →
+            </button>
+          </div>
+        );
+      })()}
 
     </>
   );

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   MoveRight, Check, Minus, Upload, BookOpen, Sparkles, Mic,
@@ -41,9 +42,10 @@ function CellIcon({ v }: { v: Cell }) {
 // ── Страница рукописи: тёплый лист + serif-проза (левая колонка сторителлинг-битов) ──
 function ProsePage({ chapter, children }: { chapter: string; children: React.ReactNode }) {
   return (
-    <div className="reveal relative bg-[#FBF7EF] rounded-2xl border border-ink/8 shadow-[0_10px_36px_rgba(30,45,31,0.06)] px-7 py-7">
-      <p className="text-[10.5px] font-sans font-semibold uppercase tracking-[0.18em] text-ink/40 mb-4">{chapter}</p>
-      <div className="font-serif text-[20px] leading-[1.7] text-ink/80 space-y-3">{children}</div>
+    <div data-fx="rise" className="relative bg-[#FBF7EF] rounded-2xl border border-ink/8 shadow-[0_10px_36px_rgba(30,45,31,0.06)] px-7 py-7 overflow-hidden">
+      <span className="reading-beam" aria-hidden="true" />
+      <p className="text-[10.5px] font-sans font-semibold uppercase tracking-[0.18em] text-ink/40 mb-4 relative">{chapter}</p>
+      <div className="font-serif text-[20px] leading-[1.7] text-ink/80 space-y-3 relative">{children}</div>
       {/* курсор чтения Пера */}
       <span className="mt-4 inline-flex items-center gap-1.5 text-[12px] font-sans text-[var(--color-accent)]">
         <Feather size={13} /> Перо читает<span className="inline-block w-[2px] h-[13px] bg-[var(--color-accent)] animate-pulse ml-0.5" />
@@ -56,6 +58,19 @@ function ProsePage({ chapter, children }: { chapter: string; children: React.Rea
 const PIG = { character: '#9E4338', location: '#4D6B4D', item: '#91682E', rule: '#54627F' };
 
 export default function Landing() {
+  // Визуальные эффекты по входу в кадр (надёжнее scroll-timeline): добавляем .fx-in.
+  // Фолбэк — если IntersectionObserver недоступен, показываем всё сразу (без скрытых блоков).
+  useEffect(() => {
+    const els = Array.from(document.querySelectorAll<HTMLElement>('[data-fx]'));
+    if (!els.length) return;
+    if (!('IntersectionObserver' in window)) { els.forEach(el => el.classList.add('fx-in')); return; }
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('fx-in'); io.unobserve(e.target); } });
+    }, { threshold: 0.15 });
+    els.forEach(el => io.observe(el));
+    return () => io.disconnect();
+  }, []);
+
   return (
     <div className="min-h-screen bg-[var(--color-paper)] text-[var(--color-ink)] flex flex-col font-sans overflow-x-hidden">
       <style>{`
@@ -72,6 +87,34 @@ export default function Landing() {
           @supports (animation-timeline: scroll()) {
             .read-progress { transform-origin: left center; animation: growX linear both; animation-timeline: scroll(root block); }
           }
+        }
+
+        /* ── Визуальные эффекты (по входу в кадр через IntersectionObserver + бесконечные) ── */
+        @media (prefers-reduced-motion: no-preference) {
+          /* Перо «сканирует» страницу рукописи — мягкий луч слева направо (бесконечно) */
+          .reading-beam { position: absolute; inset: 0; border-radius: 1rem; overflow: hidden; pointer-events: none; }
+          .reading-beam::before {
+            content: ''; position: absolute; top: -12%; bottom: -12%; width: 42%; left: -46%;
+            background: linear-gradient(90deg, transparent, rgba(161,79,68,0.10), transparent);
+            transform: skewX(-12deg); animation: beam 4.2s ease-in-out infinite;
+          }
+          @keyframes beam { 0% { left: -46%; } 58%, 100% { left: 118%; } }
+
+          /* Всплытие карточек/страниц */
+          [data-fx="rise"] { opacity: 0; transform: translateY(28px); transition: opacity .6s ease, transform .6s cubic-bezier(.2,.7,.2,1); }
+          [data-fx="rise"].fx-in { opacity: 1; transform: none; }
+          /* Пружинистый «поп» (нестыковка выскакивает) */
+          [data-fx="pop"] { opacity: 0; transform: scale(.82); transition: opacity .45s ease, transform .5s cubic-bezier(.34,1.7,.5,1); }
+          [data-fx="pop"].fx-in { opacity: 1; transform: none; }
+
+          /* Сетка «Присутствие»: точки заполняются по очереди (мир строится сам) */
+          .pdot { opacity: 0; transform: scale(0); transform-origin: center; }
+          .fx-in .pdot { animation: pdotIn .5s cubic-bezier(.34,1.56,.64,1) forwards; animation-delay: calc(var(--i, 0) * 42ms); }
+          @keyframes pdotIn { to { opacity: 1; transform: scale(1); } }
+
+          /* Имя «извлекается»: пигмент-подчёркивание прорисовывается слева направо */
+          .name-draw { background-image: linear-gradient(currentColor, currentColor); background-repeat: no-repeat; background-position: 0 100%; background-size: 0% 2px; padding-bottom: 1px; transition: background-size .6s ease .25s; }
+          .fx-in .name-draw { background-size: 100% 2px; }
         }
       `}</style>
 
@@ -128,11 +171,12 @@ export default function Landing() {
 
           {/* Визуал-трансформация: рукопись → Перо читает → карточка Мира + нестыковка (замысел в одном взгляде) */}
           <div className="relative select-none" aria-hidden="true">
-            {/* ВХОД — страница рукописи */}
-            <div className="reveal relative bg-[#FBF7EF] rounded-2xl border border-ink/8 shadow-[0_10px_36px_rgba(30,45,31,0.06)] px-6 py-5 rotate-[-1.2deg] z-10">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ink/40 mb-2.5">Ваша рукопись · глава 2</p>
-              <p className="font-serif text-[17px] leading-[1.6] text-ink/80">
-                Над костром булькал <span style={{ color: PIG.item }}>отвар забвения</span>. <span style={{ color: PIG.character }}>Весна</span> помешивала травы короткими движениями.
+            {/* ВХОД — страница рукописи (Перо «сканирует» лучом, имена прорисовываются) */}
+            <div data-fx="rise" className="relative bg-[#FBF7EF] rounded-2xl border border-ink/8 shadow-[0_10px_36px_rgba(30,45,31,0.06)] px-6 py-5 rotate-[-1.2deg] z-10 overflow-hidden">
+              <span className="reading-beam" aria-hidden="true" />
+              <p className="relative text-[10px] font-semibold uppercase tracking-[0.18em] text-ink/40 mb-2.5">Ваша рукопись · глава 2</p>
+              <p className="relative font-serif text-[17px] leading-[1.6] text-ink/80">
+                Над костром булькал <span className="name-draw" style={{ color: PIG.item }}>отвар забвения</span>. <span className="name-draw" style={{ color: PIG.character }}>Весна</span> помешивала травы короткими движениями.
               </p>
             </div>
 
@@ -142,7 +186,7 @@ export default function Landing() {
             </div>
 
             {/* ВЫХОД — карточка Мира */}
-            <div className="reveal relative bg-white rounded-2xl border border-ink/8 shadow-[0_18px_50px_rgba(30,45,31,0.12)] px-6 py-5 rotate-[0.8deg]">
+            <div data-fx="rise" style={{ transitionDelay: '0.22s' }} className="relative bg-white rounded-2xl border border-ink/8 shadow-[0_18px_50px_rgba(30,45,31,0.12)] px-6 py-5 rotate-[0.8deg]">
               <div className="flex items-center gap-1.5 mb-2">
                 <span className="text-[9px] font-bold tracking-widest px-2 py-0.5 rounded-md" style={{ background: '#F1DFDA', color: PIG.character }}>ПЕРСОНАЖ</span>
                 <span className="text-[9px] font-semibold px-2 py-0.5 rounded-md bg-[#EBE4EE] text-[#71597F]">Ключевой</span>
@@ -157,19 +201,21 @@ export default function Landing() {
                 <span className="text-[9.5px] uppercase tracking-widest text-ink/45 shrink-0">В главах</span>
                 <div className="flex gap-1">
                   {[1,1,1,1,1,1,1,1].map((_, i) => (
-                    <span key={i} className="w-2 h-2 rounded-full" style={{ background: PIG.character, opacity: 0.85 }} />
+                    <span key={i} className="pdot w-2 h-2 rounded-full" style={{ background: PIG.character, ['--i' as string]: String(i + 4) }} />
                   ))}
                 </div>
               </div>
             </div>
 
-            {/* НЕСТЫКОВКА — плавающая метка */}
-            <div className="reveal absolute -bottom-6 -left-2 lg:-left-6 bg-white rounded-xl border border-[#9E4338]/60 shadow-[0_12px_36px_rgba(158,67,56,0.14)] px-4 py-3 max-w-[250px] -rotate-[1.5deg]">
-              <div className="flex items-center gap-1.5 mb-1 text-[#9E4338]">
-                <AlertTriangle size={13} />
-                <span className="text-[10px] font-bold uppercase tracking-widest">Противоречие</span>
+            {/* НЕСТЫКОВКА — «выскакивает» последней (обёртка держит наклон, чтобы pop не съел transform) */}
+            <div className="absolute -bottom-6 -left-2 lg:-left-6 max-w-[250px] -rotate-[1.5deg]">
+              <div data-fx="pop" style={{ transitionDelay: '0.55s' }} className="bg-white rounded-xl border border-[#9E4338]/60 shadow-[0_12px_36px_rgba(158,67,56,0.14)] px-4 py-3">
+                <div className="flex items-center gap-1.5 mb-1 text-[#9E4338]">
+                  <AlertTriangle size={13} />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Противоречие</span>
+                </div>
+                <p className="text-[12.5px] text-ink/70 leading-snug">Гл. 3 глаза зелёные, гл. 12 — серые.</p>
               </div>
-              <p className="text-[12.5px] text-ink/70 leading-snug">Гл. 3 глаза зелёные, гл. 12 — серые.</p>
             </div>
           </div>
         </section>
@@ -195,7 +241,9 @@ export default function Landing() {
                 ].map((c, i) => (
                   <div
                     key={c.name}
-                    className="reveal bg-white rounded-2xl border border-ink/8 shadow-[0_8px_28px_rgba(30,45,31,0.06)] px-5 py-4"
+                    data-fx="rise"
+                    style={{ transitionDelay: `${i * 0.13}s` }}
+                    className="bg-white rounded-2xl border border-ink/8 shadow-[0_8px_28px_rgba(30,45,31,0.06)] px-5 py-4"
                   >
                     <div className="flex items-center gap-2 mb-1.5">
                       <span className="w-2 h-2 rounded-full" style={{ background: PIG[c.type as keyof typeof PIG] }} />
@@ -228,8 +276,8 @@ export default function Landing() {
             </ul>
           </div>
 
-          {/* Мок линзы «Присутствие» */}
-          <div className="reveal bg-white rounded-3xl border border-ink/8 shadow-[0_16px_50px_rgba(30,45,31,0.09)] p-6 select-none" aria-hidden="true">
+          {/* Мок линзы «Присутствие» — точки заполняются по очереди при входе в кадр */}
+          <div data-fx="rise" className="bg-white rounded-3xl border border-ink/8 shadow-[0_16px_50px_rgba(30,45,31,0.09)] p-6 select-none" aria-hidden="true">
             <div className="flex items-center gap-2 mb-5">
               <span className="text-[10px] font-bold uppercase tracking-widest text-ink/55">Линза «Присутствие»</span>
               <span className="text-[10px] text-ink/40">кто в какой главе</span>
@@ -248,7 +296,7 @@ export default function Landing() {
                   {Array.from({ length: CH }, (_, i) => (
                     <span key={i} className="text-[10px] text-ink/40 text-center tabular-nums">{i + 1}</span>
                   ))}
-                  {ROWS.map(r => (
+                  {ROWS.map((r, ri) => (
                     <div key={r.name} className="contents">
                       <span className="flex items-center gap-1.5 text-[12.5px] text-ink/75 truncate pr-2">
                         <span className="w-2 h-2 rounded-full shrink-0" style={{ background: r.pig }} />
@@ -257,8 +305,8 @@ export default function Landing() {
                       {r.cells.map((on, i) => (
                         <span key={i} className="flex justify-center">
                           <span
-                            className="w-2.5 h-2.5 rounded-full"
-                            style={{ background: on ? r.pig : 'transparent', border: on ? 'none' : '1.5px solid rgba(30,45,31,0.12)', opacity: on ? 0.9 : 1 }}
+                            className="pdot w-2.5 h-2.5 rounded-full"
+                            style={{ background: on ? r.pig : 'transparent', border: on ? 'none' : '1.5px solid rgba(30,45,31,0.12)', ['--i' as string]: String(ri * CH + i) }}
                           />
                         </span>
                       ))}
@@ -283,7 +331,7 @@ export default function Landing() {
             </div>
 
             <div>
-              <div className="reveal bg-white rounded-2xl border border-[#9E4338]/60 shadow-[0_12px_40px_rgba(158,67,56,0.12)] px-6 py-5 mb-6">
+              <div data-fx="pop" className="bg-white rounded-2xl border border-[#9E4338]/60 shadow-[0_12px_40px_rgba(158,67,56,0.12)] px-6 py-5 mb-6">
                 <div className="flex items-center gap-2 mb-2 text-[#9E4338]">
                   <AlertTriangle size={17} />
                   <span className="text-[11px] font-bold uppercase tracking-widest">Противоречие</span>

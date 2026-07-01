@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import {
   MoveRight, Check, Minus, Upload, BookOpen, Sparkles, Mic,
-  ShieldCheck, Link2, Activity, Clock,
+  ShieldCheck, Link2, Activity, Clock, PlayCircle,
 } from 'lucide-react';
 import { PeroMark, PeroLogo } from '../components/Logo';
 
@@ -84,8 +84,9 @@ export default function Landing() {
                 Загрузить рукопись бесплатно
                 <MoveRight size={20} />
               </Link>
-              <Link to="/demo/sample" className="flex items-center gap-2 px-6 py-4 text-lg font-medium text-ink/70 hover:text-ink transition-colors">
-                Посмотреть на примере
+              <Link to="/demo/sample" className="flex items-center gap-2.5 px-8 py-4 rounded-2xl border border-ink/20 text-lg font-medium text-ink/80 hover:border-ink/40 hover:text-ink transition-colors">
+                <PlayCircle size={20} />
+                Посмотреть на примере — без регистрации
               </Link>
             </div>
             <p className="text-[13px] text-ink/60">

@@ -443,7 +443,7 @@ function Shelf({ projects, label, onLabelClick, onOpen, onDelete, onEdit, onBibl
   );
 }
 
-function EmptyState({ onNew }: { onNew: () => void }) {
+function EmptyState({ onNew, onDemo }: { onNew: () => void; onDemo: () => void }) {
   return (
     <div style={{
       flex: 1, display: 'flex', flexDirection: 'column',
@@ -483,6 +483,23 @@ function EmptyState({ onNew }: { onNew: () => void }) {
         }}
       >
         <Plus size={18} /> Начать писать
+      </button>
+
+      {/* #4/#3: демо-путь без обязательств — готовая книга с уже собранным Миром.
+          Новый автор видит продукт наполненным (персонажи/линзы/нестыковки) до первого импорта. */}
+      <button
+        onClick={onDemo}
+        style={{
+          marginTop: '18px', background: 'transparent', border: 'none',
+          color: ink(0.55), fontSize: '14px', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: '7px',
+          textDecoration: 'underline', textUnderlineOffset: '3px',
+          textDecorationColor: ink(0.2),
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = ink(0.8); }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = ink(0.55); }}
+      >
+        <BookOpen size={15} /> Или посмотрите на готовом примере — «Королевство крыльев и руин»
       </button>
     </div>
   );
@@ -1175,7 +1192,7 @@ export default function Dashboard() {
               <div style={{ width: '28px', height: '28px', border: `3px solid ${ink(0.1)}`, borderTopColor: PALETTE.pine, borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
             </div>
           ) : projects.length === 0 ? (
-            <EmptyState onNew={() => setIsModalOpen(true)} />
+            <EmptyState onNew={() => setIsModalOpen(true)} onDemo={() => navigate('/demo/sample')} />
           ) : (
             <>
               {/* Серии (Этап E) — каждая серия отдельной полкой по порядку книг */}

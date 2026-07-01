@@ -5,8 +5,34 @@ import {
   Plus, FileText, FileCheck, AlertCircle, Trash2, ChevronDown, GripVertical,
 } from 'lucide-react';
 import { Chapter, ChapterType } from './types';
-import { getChapterDisplayLabel, CHAPTER_TYPES } from './chapterDisplay';
+import { getChapterDisplayLabel, CHAPTER_TYPES, isServiceChapterType } from './chapterDisplay';
 import { AppSidebar } from '../AppSidebar';
+
+// Здоровье главы = состояние чтения Пером (та же логика, что у пульса в редакторе).
+//  • 'fresh'   — Перо прочитало текущую версию (зелёная точка)
+//  • 'stale'   — глава изменилась после чтения, ждёт «Прочитать» (янтарная)
+//  • 'unknown' — ещё ни разу не читалась (полая точка)
+//  • null      — служебный раздел (не анализируется) — точки нет
+type ReadingHealth = 'fresh' | 'stale' | 'unknown' | null;
+function chapterReadingHealth(chapter: Chapter): ReadingHealth {
+  if (isServiceChapterType(chapter.chapterType)) return null;
+  if (!chapter.lastExtractedAt) return chapter.summary ? 'fresh' : 'unknown';
+  const editedAt    = new Date(chapter.updatedAt).getTime();
+  const extractedAt = new Date(chapter.lastExtractedAt).getTime();
+  return editedAt > extractedAt ? 'stale' : 'fresh';
+}
+const HEALTH_META: Record<'fresh' | 'stale' | 'unknown', { cls: string; title: string }> = {
+  fresh:   { cls: 'bg-[#8AAE86] shadow-[0_0_6px_rgba(138,174,134,0.5)]', title: 'Перо прочитало эту главу' },
+  stale:   { cls: 'bg-[#D9A441]',                                        title: 'Глава изменилась — нажмите «Прочитать»' },
+  unknown: { cls: 'bg-transparent border border-white/25',              title: 'Ещё не прочитана Пером' },
+};
+
+/** Быстрый счётчик слов из HTML-контента главы (для опционального показа в сайдбаре). */
+function chapterWords(content: string | null | undefined): number {
+  if (!content) return 0;
+  const t = content.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/gi, ' ').trim();
+  return t ? t.split(/\s+/).length : 0;
+}
 
 interface Props {
   projectId: string;
@@ -235,6 +261,8 @@ export function ChapterSidebar({
           const isDropTarget   = dropTargetId === chapter.id && draggedId !== chapter.id;
           const { primary, secondary } = getChapterDisplayLabel(chapter, index);
           const isDeleting = deletingId === chapter.id;
+          const health = chapterReadingHealth(chapter);
+          const words = showWordCount ? chapterWords(chapter.content) : 0;
 
           return (
             <div
@@ -298,18 +326,33 @@ export function ChapterSidebar({
                 )}
               </button>
 
-              {/* Delete */}
-              <button
-                onClick={() => handleDelete(chapter.id)}
-                disabled={isDeleting}
-                title="Удалить раздел"
-                className="opacity-0 group-hover:opacity-100 flex-shrink-0 p-1 rounded text-white/30 hover:text-[#9E4338] transition-all disabled:opacity-30"
-              >
-                {isDeleting
-                  ? <div className="w-3 h-3 border border-white/30 border-t-white/70 rounded-full animate-spin" />
-                  : <Trash2 size={13} />
-                }
-              </button>
+              {/* Опциональный счётчик слов (виден при включённом showWordCount) */}
+              {showWordCount && words > 0 && (
+                <span className="flex-shrink-0 text-[10px] tabular-nums text-white/30 group-hover:opacity-0 transition-opacity">
+                  {words.toLocaleString('ru-RU')}
+                </span>
+              )}
+
+              {/* Правый слот: точка «здоровья» (чтение Пером) ↔ удаление на ховере (без сдвига) */}
+              <div className="relative flex-shrink-0 w-5 h-5 flex items-center justify-center">
+                {health && (
+                  <span
+                    title={HEALTH_META[health].title}
+                    className={`w-2 h-2 rounded-full transition-opacity group-hover:opacity-0 ${HEALTH_META[health].cls}`}
+                  />
+                )}
+                <button
+                  onClick={() => handleDelete(chapter.id)}
+                  disabled={isDeleting}
+                  title="Удалить раздел"
+                  className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 rounded text-white/30 hover:text-[#9E4338] transition-all disabled:opacity-30"
+                >
+                  {isDeleting
+                    ? <div className="w-3 h-3 border border-white/30 border-t-white/70 rounded-full animate-spin" />
+                    : <Trash2 size={13} />
+                  }
+                </button>
+              </div>
             </div>
           );
         })}

@@ -6,6 +6,7 @@
  */
 import { useState } from 'react';
 import { Loader2, RefreshCw, X, ArrowRight, Check, FileText, Wrench } from 'lucide-react';
+import { EmptyLensState } from './EmptyLensState';
 
 export interface ContradictionIssue {
   id: string;
@@ -124,10 +125,12 @@ export function ContradictionsLens({ issues, chapters, entities, scanState, onSc
       {/* Список */}
       <div className="flex-1 overflow-y-auto -mx-1 px-1">
         {real.length === 0 ? (
-          <div className="flex flex-col items-center justify-center text-center py-16">
-            <div className="w-14 h-14 rounded-2xl bg-[#4A5D4E]/8 flex items-center justify-center mb-4"><Check size={26} className="text-[#4A5D4E]" /></div>
-            <p className="text-[14px] text-[#1e2d1f]/60 max-w-[260px] leading-relaxed">{running ? 'Перо читает книгу…' : 'Перо не нашёл противоречий с Миром. Запусти проверку после правок.'}</p>
-          </div>
+          <EmptyLensState
+            icon={Check}
+            tone={running ? 'neutral' : 'positive'}
+            title={running ? 'Перо читает книгу…' : 'Противоречий не найдено'}
+            hint={running ? undefined : 'Перо не нашёл нестыковок с Миром. Запусти проверку заново после правок.'}
+          />
         ) : filtered.length === 0 ? (
           <p className="text-[13px] text-[#1e2d1f]/45 text-center py-10">Нет нестыковок этой важности.</p>
         ) : (

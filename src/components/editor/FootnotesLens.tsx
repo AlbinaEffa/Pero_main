@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { BookOpen, ArrowUpRight } from 'lucide-react';
+import { EmptyLensState } from './EmptyLensState';
 
 export interface BookFootnote {
   id: string;
@@ -30,14 +31,11 @@ export function FootnotesLens({ footnotes, onJump }: {
 
   if (footnotes.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center text-center py-16 text-[#1e2d1f]/45">
-        <BookOpen size={28} className="mb-3 text-[#1e2d1f]/25" />
-        <p className="text-[14px] font-medium text-[#1e2d1f]/60">Сносок пока нет</p>
-        <p className="text-[12.5px] mt-1 max-w-[280px] leading-relaxed">
-          Поставьте курсор в текст и нажмите «¹» в панели форматирования (или «/сноска») —
-          сноски книги соберутся здесь со сквозной нумерацией.
-        </p>
-      </div>
+      <EmptyLensState
+        icon={BookOpen}
+        title="Сносок пока нет"
+        hint="Поставьте курсор в текст и нажмите «¹» в панели форматирования (или «/сноска») — сноски книги соберутся здесь со сквозной нумерацией."
+      />
     );
   }
 

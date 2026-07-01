@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Swords, Heart, Activity, Lightbulb, Circle, X, Rewind, FastForward, ChevronDown, ChevronRight } from 'lucide-react';
 import { Entity, EntityEvent } from './types';
-import { MargPath } from './Marginalia';
+import { EmptyLensState } from './EmptyLensState';
 
 const SIGNIFICANCE_RANK: Record<string, number> = { major: 0, moderate: 1, minor: 2 };
 
@@ -114,12 +114,11 @@ export function TimelineLens({ entities, events, chapters, focusEntityId, onSetF
 
   if (timed.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center text-center px-6 py-12 text-[#1e2d1f]/45">
-        <MargPath size={56} className="mb-3 text-[#1e2d1f]/30" />
-        <p className="text-sm leading-relaxed">
-          {focusEntityId ? 'У этой сущности пока нет событий.' : 'События появятся, когда Перо прочитает главы.'}
-        </p>
-      </div>
+      <EmptyLensState
+        icon={Activity}
+        title={focusEntityId ? 'Событий пока нет' : 'Таймлайн пока пуст'}
+        hint={focusEntityId ? 'У этой сущности ещё не отмечено событий в прочитанных главах.' : 'События появятся, когда Перо прочитает главы книги.'}
+      />
     );
   }
 

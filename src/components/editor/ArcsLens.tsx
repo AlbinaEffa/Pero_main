@@ -5,6 +5,7 @@
  */
 import { useEffect, useState } from 'react';
 import { Loader2, RefreshCw, Compass, Plus } from 'lucide-react';
+import { EmptyLensState } from './EmptyLensState';
 import { api } from '../../services/api';
 
 interface Arc {
@@ -85,10 +86,11 @@ export function ArcsLens({ projectId, onOpenEntity }: { projectId: string; onOpe
       ) : (
         <div className="flex-1 overflow-y-auto -mx-1 px-1">
           {arcs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center text-center py-16">
-              <div className="w-14 h-14 rounded-2xl bg-[#54627F]/8 flex items-center justify-center mb-4"><Compass size={24} className="text-[#54627F]" /></div>
-              <p className="text-[14px] text-[#1e2d1f]/60 max-w-[280px] leading-relaxed">{scanning ? 'Перо выводит арки героев…' : 'Задумай арку героя руками («+ Герой») или дай Перу вывести её из рукописи.'}</p>
-            </div>
+            <EmptyLensState
+              icon={Compass}
+              title={scanning ? 'Перо выводит арки…' : 'Арок героев пока нет'}
+              hint={scanning ? undefined : 'Задумай арку героя руками («+ Герой») или дай Перу вывести её из рукописи.'}
+            />
           ) : (
             <div className="space-y-3 pb-4">
               {arcs.map(a => (

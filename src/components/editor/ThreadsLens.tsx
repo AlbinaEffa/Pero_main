@@ -5,6 +5,7 @@
  */
 import { useState } from 'react';
 import { Loader2, RefreshCw, X, ArrowRight, Target, CheckCircle2, RotateCcw, Plus } from 'lucide-react';
+import { EmptyLensState } from './EmptyLensState';
 
 export interface PlotThread {
   id: string;
@@ -172,10 +173,11 @@ export function ThreadsLens({ threads, orderedChapterIds, scanning, onScan, onJu
       {/* Список */}
       <div className="flex-1 overflow-y-auto -mx-1 px-1">
         {threads.length === 0 ? (
-          <div className="flex flex-col items-center justify-center text-center py-16">
-            <div className="w-14 h-14 rounded-2xl bg-[#71597F]/8 flex items-center justify-center mb-4"><Target size={24} className="text-[#71597F]" /></div>
-            <p className="text-[14px] text-[#1e2d1f]/60 max-w-[280px] leading-relaxed">{scanning ? 'Перо собирает сюжетные линии…' : 'Перо найдёт сквозные линии и незакрытые «ружья Чехова» по синопсисам глав.'}</p>
-          </div>
+          <EmptyLensState
+            icon={Target}
+            title={scanning ? 'Перо собирает линии…' : 'Сюжетных линий пока нет'}
+            hint={scanning ? undefined : 'Перо найдёт сквозные линии и незакрытые «ружья Чехова» по синопсисам глав — запусти разбор.'}
+          />
         ) : (
           <div className="space-y-4 pb-4">
             {open.length > 0 && (

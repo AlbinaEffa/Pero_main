@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { MapPin, ChevronRight, ChevronDown } from 'lucide-react';
 import { Entity, EntityLink } from './types';
-import { MargCompass } from './Marginalia';
+import { EmptyLensState } from './EmptyLensState';
 
 interface Props {
   entities: Entity[];
@@ -55,10 +55,11 @@ export function MapLens({ entities, links, onJumpToChapter }: Props) {
 
   if (locations.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center text-center px-6 py-12 text-[#1e2d1f]/45">
-        <MargCompass size={56} className="mb-3 text-[#1e2d1f]/30" />
-        <p className="text-sm leading-relaxed">Карта появится, когда Перо найдёт локации и их вложенность в тексте.</p>
-      </div>
+      <EmptyLensState
+        icon={MapPin}
+        title="Карта пока пуста"
+        hint="Карта появится, когда Перо найдёт локации и их вложенность в тексте."
+      />
     );
   }
 
